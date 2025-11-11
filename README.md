@@ -1,6 +1,6 @@
-# 10x Astro Starter
+# Pulse Reader
 
-A modern, opinionated starter template for building fast, accessible, and AI-friendly web applications.
+PulseReader is a smart news aggregator that adapts to your mood, interests, and trusted sources. Filter out unwanted topics, block specific sites, and customize your feed by region, category, or emotional tone—so you only read what truly matters to you.
 
 ## Tech Stack
 
