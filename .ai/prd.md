@@ -112,6 +112,7 @@ Następujące funkcjonalności znajdują się poza zakresem wersji MVP (Minimum 
   2. Interfejs wyraźnie informuje, jakie filtry są aktywne (np. "Nastrój: Pozytywny", "Aktywne filtry: 3").
   3. Użytkownik ma możliwość tymczasowego wyłączenia filtrów, aby zobaczyć pełną listę artykułów.
 
+
 - ID: US-008
 - Tytuł: Wyświetlanie informacji o braku wyników
 - Opis: Jako użytkownik, chcę otrzymać jasny komunikat, gdy moje kryteria filtrowania są tak restrykcyjne, że nie ma żadnych pasujących artykułów.

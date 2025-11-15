@@ -1,8 +1,8 @@
 ---
-import Welcome from "../components/Welcome.astro";
-import Layout from "../layouts/Layout.astro";
+import GlobalLayout from "../layouts/GlobalLayout.astro";
+import Homepage from "../components/Homepage.tsx";
 ---
 
-<Layout>
-  <Welcome />
-</Layout>
+<GlobalLayout title="PulseReader - Your Personalized News Feed">
+  <Homepage client:load />
+</GlobalLayout>

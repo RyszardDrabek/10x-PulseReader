@@ -1,6 +1,19 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, PostgrestError } from "@supabase/supabase-js";
 
 import type { Database } from "../../db/database.types.ts";
+
+/**
+ * Custom error class for database-related errors that preserves the original Supabase error.
+ */
+class DatabaseError extends Error {
+  public readonly supabaseError: PostgrestError;
+
+  constructor(message: string, supabaseError: PostgrestError) {
+    super(message);
+    this.name = "DatabaseError";
+    this.supabaseError = supabaseError;
+  }
+}
 import type {
   ArticleEntity,
   CreateArticleCommand,
@@ -11,12 +24,17 @@ import type {
 } from "../../types.ts";
 
 type JoinedArticle = Database["app"]["Tables"]["articles"]["Row"] & {
-  rss_sources: {
+  rss_sources?: {
     id: string;
     name: string;
     url: string;
   };
-  article_topics: {
+  source?: {
+    id: string;
+    name: string;
+    url: string;
+  };
+  article_topics?: {
     topics: {
       id: string;
       name: string;
@@ -148,17 +166,15 @@ export class ArticleService {
     const { data, count, error } = await query;
 
     if (error) {
-      // Wrap Supabase error in Error for better error handling
+      // Wrap Supabase error in DatabaseError for better error handling
       const errorMessage = error.message || JSON.stringify(error);
-      const dbError = new Error(`Database query failed: ${errorMessage}`);
-      (dbError as any).supabaseError = error;
-      throw dbError;
+      throw new DatabaseError(`Database query failed: ${errorMessage}`, error);
     }
 
     // Apply blocklist filtering if personalization is enabled
     let blockedCount = 0;
     // For now, handle both simple and joined article structures
-    let filteredData: any[] = data || [];
+    let filteredData: (Database["app"]["Tables"]["articles"]["Row"] | JoinedArticle)[] = data || [];
 
     if (params.applyPersonalization && userProfile?.blocklist && userProfile.blocklist.length > 0) {
       const beforeFilterCount = filteredData.length;
@@ -328,7 +344,10 @@ export class ArticleService {
    * @param blocklist - Array of blocked terms/keywords
    * @returns Filtered array of articles
    */
-  private applyBlocklistFilter(articles: JoinedArticle[], blocklist: string[]): JoinedArticle[] {
+  private applyBlocklistFilter(
+    articles: (Database["app"]["Tables"]["articles"]["Row"] | JoinedArticle)[],
+    blocklist: string[]
+  ): (Database["app"]["Tables"]["articles"]["Row"] | JoinedArticle)[] {
     const lowerBlocklist = blocklist.map((term) => term.toLowerCase());
 
     return articles.filter((article) => {
@@ -383,15 +402,16 @@ export class ArticleService {
    * @returns ArticleDto with properly nested source and topics
    * @throws Error if required source data is missing
    */
-  private mapArticleToDto(article: any): ArticleDto {
+  private mapArticleToDto(article: Database["app"]["Tables"]["articles"]["Row"] | JoinedArticle): ArticleDto {
     // Handle both simple and joined article structures
     // If source is not joined, we'll need to fetch it separately (for now return minimal data)
-    if (!article.rss_sources && !article.source_id) {
+    const hasJoinedSource = "rss_sources" in article || "source" in article;
+    if (!hasJoinedSource && !article.source_id) {
       throw new Error(`Article ${article.id} is missing source data`);
     }
 
     // If we have joined source data, use it
-    const source = article.rss_sources || article.source;
+    const source = ("rss_sources" in article && article.rss_sources) || ("source" in article && article.source);
 
     return {
       id: article.id,
@@ -412,7 +432,7 @@ export class ArticleService {
             name: "Unknown",
             url: "",
           },
-      topics: (article.article_topics || [])
+      topics: (("article_topics" in article && article.article_topics) || [])
         .map((at: { topics: { id: string; name: string } | null }) => at.topics)
         .filter((t: { id: string; name: string } | null) => t !== null)
         .map((topic: { id: string; name: string }) => ({
