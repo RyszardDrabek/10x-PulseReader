@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSupabase } from "./SupabaseProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import FilterBanner from "./FilterBanner";
@@ -7,8 +7,9 @@ import type { ArticleFiltersApplied, ProfileDto, GetArticlesQueryParams } from "
 
 export default function Homepage() {
   const { user } = useSupabase();
-  const queryClient = useQueryClient();
   const isAuthenticated = !!user;
+  const queryClient = useQueryClient();
+  const queryClientRef = useRef(queryClient);
 
   const [isPersonalized, setIsPersonalized] = useState(false);
   const [profile, setProfile] = useState<ProfileDto | null>(null);
@@ -17,14 +18,7 @@ export default function Homepage() {
     offset: 0,
   });
 
-  // Fetch profile when user is authenticated
-  useEffect(() => {
-    if (isAuthenticated && user?.id) {
-      fetchProfile();
-    }
-  }, [isAuthenticated, user?.id]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -41,15 +35,24 @@ export default function Homepage() {
     } catch (error) {
       console.error("Failed to fetch profile:", error);
     }
-  };
+  }, [user?.id]);
+
+  // Fetch profile when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      fetchProfile();
+    }
+  }, [isAuthenticated, user?.id, fetchProfile]);
 
   const handleTogglePersonalization = (enabled: boolean) => {
     setIsPersonalized(enabled);
 
     // Invalidate and refetch articles with new personalization setting
-    queryClient.invalidateQueries({
-      queryKey: ["articles"],
-    });
+    if (queryClientRef.current) {
+      queryClientRef.current.invalidateQueries({
+        queryKey: ["articles"],
+      });
+    }
   };
 
   const getCurrentFilters = (): ArticleFiltersApplied => {

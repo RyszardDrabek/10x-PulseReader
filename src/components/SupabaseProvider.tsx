@@ -14,7 +14,13 @@ const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined
 export function useSupabase() {
   const context = useContext(SupabaseContext);
   if (context === undefined) {
-    throw new Error("useSupabase must be used within a SupabaseProvider");
+    // During SSR or before hydration, return a safe default
+    return {
+      supabase: supabaseClient,
+      session: null,
+      user: null,
+      loading: true,
+    };
   }
   return context;
 }
