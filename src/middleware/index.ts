@@ -32,6 +32,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     } else {
       // Regular user token - create client and verify
       const anonKey = import.meta.env.SUPABASE_KEY;
+      if (!anonKey) {
+        throw new Error("SUPABASE_KEY environment variable is not set");
+      }
       const userClient = createClient<Database>(supabaseUrl, anonKey, {
         global: {
           headers: {
@@ -55,6 +58,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
   } else {
     // No auth header - anonymous access
     const anonKey = import.meta.env.SUPABASE_KEY;
+    if (!anonKey) {
+      throw new Error("SUPABASE_KEY environment variable is not set");
+    }
     const anonClient = createClient<Database>(supabaseUrl, anonKey);
     context.locals.supabase = anonClient;
     context.locals.user = null;

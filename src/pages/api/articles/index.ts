@@ -3,8 +3,8 @@ import { ZodError } from "zod";
 
 import { ArticleService } from "../../../lib/services/article.service.ts";
 import { logger } from "../../../lib/utils/logger.ts";
-import { CreateArticleCommandSchema } from "../../../lib/validation/article.schema.ts";
 import { GetArticlesQueryParamsSchema } from "../../../lib/validation/article-query.schema.ts";
+import { CreateArticleCommandSchema } from "../../../lib/validation/article.schema.ts";
 
 export const prerender = false;
 
@@ -23,6 +23,25 @@ export const GET: APIRoute = async (context) => {
   const supabase = context.locals.supabase;
   const user = context.locals.user;
 
+  // Validate Supabase client is available
+  if (!supabase) {
+    logger.error("Supabase client not initialized", {
+      endpoint: "GET /api/articles",
+    });
+
+    return new Response(
+      JSON.stringify({
+        error: "Server configuration error: Supabase client not available",
+        code: "CONFIGURATION_ERROR",
+        timestamp: new Date().toISOString(),
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
+
   try {
     // Extract query parameters from URL
     const url = new URL(context.request.url);
@@ -37,7 +56,7 @@ export const GET: APIRoute = async (context) => {
       sortOrder: url.searchParams.get("sortOrder") || undefined,
     };
 
-    // Validate query parameters
+    // Validate query parameters with Zod
     let validatedParams;
     try {
       validatedParams = GetArticlesQueryParamsSchema.parse(queryParams);
@@ -133,11 +152,17 @@ export const GET: APIRoute = async (context) => {
       userId: user?.id || "anonymous",
     });
 
+    // Include error details in development mode for debugging
+    const isDevelopment = import.meta.env.DEV;
+    const errorDetails =
+      isDevelopment && error instanceof Error ? { message: error.message, stack: error.stack } : undefined;
+
     return new Response(
       JSON.stringify({
         error: "Internal server error",
         code: "INTERNAL_ERROR",
         timestamp: new Date().toISOString(),
+        ...(errorDetails && { details: errorDetails }),
       }),
       {
         status: 500,
@@ -149,23 +174,46 @@ export const GET: APIRoute = async (context) => {
 
 /**
  * POST /api/articles
- * Creates a new article in the system.
+ * Creates a new article (service role only).
+ * Used by the RSS fetching cron job to ingest articles from configured RSS sources.
  *
- * Authentication: Service role required
- * Used by: RSS fetching cron job
+ * Authentication: Required (service_role JWT token)
  *
  * @returns 201 Created with ArticleEntity on success
- * @returns 400 Bad Request for validation errors or invalid references
- * @returns 401 Unauthorized for authentication/authorization failures
- * @returns 409 Conflict for duplicate article links
+ * @returns 400 Bad Request for validation errors or invalid source/topics
+ * @returns 401 Unauthorized if not authenticated or not service role
+ * @returns 409 Conflict if article link already exists
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const POST: APIRoute = async (context) => {
   const supabase = context.locals.supabase;
   const user = context.locals.user;
 
+  // Validate Supabase client is available
+  if (!supabase) {
+    logger.error("Supabase client not initialized", {
+      endpoint: "POST /api/articles",
+    });
+
+    return new Response(
+      JSON.stringify({
+        error: "Server configuration error: Supabase client not available",
+        code: "CONFIGURATION_ERROR",
+        timestamp: new Date().toISOString(),
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
+
   // Check authentication
   if (!user) {
+    logger.warn("POST /api/articles called without authentication", {
+      endpoint: "POST /api/articles",
+    });
+
     return new Response(
       JSON.stringify({
         error: "Authentication required",
@@ -181,6 +229,11 @@ export const POST: APIRoute = async (context) => {
 
   // Check authorization (service role only)
   if (user.role !== "service_role") {
+    logger.warn("POST /api/articles called without service role", {
+      endpoint: "POST /api/articles",
+      userId: (user as { id?: string }).id,
+    });
+
     return new Response(
       JSON.stringify({
         error: "Service role required for this endpoint",
@@ -194,22 +247,72 @@ export const POST: APIRoute = async (context) => {
     );
   }
 
+  let body: unknown;
   try {
     // Parse request body
-    const body = await context.request.json();
+    try {
+      body = await context.request.json();
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        logger.warn("Invalid JSON in request body", {
+          endpoint: "POST /api/articles",
+          error: error.message,
+        });
 
-    // Validate request body with Zod schema
-    const command = CreateArticleCommandSchema.parse(body);
+        return new Response(
+          JSON.stringify({
+            error: "Invalid JSON in request body",
+            code: "INVALID_JSON",
+            timestamp: new Date().toISOString(),
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+      throw error;
+    }
+
+    // Validate request body
+    let command;
+    try {
+      command = CreateArticleCommandSchema.parse(body);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        logger.warn("Request body validation failed", {
+          endpoint: "POST /api/articles",
+          errors: error.errors,
+        });
+
+        return new Response(
+          JSON.stringify({
+            error: "Validation failed",
+            details: error.errors.map((e) => ({
+              field: e.path.join("."),
+              message: e.message,
+            })),
+            timestamp: new Date().toISOString(),
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+      throw error;
+    }
 
     // Create article using service
     const articleService = new ArticleService(supabase);
     const article = await articleService.createArticle(command);
 
-    // Log successful creation
+    // Log success
     logger.info("Article created successfully", {
+      endpoint: "POST /api/articles",
       articleId: article.id,
-      sourceId: command.sourceId,
-      link: command.link,
+      sourceId: article.sourceId,
+      link: article.link,
     });
 
     // Return created article
@@ -218,52 +321,18 @@ export const POST: APIRoute = async (context) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    logger.error("Error creating article", error, {
-      endpoint: "POST /api/articles",
-    });
-
-    // Handle JSON parse errors
-    if (error instanceof SyntaxError) {
-      logger.warn("Invalid JSON in request body", { endpoint: "POST /api/articles" });
-      return new Response(
-        JSON.stringify({
-          error: "Invalid JSON in request body",
-          code: "INVALID_JSON",
-          timestamp: new Date().toISOString(),
-        }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Handle validation errors from Zod
-    if (error instanceof ZodError) {
-      return new Response(
-        JSON.stringify({
-          error: "Validation failed",
-          details: error.issues.map((issue) => ({
-            field: issue.path.join("."),
-            message: issue.message,
-          })),
-          timestamp: new Date().toISOString(),
-        }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Handle business logic errors from ArticleService
+    // Handle specific business logic errors
     if (error instanceof Error) {
       // RSS source not found
       if (error.message === "RSS_SOURCE_NOT_FOUND") {
+        logger.error("RSS source not found", error, {
+          endpoint: "POST /api/articles",
+        });
+
         return new Response(
           JSON.stringify({
             error: "RSS source not found",
-            code: "INVALID_SOURCE_ID",
+            code: "RSS_SOURCE_NOT_FOUND",
             timestamp: new Date().toISOString(),
           }),
           {
@@ -276,9 +345,14 @@ export const POST: APIRoute = async (context) => {
       // Invalid topic IDs
       if (error.message.startsWith("INVALID_TOPIC_IDS:")) {
         const invalidIds = JSON.parse(error.message.split(":")[1]);
+        logger.error("Invalid topic IDs provided", error, {
+          endpoint: "POST /api/articles",
+          invalidIds,
+        });
+
         return new Response(
           JSON.stringify({
-            error: "One or more topics not found",
+            error: "One or more topic IDs are invalid",
             code: "INVALID_TOPIC_IDS",
             details: { invalidIds },
             timestamp: new Date().toISOString(),
@@ -290,16 +364,17 @@ export const POST: APIRoute = async (context) => {
         );
       }
 
-      // Duplicate article link (409 Conflict)
+      // Article already exists (duplicate link)
       if (error.message === "ARTICLE_ALREADY_EXISTS") {
-        logger.info("Duplicate article detected", {
+        logger.warn("Attempted to create duplicate article", {
           endpoint: "POST /api/articles",
-          errorCode: "CONFLICT",
+          link: (body as { link?: string })?.link,
         });
+
         return new Response(
           JSON.stringify({
             error: "Article with this link already exists",
-            code: "CONFLICT",
+            code: "ARTICLE_ALREADY_EXISTS",
             timestamp: new Date().toISOString(),
           }),
           {
@@ -309,15 +384,16 @@ export const POST: APIRoute = async (context) => {
         );
       }
 
-      // Topic association failed (rollback occurred)
+      // Topic association failed
       if (error.message === "TOPIC_ASSOCIATION_FAILED") {
-        logger.error("Topic association failed after article creation", error, {
+        logger.error("Failed to create topic associations", error, {
           endpoint: "POST /api/articles",
         });
+
         return new Response(
           JSON.stringify({
-            error: "An unexpected error occurred",
-            code: "INTERNAL_ERROR",
+            error: "Failed to create topic associations",
+            code: "TOPIC_ASSOCIATION_FAILED",
             timestamp: new Date().toISOString(),
           }),
           {
@@ -328,12 +404,22 @@ export const POST: APIRoute = async (context) => {
       }
     }
 
-    // Generic server error for unexpected errors
+    // Generic error handling
+    logger.error("Failed to create article", error, {
+      endpoint: "POST /api/articles",
+    });
+
+    // Include error details in development mode for debugging
+    const isDevelopment = import.meta.env.DEV;
+    const errorDetails =
+      isDevelopment && error instanceof Error ? { message: error.message, stack: error.stack } : undefined;
+
     return new Response(
       JSON.stringify({
-        error: "An unexpected error occurred",
+        error: "Internal server error",
         code: "INTERNAL_ERROR",
         timestamp: new Date().toISOString(),
+        ...(errorDetails && { details: errorDetails }),
       }),
       {
         status: 500,
