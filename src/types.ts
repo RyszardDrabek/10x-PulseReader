@@ -6,25 +6,29 @@
 // the data structures exchanged between client and server.
 // =====================================================================================
 
+import type { Database } from "./db/database.types";
+
 // =====================================================================================
 // Database Entity Types (Foundation)
 // =====================================================================================
+// These types are directly derived from the Supabase-generated database types
+// to ensure type safety and consistency with the database schema.
 
 /**
  * User mood preference for article filtering.
  * Corresponds to app.user_mood enum in database.
  */
-export type UserMood = "positive" | "neutral" | "negative";
+export type UserMood = Database["app"]["Enums"]["user_mood"];
 
 /**
  * Article sentiment determined by AI analysis.
  * Corresponds to app.article_sentiment enum in database.
  */
-export type ArticleSentiment = "positive" | "neutral" | "negative";
+export type ArticleSentiment = Database["app"]["Enums"]["article_sentiment"];
 
 /**
  * Profile entity - User preferences and settings.
- * Corresponds to app.profiles table.
+ * Derived from app.profiles table Row type with camelCase field names.
  */
 export interface ProfileEntity {
   id: string;
@@ -37,7 +41,7 @@ export interface ProfileEntity {
 
 /**
  * RSS Source entity - Predefined RSS feed sources.
- * Corresponds to app.rss_sources table.
+ * Derived from app.rss_sources table Row type with camelCase field names.
  */
 export interface RssSourceEntity {
   id: string;
@@ -49,7 +53,7 @@ export interface RssSourceEntity {
 
 /**
  * Article entity - News articles with AI analysis.
- * Corresponds to app.articles table.
+ * Derived from app.articles table Row type with camelCase field names.
  */
 export interface ArticleEntity {
   id: string;
@@ -65,13 +69,130 @@ export interface ArticleEntity {
 
 /**
  * Topic entity - AI-generated topics for categorization.
- * Corresponds to app.topics table.
+ * Derived from app.topics table Row type with camelCase field names.
  */
 export interface TopicEntity {
   id: string;
   name: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Article-Topic junction entity.
+ * Derived from app.article_topics table Row type with camelCase field names.
+ */
+export interface ArticleTopicEntity {
+  articleId: string;
+  topicId: string;
+  createdAt: string;
+}
+
+// =====================================================================================
+// Database Insert Types
+// =====================================================================================
+// These types represent the data structures required to insert records into database tables.
+// They are derived from Supabase Insert types for type-safe database operations.
+
+/**
+ * Insert type for creating a new article in the database.
+ * Maps to app.articles Insert type.
+ */
+export interface ArticleInsert {
+  id?: string;
+  sourceId: string;
+  title: string;
+  description?: string | null;
+  link: string;
+  publicationDate: string;
+  sentiment?: ArticleSentiment | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Insert type for creating a new profile in the database.
+ * Maps to app.profiles Insert type.
+ */
+export interface ProfileInsert {
+  id?: string;
+  userId: string;
+  mood?: UserMood | null;
+  blocklist?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Insert type for creating a new RSS source in the database.
+ * Maps to app.rss_sources Insert type.
+ */
+export interface RssSourceInsert {
+  id?: string;
+  name: string;
+  url: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Insert type for creating a new topic in the database.
+ * Maps to app.topics Insert type.
+ */
+export interface TopicInsert {
+  id?: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Insert type for creating article-topic associations.
+ * Maps to app.article_topics Insert type.
+ */
+export interface ArticleTopicInsert {
+  articleId: string;
+  topicId: string;
+  createdAt?: string;
+}
+
+// =====================================================================================
+// Database Update Types
+// =====================================================================================
+// These types represent the data structures for updating database records.
+
+/**
+ * Update type for modifying an article in the database.
+ * Maps to app.articles Update type.
+ */
+export interface ArticleUpdate {
+  sourceId?: string;
+  title?: string;
+  description?: string | null;
+  link?: string;
+  publicationDate?: string;
+  sentiment?: ArticleSentiment | null;
+  updatedAt?: string;
+}
+
+/**
+ * Update type for modifying a profile in the database.
+ * Maps to app.profiles Update type.
+ */
+export interface ProfileUpdate {
+  mood?: UserMood | null;
+  blocklist?: string[];
+  updatedAt?: string;
+}
+
+/**
+ * Update type for modifying an RSS source in the database.
+ * Maps to app.rss_sources Update type.
+ */
+export interface RssSourceUpdate {
+  name?: string;
+  url?: string;
+  updatedAt?: string;
 }
 
 // =====================================================================================

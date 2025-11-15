@@ -1,7 +1,30 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "../../db/database.types.ts";
-import type { ArticleEntity, CreateArticleCommand } from "../../types.ts";
+import type {
+  ArticleEntity,
+  CreateArticleCommand,
+  ArticleDto,
+  ArticleListResponse,
+  GetArticlesQueryParams,
+  ProfileEntity,
+} from "../../types.ts";
+
+type JoinedArticle = Database["app"]["Tables"]["articles"]["Row"] & {
+  source: {
+    id: string;
+    name: string;
+    url: string;
+  };
+  article_topics: {
+    topics: {
+      id: string;
+      name: string;
+    } | null;
+  }[];
+};
+
+// Type alias for Supabase query builders to avoid complex PostgrestFilterBuilder generics
 
 /**
  * Service for managing article operations.
@@ -49,6 +72,94 @@ export class ArticleService {
     const invalidIds = topicIds.filter((id) => !foundIds.has(id));
 
     return { valid: invalidIds.length === 0, invalidIds };
+  }
+
+  /**
+   * Fetches a paginated list of articles with optional filters and personalization.
+   *
+   * @param params - Query parameters for filtering, sorting, and pagination
+   * @param userId - Optional authenticated user ID for personalization
+   * @returns ArticleListResponse with articles, pagination, and filters applied metadata
+   * @throws Error with specific codes:
+   *   - PROFILE_NOT_FOUND: User profile not found when personalization requested
+   */
+  async getArticles(params: GetArticlesQueryParams, userId?: string): Promise<ArticleListResponse> {
+    // Calculate fetch limit (over-fetch for blocklist filtering if needed)
+    const userProfile = params.applyPersonalization && userId ? await this.getProfile(userId) : null;
+
+    if (params.applyPersonalization && userId && !userProfile) {
+      throw new Error("PROFILE_NOT_FOUND");
+    }
+
+    const shouldOverFetch = params.applyPersonalization && userProfile?.blocklist && userProfile.blocklist.length > 0;
+    const limit = params.limit ?? 20;
+    const offset = params.offset ?? 0;
+    const fetchLimit = shouldOverFetch ? limit * 2 : limit;
+
+    // Build base query with joins for source and topics
+    let query = this.supabase
+      .schema("app")
+      .from("articles")
+      .select(
+        `
+        *,
+        source:rss_sources!source_id(id, name, url),
+        article_topics!article_topics_article_id_fkey(
+          topics!article_topics_topic_id_fkey(id, name)
+        )
+      `,
+        { count: "exact" }
+      );
+
+    // Apply filters
+    query = this.applyFilters(query, params, userProfile);
+
+    // Apply sorting
+    const sortField = params.sortBy === "publication_date" ? "publication_date" : "created_at";
+    const ascending = params.sortOrder === "asc";
+    query = query.order(sortField, { ascending });
+
+    // Apply pagination
+    query = query.range(offset, offset + fetchLimit - 1);
+
+    // Execute query
+    const { data, count, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    // Apply blocklist filtering if personalization is enabled
+    let blockedCount = 0;
+    let filteredData: JoinedArticle[] = data || [];
+
+    if (params.applyPersonalization && userProfile?.blocklist && userProfile.blocklist.length > 0) {
+      const beforeFilterCount = filteredData.length;
+      filteredData = this.applyBlocklistFilter(filteredData, userProfile.blocklist);
+      blockedCount = beforeFilterCount - filteredData.length;
+
+      // Trim to requested limit
+      filteredData = filteredData.slice(0, limit);
+    }
+
+    // Map to DTOs
+    const articles = filteredData.map((article) => this.mapArticleToDto(article));
+
+    // Build response
+    return {
+      data: articles,
+      pagination: {
+        limit,
+        offset,
+        total: count || 0,
+        hasMore: offset + limit < (count || 0),
+      },
+      filtersApplied: {
+        sentiment: params.sentiment,
+        personalization: params.applyPersonalization,
+        blockedItemsCount: blockedCount > 0 ? blockedCount : undefined,
+      },
+    };
   }
 
   /**
@@ -128,6 +239,127 @@ export class ArticleService {
       link: article.link,
       publicationDate: article.publication_date,
       sentiment: article.sentiment,
+      createdAt: article.created_at,
+      updatedAt: article.updated_at,
+    };
+  }
+
+  /**
+   * Applies query filters (sentiment, topicId, sourceId) to the Supabase query.
+   * Also applies mood-based filtering if personalization is enabled.
+   *
+   * @param query - The Supabase query builder
+   * @param params - Query parameters with filter values
+   * @param userProfile - Optional user profile for mood-based filtering
+   * @returns Modified query with filters applied
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private applyFilters(query: any, params: GetArticlesQueryParams, userProfile: ProfileEntity | null): any {
+    // Filter by sentiment (explicit or from mood)
+    if (params.sentiment) {
+      query = query.eq("sentiment", params.sentiment);
+    } else if (params.applyPersonalization && userProfile?.mood) {
+      // Apply mood-based sentiment filtering
+      query = query.eq("sentiment", userProfile.mood);
+    }
+
+    // Filter by source ID
+    if (params.sourceId) {
+      query = query.eq("source_id", params.sourceId);
+    }
+
+    // Filter by topic ID - we need to filter articles that have this topic
+    if (params.topicId) {
+      // Using the article_topics join table to filter
+      query = query.filter("article_topics.topics.id", "eq", params.topicId);
+    }
+
+    return query;
+  }
+
+  /**
+   * Applies blocklist filtering to articles.
+   * Filters out articles where title, description, or link contains blocklisted terms.
+   * Filtering is case-insensitive.
+   *
+   * @param articles - Raw articles from database
+   * @param blocklist - Array of blocked terms/keywords
+   * @returns Filtered array of articles
+   */
+  private applyBlocklistFilter(articles: JoinedArticle[], blocklist: string[]): JoinedArticle[] {
+    const lowerBlocklist = blocklist.map((term) => term.toLowerCase());
+
+    return articles.filter((article) => {
+      const title = (article.title || "").toLowerCase();
+      const description = (article.description || "").toLowerCase();
+      const link = (article.link || "").toLowerCase();
+
+      // Check if any blocklist term appears in title, description, or link
+      for (const term of lowerBlocklist) {
+        if (title.includes(term) || description.includes(term) || link.includes(term)) {
+          return false; // Article is blocked
+        }
+      }
+
+      return true; // Article passes blocklist filter
+    });
+  }
+
+  /**
+   * Fetches user profile by user ID.
+   *
+   * @param userId - UUID of the user
+   * @returns Profile entity or null if not found
+   */
+  private async getProfile(userId: string): Promise<ProfileEntity | null> {
+    const { data, error } = await this.supabase
+      .schema("app")
+      .from("profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return {
+      id: data.id,
+      userId: data.user_id,
+      mood: data.mood,
+      blocklist: data.blocklist || [],
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  }
+
+  /**
+   * Maps database article with relations to ArticleDto.
+   * Handles nested source and topics transformations.
+   *
+   * @param article - Raw article from database with joined relations
+   * @returns ArticleDto with properly nested source and topics
+   */
+  private mapArticleToDto(article: JoinedArticle): ArticleDto {
+    return {
+      id: article.id,
+      title: article.title,
+      description: article.description,
+      link: article.link,
+      publicationDate: article.publication_date,
+      sentiment: article.sentiment,
+      source: {
+        id: article.source.id,
+        name: article.source.name,
+        url: article.source.url,
+      },
+      topics: (article.article_topics || [])
+        .map((at: { topics: { id: string; name: string } | null }) => at.topics)
+        .filter((t: { id: string; name: string } | null) => t !== null)
+        .map((topic: { id: string; name: string }) => ({
+          id: topic.id,
+          name: topic.name,
+        })),
       createdAt: article.created_at,
       updatedAt: article.updated_at,
     };
