@@ -1,0 +1,24 @@
+---
+import GlobalLayout from "../layouts/GlobalLayout.astro";
+import AuthForm from "../components/AuthForm.tsx";
+import { toast } from "sonner";
+
+const title = "Sign Up - PulseReader";
+---
+
+<GlobalLayout title={title}>
+  <div class="container mx-auto px-4 py-8">
+    <div class="flex min-h-[calc(100vh-12rem)] items-center justify-center">
+      <AuthForm
+        mode="register"
+        onSubmit={async (data) => {
+          // TODO: Implement registration API call
+          console.log("Registration data:", data);
+          toast.success("Registration successful! Please check your email.");
+          // Redirect to verify-email page would happen here
+        }}
+        client:load
+      />
+    </div>
+  </div>
+</GlobalLayout>

@@ -1,0 +1,22 @@
+---
+import GlobalLayout from "../layouts/GlobalLayout.astro";
+import VerificationMessage from "../components/VerificationMessage.tsx";
+import { toast } from "sonner";
+
+const title = "Verify Email - PulseReader";
+---
+
+<GlobalLayout title={title}>
+  <div class="container mx-auto px-4 py-8">
+    <div class="flex min-h-[calc(100vh-12rem)] items-center justify-center">
+      <VerificationMessage
+        onResendVerification={async () => {
+          // TODO: Implement resend verification API call
+          console.log("Resending verification email");
+          toast.success("Verification link sent successfully.");
+        }}
+        client:load
+      />
+    </div>
+  </div>
+</GlobalLayout>
