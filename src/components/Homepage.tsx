@@ -1,15 +1,17 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSupabase } from "./SupabaseProvider";
-import { useQueryClient } from "@tanstack/react-query";
+import { logger } from "../lib/utils/logger";
 import FilterBanner from "./FilterBanner";
 import ArticleList from "./ArticleList";
-import type { ArticleFiltersApplied, ProfileDto, GetArticlesQueryParams } from "../types";
+import type { ArticleFiltersApplied, ProfileDto, GetArticlesQueryParams, ArticleListResponse } from "../types";
 
-export default function Homepage() {
+interface HomepageProps {
+  initialData?: ArticleListResponse;
+}
+
+export default function Homepage({ initialData }: HomepageProps) {
   const { user } = useSupabase();
   const isAuthenticated = !!user;
-  const queryClient = useQueryClient();
-  const queryClientRef = useRef(queryClient);
 
   const [isPersonalized, setIsPersonalized] = useState(false);
   const [profile, setProfile] = useState<ProfileDto | null>(null);
@@ -33,7 +35,7 @@ export default function Homepage() {
         setProfile(profileData);
       }
     } catch (error) {
-      console.error("Failed to fetch profile:", error);
+      logger.error("Failed to fetch profile", error);
     }
   }, [user?.id]);
 
@@ -46,13 +48,8 @@ export default function Homepage() {
 
   const handleTogglePersonalization = (enabled: boolean) => {
     setIsPersonalized(enabled);
-
-    // Invalidate and refetch articles with new personalization setting
-    if (queryClientRef.current) {
-      queryClientRef.current.invalidateQueries({
-        queryKey: ["articles"],
-      });
-    }
+    // The ArticleList component will re-render with the new personalization setting
+    // and useArticles hook will handle the query invalidation
   };
 
   const getCurrentFilters = (): ArticleFiltersApplied => {
@@ -75,7 +72,7 @@ export default function Homepage() {
         onTogglePersonalization={handleTogglePersonalization}
         profile={profile}
       />
-      <ArticleList queryParams={queryParams} isPersonalized={isPersonalized} />
+      <ArticleList queryParams={queryParams} isPersonalized={isPersonalized} initialData={initialData} />
     </div>
   );
 }

@@ -1,61 +1,99 @@
-import { useEffect, useRef, useCallback, useState } from "react";
-import { useArticles } from "../lib/hooks/useArticles";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSupabase } from "./SupabaseProvider";
 import ArticleCard from "./ArticleCard";
 import LoadingSkeleton from "./LoadingSkeleton";
 import NoResultsPlaceholder from "./NoResultsPlaceholder";
-import type { GetArticlesQueryParams } from "../types";
+import type { GetArticlesQueryParams, ArticleListResponse } from "../types";
 
 interface ArticleListProps {
   queryParams?: GetArticlesQueryParams;
+  initialData?: ArticleListResponse;
   isPersonalized?: boolean;
 }
 
 export default function ArticleList({
   queryParams = { limit: 20, offset: 0 },
+  initialData,
   isPersonalized = false,
 }: ArticleListProps) {
-  const { user } = useSupabase();
-  const userId = user?.id;
-  const [currentQueryParams, setCurrentQueryParams] = useState({
-    ...queryParams,
-    applyPersonalization: isPersonalized,
-  });
-
-  const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useArticles(
-    currentQueryParams,
-    userId
-  );
-
-  // Update query params when props change
-  useEffect(() => {
-    setCurrentQueryParams({
-      ...queryParams,
-      applyPersonalization: isPersonalized,
-    });
-  }, [queryParams, isPersonalized]);
-
+  const { supabase } = useSupabase();
+  const [articles, setArticles] = useState(initialData?.data || []);
+  const [loading, setLoading] = useState(!initialData);
+  const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(initialData?.pagination.hasMore || false);
+  const [currentOffset, setCurrentOffset] = useState(initialData?.pagination.offset || 0);
+  const [usePersonalization, setUsePersonalization] = useState(isPersonalized);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Flatten the pages data
-  const articles = data?.pages.flatMap((page) => page.data) || [];
-  const hasMore = hasNextPage || false;
-  const isEmpty = articles.length === 0 && !isLoading;
+  const fetchArticles = useCallback(
+    async (offset = 0, append = false) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams({
+          ...queryParams,
+          offset: offset.toString(),
+          applyPersonalization: usePersonalization.toString(),
+        });
+
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`;
+        }
+
+        const response = await fetch(`/api/articles?${params}`, { headers });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Failed to fetch articles`);
+        }
+
+        const data: ArticleListResponse = await response.json();
+        setArticles((prev) => (append ? [...prev, ...data.data] : data.data));
+        setHasMore(data.pagination.hasMore);
+        setCurrentOffset(data.pagination.offset + data.pagination.limit);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load articles");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [queryParams, usePersonalization, supabase]
+  );
+
+  // Initial fetch if no initialData
+  useEffect(() => {
+    if (!initialData) {
+      fetchArticles(0);
+    }
+  }, [fetchArticles, initialData]);
+
+  useEffect(() => {
+    setUsePersonalization(isPersonalized);
+  }, [isPersonalized]);
+
+  // Refetch if personalization changes
+  useEffect(() => {
+    setArticles([]);
+    fetchArticles(0, false);
+  }, [usePersonalization, fetchArticles]);
 
   const lastArticleRef = useCallback(
     (node: HTMLDivElement) => {
-      if (isFetchingNextPage) return;
+      if (loading || !hasMore) return;
       if (observerRef.current) observerRef.current.disconnect();
-
       observerRef.current = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && hasMore) {
-          fetchNextPage();
+          fetchArticles(currentOffset, true);
         }
       });
-
       if (node) observerRef.current.observe(node);
     },
-    [isFetchingNextPage, hasMore, fetchNextPage]
+    [loading, hasMore, fetchArticles, currentOffset]
   );
 
   if (error) {
@@ -63,7 +101,7 @@ export default function ArticleList({
       <div className="flex flex-col items-center justify-center py-12">
         <p className="text-destructive mb-4">Failed to load articles</p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => fetchArticles(0, false)}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
         >
           Try Again
@@ -72,17 +110,15 @@ export default function ArticleList({
     );
   }
 
+  const isEmpty = articles.length === 0 && !loading;
   if (isEmpty) {
     return (
       <NoResultsPlaceholder
-        filters={{
-          personalization: isPersonalized,
-          blockedItemsCount: 0, // TODO: Get from profile
-        }}
-        isAuthenticated={!!user}
+        filters={{ personalization: usePersonalization, blockedItemsCount: 0 }}
+        isAuthenticated={!!supabase.user}
         onAdjustFilters={() => {
-          // TODO: Navigate to settings or reset filters
-          console.log("Adjust filters");
+          setUsePersonalization(false);
+          fetchArticles(0, false);
         }}
       />
     );
@@ -90,18 +126,7 @@ export default function ArticleList({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 md:py-6">
-      {/* Live region for screen reader announcements */}
-      <div aria-live="polite" aria-atomic="true" className="sr-only" role="status">
-        {isLoading && "Loading articles..."}
-        {isFetchingNextPage && "Loading more articles..."}
-        {error && "Error loading articles. Please try again."}
-        {!isLoading &&
-          !isFetchingNextPage &&
-          articles.length > 0 &&
-          `${articles.length} articles loaded${hasMore ? ", more available" : ", all articles loaded"}`}
-      </div>
-
-      <div className="space-y-4 md:space-y-6" role="feed" aria-label="Article feed" aria-busy={isLoading}>
+      <div className="space-y-4 md:space-y-6" role="feed" aria-label="Article feed" aria-busy={loading}>
         {articles.map((article, index) => (
           <article
             key={article.id}
@@ -112,18 +137,10 @@ export default function ArticleList({
             <ArticleCard article={article} />
           </article>
         ))}
-
-        {isFetchingNextPage && (
-          <div className="py-4" role="status" aria-label="Loading more articles">
-            <LoadingSkeleton count={3} />
-          </div>
-        )}
+        {loading && <LoadingSkeleton count={3} />}
       </div>
-
       {!hasMore && articles.length > 0 && (
-        <div className="text-center py-8 text-muted-foreground" role="status" aria-label="End of article feed">
-          No more articles to load
-        </div>
+        <div className="text-center py-8 text-muted-foreground">No more articles to load</div>
       )}
     </div>
   );

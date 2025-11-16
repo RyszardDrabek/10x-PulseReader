@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { supabaseClient } from "../db/supabase.client";
+import { createClient } from "@supabase/supabase-js";
+import { supabaseClientPublic } from "../db/supabase.client";
 import type { Session, User } from "@supabase/supabase-js";
+import type { Database } from "../db/database.types";
 
 interface SupabaseContextType {
-  supabase: typeof supabaseClient;
+  supabase: typeof supabaseClientPublic;
   session: Session | null;
   user: User | null;
   loading: boolean;
@@ -16,7 +18,7 @@ export function useSupabase() {
   if (context === undefined) {
     // During SSR or before hydration, return a safe default
     return {
-      supabase: supabaseClient,
+      supabase: supabaseClientPublic,
       session: null,
       user: null,
       loading: true,
@@ -28,10 +30,15 @@ export function useSupabase() {
 interface SupabaseProviderProps {
   children: ReactNode;
   initialSession?: Session | null;
+  config?: {
+    url: string;
+    key: string;
+  };
 }
 
-export default function SupabaseProvider({ children, initialSession = null }: SupabaseProviderProps) {
-  const supabase = supabaseClient;
+export default function SupabaseProvider({ children, initialSession = null, config }: SupabaseProviderProps) {
+  // Use a single client instance, memoized to prevent multiple instances
+  const supabase = useState(() => (config ? createClient<Database>(config.url, config.key) : supabaseClientPublic))[0];
   const [session, setSession] = useState<Session | null>(initialSession);
   const [user, setUser] = useState<User | null>(initialSession?.user ?? null);
   const [loading, setLoading] = useState(!initialSession);
