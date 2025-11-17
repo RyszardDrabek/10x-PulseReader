@@ -17,6 +17,7 @@ export default function ArticleList({
   isPersonalized = false,
 }: ArticleListProps) {
   const { supabase } = useSupabase();
+
   const [articles, setArticles] = useState(initialData?.data || []);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +26,11 @@ export default function ArticleList({
   const [usePersonalization, setUsePersonalization] = useState(isPersonalized);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const prevPersonalizationRef = useRef<boolean | undefined>(undefined);
+
+  // If we have initialData but no articles, something is wrong
+  if (initialData && articles.length === 0) {
+    console.error("InitialData provided but articles array is empty:", initialData);
+  }
 
   const fetchArticles = useCallback(
     async (offset = 0, append = false) => {
@@ -129,23 +135,32 @@ export default function ArticleList({
     );
   }
 
+  // Ensure we display articles if we have initialData, even if state gets confused
+  const displayArticles = initialData?.data || articles;
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 md:py-6">
       <div className="space-y-4 md:space-y-6" role="feed" aria-label="Article feed" aria-busy={loading}>
-        {articles.map((article, index) => (
+        {displayArticles.map((article, index) => (
           <article
             key={article.id}
-            ref={index === articles.length - 1 ? lastArticleRef : undefined}
+            ref={index === displayArticles.length - 1 ? lastArticleRef : undefined}
             aria-posinset={index + 1}
-            aria-setsize={articles.length}
+            aria-setsize={displayArticles.length}
           >
             <ArticleCard article={article} />
           </article>
         ))}
-        {loading && <LoadingSkeleton count={3} />}
+        {loading && displayArticles.length === 0 && <LoadingSkeleton count={3} />}
       </div>
-      {!hasMore && articles.length > 0 && (
+      {!hasMore && displayArticles.length > 0 && (
         <div className="text-center py-8 text-muted-foreground">No more articles to load</div>
+      )}
+      {displayArticles.length === 0 && !loading && !error && (
+        <div className="text-center py-8 text-muted-foreground">No articles found</div>
+      )}
+      {error && displayArticles.length === 0 && (
+        <div className="text-center py-8 text-red-600">Error loading articles: {error}</div>
       )}
     </div>
   );

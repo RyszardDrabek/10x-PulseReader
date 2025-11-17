@@ -1,43 +1,119 @@
 ---
 import GlobalLayout from "../layouts/GlobalLayout.astro";
-import AuthForm from "../components/AuthForm.tsx";
-import { toast } from "sonner";
+import { createSupabaseServerInstance } from "../db/supabase.client.ts";
+
+export const prerender = false;
 
 const title = "Sign In - PulseReader";
+
+if (Astro.request.method === "POST") {
+  try {
+    const formData = await Astro.request.formData();
+    const email = formData.get("email")?.toString();
+    const password = formData.get("password")?.toString();
+
+    if (!email || !password) {
+      return Astro.redirect("/login?error=missing_fields");
+    }
+
+    const supabase = createSupabaseServerInstance({
+      cookies: Astro.cookies,
+      headers: Astro.request.headers,
+    });
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (error) {
+      // Handle specific Supabase auth errors
+      let errorMessage = "Invalid credentials";
+
+      switch (error.message) {
+        case "Invalid login credentials":
+          errorMessage = "Invalid email or password.";
+          break;
+        case "Email not confirmed":
+          errorMessage = "Please verify your email before logging in.";
+          break;
+        default:
+          errorMessage = "Something went wrong. Please try again.";
+      }
+
+      return Astro.redirect(`/login?error=${encodeURIComponent(errorMessage)}`);
+    }
+
+    return Astro.redirect("/");
+  } catch {
+    return Astro.redirect("/login?error=unexpected_error");
+  }
+}
+
+const url = new URL(Astro.request.url);
+const error = url.searchParams.get("error");
+const success = url.searchParams.get("success");
 ---
 
 <GlobalLayout title={title}>
   <div class="container mx-auto px-4 py-8">
     <div class="flex min-h-[calc(100vh-12rem)] items-center justify-center">
-      <AuthForm
-        mode="login"
-        onSubmit={async (data) => {
-          try {
-            const response = await fetch("/api/auth/login", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(data),
-            });
+      <div class="mx-auto max-w-md space-y-6">
+        <div class="space-y-2 text-center">
+          <h1 class="text-2xl font-bold">Sign In</h1>
+          <p class="text-muted-foreground">Sign in to your account.</p>
+        </div>
 
-            const result = await response.json();
+        {error && <div class="p-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">{error}</div>}
 
-            if (!response.ok) {
-              toast.error(result.error || "Login failed");
-              return;
-            }
+        {
+          success && (
+            <div class="p-4 text-sm text-green-600 bg-green-50 border border-green-200 rounded-md">{success}</div>
+          )
+        }
 
-            toast.success("Signed in successfully!");
-            // Redirect to home page
-            Astro.redirect("/");
-          } catch (error) {
-            console.error("Login error:", error);
-            toast.error("Something went wrong. Please try again.");
-          }
-        }}
-        client:only="react"
-      />
+        <form method="POST" class="space-y-4">
+          <div class="space-y-2">
+            <label for="email" class="text-sm font-medium">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="your@email.com"
+              required
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="password" class="text-sm font-medium">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              required
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full"
+          >
+            Sign In
+          </button>
+        </form>
+
+        <div class="text-center">
+          <a
+            href="/register"
+            class="text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-sm"
+          >
+            Don't have an account? Sign Up
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </GlobalLayout>

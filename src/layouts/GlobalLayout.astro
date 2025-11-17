@@ -1,28 +1,16 @@
 ---
 import "../styles/global.css";
-import { createSupabaseServerInstance } from "../db/supabase.client";
 import QueryProvider from "../components/QueryProvider.tsx";
 import SupabaseProvider from "../components/SupabaseProvider.tsx";
 import { Toaster } from "../components/ui/sonner";
+import LogoutHandler from "../components/LogoutHandler.tsx";
 
 interface Props {
   title?: string;
 }
 
 const { title = "PulseReader" } = Astro.props;
-const supabase = createSupabaseServerInstance({
-  cookies: Astro.cookies,
-  headers: Astro.request.headers,
-});
-
-// Get initial session for client-side hydration
-let session = null;
-try {
-  const result = await supabase.auth.getSession();
-  session = result.data.session;
-} catch (error) {
-  console.error("Failed to get session:", error);
-}
+const user = Astro.locals.user;
 
 // Pass environment variables to client components
 const supabaseConfig = {
@@ -42,8 +30,9 @@ const supabaseConfig = {
   </head>
   <body class="min-h-screen bg-background font-sans antialiased">
     <div id="root">
-      <SupabaseProvider client:load config={supabaseConfig} initialSession={session}>
+      <SupabaseProvider client:load config={supabaseConfig}>
         <QueryProvider client:load>
+          <LogoutHandler client:load />
           <header
             class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
             role="banner"
@@ -60,8 +49,8 @@ const supabaseConfig = {
                 </div>
                 <nav class="flex items-center space-x-2" role="navigation" aria-label="User account">
                   {
-                    session ? (
-                      <form action="/api/auth/signout" method="post">
+                    user ? (
+                      <form id="logout-form" action="/api/auth/logout" method="post">
                         <button
                           type="submit"
                           class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"

@@ -3,20 +3,22 @@ import GlobalLayout from "../layouts/GlobalLayout.astro";
 import App from "../components/App.tsx";
 import Homepage from "../components/Homepage.tsx";
 import { ArticleService } from "../lib/services/article.service";
-import { createSupabaseServerInstance } from "../db/supabase.client";
 
-const supabase = createSupabaseServerInstance({
-  cookies: Astro.cookies,
-  headers: Astro.request.headers,
-});
+const supabase = Astro.locals.supabase;
 const articleService = new ArticleService(supabase);
 
-const initialArticles = await articleService.getArticles({ limit: 20, offset: 0 });
-
-// Get initial session for client-side hydration
-const {
-  data: { session },
-} = await supabase.auth.getSession();
+let initialArticles;
+try {
+  initialArticles = await articleService.getArticles({ limit: 20, offset: 0 });
+} catch (error) {
+  console.error("Failed to load articles:", error);
+  // Provide fallback empty data
+  initialArticles = {
+    data: [],
+    pagination: { limit: 20, offset: 0, total: 0, hasMore: false },
+    filtersApplied: { sentiment: undefined, personalization: false },
+  };
+}
 
 // Pass environment variables to client components
 const supabaseConfig = {
@@ -27,7 +29,7 @@ const supabaseConfig = {
 
 <GlobalLayout title="PulseReader - Your Personalized News Feed">
   <div style="min-height: 100vh;">
-    <App client:only="react" initialSession={session} supabaseConfig={supabaseConfig}>
+    <App client:only="react" initialSession={null} supabaseConfig={supabaseConfig}>
       <Homepage initialData={initialArticles} />
     </App>
   </div>

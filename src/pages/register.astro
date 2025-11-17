@@ -1,24 +1,113 @@
 ---
 import GlobalLayout from "../layouts/GlobalLayout.astro";
-import AuthForm from "../components/AuthForm.tsx";
-import { toast } from "sonner";
+import { createSupabaseServerInstance } from "../db/supabase.client.ts";
+
+export const prerender = false;
 
 const title = "Sign Up - PulseReader";
+
+if (Astro.request.method === "POST") {
+  try {
+    const formData = await Astro.request.formData();
+    const email = formData.get("email")?.toString();
+    const password = formData.get("password")?.toString();
+
+    if (!email || !password) {
+      return Astro.redirect("/register?error=missing_fields");
+    }
+
+    const supabase = createSupabaseServerInstance({
+      cookies: Astro.cookies,
+      headers: Astro.request.headers,
+    });
+
+    const { error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+    });
+
+    if (error) {
+      let errorMessage = "Registration failed";
+      switch (error.message) {
+        case "User already registered":
+          errorMessage = "An account with this email already exists.";
+          break;
+        case "Password should be at least 6 characters":
+          errorMessage = "Password must be at least 6 characters long.";
+          break;
+        case "Invalid email":
+          errorMessage = "Please enter a valid email address.";
+          break;
+        default:
+          errorMessage = "Something went wrong. Please try again.";
+      }
+      return Astro.redirect(`/register?error=${encodeURIComponent(errorMessage)}`);
+    }
+
+    return Astro.redirect("/");
+  } catch (err) {
+    console.error("Registration error:", err);
+    return Astro.redirect("/register?error=unexpected_error");
+  }
+}
+
+const url = new URL(Astro.request.url);
+const error = url.searchParams.get("error");
 ---
 
 <GlobalLayout title={title}>
   <div class="container mx-auto px-4 py-8">
     <div class="flex min-h-[calc(100vh-12rem)] items-center justify-center">
-      <AuthForm
-        mode="register"
-        onSubmit={async (data) => {
-          // TODO: Implement registration API call
-          console.log("Registration data:", data);
-          toast.success("Registration successful! Please check your email.");
-          // Redirect to verify-email page would happen here
-        }}
-        client:load
-      />
+      <div class="mx-auto max-w-md space-y-6">
+        <div class="space-y-2 text-center">
+          <h1 class="text-2xl font-bold">Sign Up</h1>
+          <p class="text-muted-foreground">Create an account to access personalized content.</p>
+        </div>
+
+        {error && <div class="p-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">{error}</div>}
+
+        <form method="POST" class="space-y-4">
+          <div class="space-y-2">
+            <label for="email" class="text-sm font-medium">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="your@email.com"
+              required
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="password" class="text-sm font-medium">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              required
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full"
+          >
+            Sign Up
+          </button>
+        </form>
+
+        <div class="text-center">
+          <a
+            href="/login"
+            class="text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-sm"
+          >
+            Already have an account? Sign In
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </GlobalLayout>
