@@ -1,20 +1,28 @@
 ---
 import "../styles/global.css";
-import { supabaseClient } from "../db/supabase.client";
+import { createSupabaseServerInstance } from "../db/supabase.client";
 import QueryProvider from "../components/QueryProvider.tsx";
 import SupabaseProvider from "../components/SupabaseProvider.tsx";
+import { Toaster } from "../components/ui/sonner";
 
 interface Props {
   title?: string;
 }
 
 const { title = "PulseReader" } = Astro.props;
-const supabase = supabaseClient;
+const supabase = createSupabaseServerInstance({
+  cookies: Astro.cookies,
+  headers: Astro.request.headers,
+});
 
 // Get initial session for client-side hydration
-const {
-  data: { session },
-} = await supabase.auth.getSession();
+let session = null;
+try {
+  const result = await supabase.auth.getSession();
+  session = result.data.session;
+} catch (error) {
+  console.error("Failed to get session:", error);
+}
 
 // Pass environment variables to client components
 const supabaseConfig = {
@@ -92,6 +100,7 @@ const supabaseConfig = {
           </footer>
         </QueryProvider>
       </SupabaseProvider>
+      <Toaster client:load />
     </div>
   </body>
 </html>

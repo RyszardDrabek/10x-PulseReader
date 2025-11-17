@@ -3,9 +3,12 @@ import GlobalLayout from "../layouts/GlobalLayout.astro";
 import App from "../components/App.tsx";
 import Homepage from "../components/Homepage.tsx";
 import { ArticleService } from "../lib/services/article.service";
-import { supabaseClient } from "../db/supabase.client";
+import { createSupabaseServerInstance } from "../db/supabase.client";
 
-const supabase = supabaseClient;
+const supabase = createSupabaseServerInstance({
+  cookies: Astro.cookies,
+  headers: Astro.request.headers,
+});
 const articleService = new ArticleService(supabase);
 
 const initialArticles = await articleService.getArticles({ limit: 20, offset: 0 });

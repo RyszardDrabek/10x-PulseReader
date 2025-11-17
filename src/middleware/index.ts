@@ -1,69 +1,50 @@
+import { createSupabaseServerInstance } from "../db/supabase.client.ts";
 import { defineMiddleware } from "astro:middleware";
-import { createClient } from "@supabase/supabase-js";
 
-import type { Database } from "../db/database.types.ts";
+// Public paths - Auth API endpoints & Server-Rendered Astro Pages
+const PUBLIC_PATHS = [
+  // Main feed accessible to guests
+  "/",
+  // Server-Rendered Astro Pages
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/verify-email",
+  // Auth API endpoints
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/logout",
+  "/api/auth/forgot-password",
+  // Articles API endpoint (accessible to guests)
+  "/api/articles",
+];
 
-const supabaseUrl = import.meta.env.SUPABASE_URL || "http://127.0.0.1:54321";
-const supabaseServiceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+export const onRequest = defineMiddleware(async ({ locals, cookies, url, request, redirect }, next) => {
+  // Always set up Supabase client for all routes (both public and protected)
+  const supabase = createSupabaseServerInstance({
+    cookies,
+    headers: request.headers,
+  });
+  locals.supabase = supabase;
 
-/**
- * Middleware to initialize Supabase client and extract user authentication context.
- * Sets context.locals.supabase and context.locals.user for use in API routes.
- */
-export const onRequest = defineMiddleware(async (context, next) => {
-  // Extract token from Authorization header if present
-  const authHeader = context.request.headers.get("Authorization");
+  // Skip auth check for public paths
+  if (PUBLIC_PATHS.includes(url.pathname)) {
+    return next();
+  }
 
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7); // Remove "Bearer " prefix
+  // IMPORTANT: Always get user session first before any other operations
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    // Check if this is the service role key
-    if (token === supabaseServiceKey) {
-      // Service role bypasses auth - create a special client
-      const serviceClient = createClient<Database>(supabaseUrl, supabaseServiceKey, {
-        auth: {
-          persistSession: false,
-        },
-      });
-      context.locals.supabase = serviceClient;
-      // Set a special user object to indicate service role
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      context.locals.user = { role: "service_role" } as any;
-    } else {
-      // Regular user token - create client and verify
-      const anonKey = import.meta.env.SUPABASE_KEY;
-      if (!anonKey) {
-        throw new Error("SUPABASE_KEY environment variable is not set");
-      }
-      const userClient = createClient<Database>(supabaseUrl, anonKey, {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      });
-
-      const { data, error } = await userClient.auth.getUser();
-
-      if (!error && data.user) {
-        context.locals.supabase = userClient;
-        context.locals.user = data.user;
-      } else {
-        // Invalid token
-        const anonClient = createClient<Database>(supabaseUrl, anonKey);
-        context.locals.supabase = anonClient;
-        context.locals.user = null;
-      }
-    }
+  if (user) {
+    locals.user = {
+      email: user.email,
+      id: user.id,
+    };
   } else {
-    // No auth header - anonymous access
-    const anonKey = import.meta.env.SUPABASE_KEY;
-    if (!anonKey) {
-      throw new Error("SUPABASE_KEY environment variable is not set");
-    }
-    const anonClient = createClient<Database>(supabaseUrl, anonKey);
-    context.locals.supabase = anonClient;
-    context.locals.user = null;
+    // Redirect to login for protected routes
+    return redirect("/login");
   }
 
   return next();

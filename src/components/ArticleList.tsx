@@ -24,6 +24,7 @@ export default function ArticleList({
   const [currentOffset, setCurrentOffset] = useState(initialData?.pagination.offset || 0);
   const [usePersonalization, setUsePersonalization] = useState(isPersonalized);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const prevPersonalizationRef = useRef<boolean | undefined>(undefined);
 
   const fetchArticles = useCallback(
     async (offset = 0, append = false) => {
@@ -73,14 +74,18 @@ export default function ArticleList({
   }, [fetchArticles, initialData]);
 
   useEffect(() => {
+    const prevPersonalization = prevPersonalizationRef.current;
     setUsePersonalization(isPersonalized);
-  }, [isPersonalized]);
 
-  // Refetch if personalization changes
-  useEffect(() => {
-    setArticles([]);
-    fetchArticles(0, false);
-  }, [usePersonalization, fetchArticles]);
+    // Only refetch if personalization actually changed from a previous value
+    // Don't refetch on initial render when prevPersonalization is the same as current
+    if (prevPersonalization !== undefined && prevPersonalization !== isPersonalized) {
+      setArticles([]);
+      fetchArticles(0, false);
+    }
+
+    prevPersonalizationRef.current = isPersonalized;
+  }, [isPersonalized]);
 
   const lastArticleRef = useCallback(
     (node: HTMLDivElement) => {

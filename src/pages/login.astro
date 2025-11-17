@@ -12,12 +12,31 @@ const title = "Sign In - PulseReader";
       <AuthForm
         mode="login"
         onSubmit={async (data) => {
-          // TODO: Implement login API call
-          console.log("Login data:", data);
-          toast.success("Signed in successfully!");
-          // Redirect to home page would happen here
+          try {
+            const response = await fetch("/api/auth/login", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(data),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+              toast.error(result.error || "Login failed");
+              return;
+            }
+
+            toast.success("Signed in successfully!");
+            // Redirect to home page
+            Astro.redirect("/");
+          } catch (error) {
+            console.error("Login error:", error);
+            toast.error("Something went wrong. Please try again.");
+          }
         }}
-        client:load
+        client:only="react"
       />
     </div>
   </div>
