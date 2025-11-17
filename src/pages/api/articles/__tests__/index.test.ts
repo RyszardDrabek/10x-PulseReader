@@ -13,23 +13,6 @@
  */
 
 /**
- * Helper function to create service_role JWT token
- * This should use your actual Supabase service_role key
- */
-function getServiceRoleToken(): string {
-  // TODO: Implement JWT token generation or use env variable
-  return "test-service-role-token";
-}
-
-/**
- * Helper function to create regular user JWT token
- */
-function getUserToken(): string {
-  // TODO: Implement JWT token generation
-  return "test-user-token";
-}
-
-/**
  * Test Suite: Authentication and Authorization
  */
 describe("POST /api/articles - Authentication", () => {

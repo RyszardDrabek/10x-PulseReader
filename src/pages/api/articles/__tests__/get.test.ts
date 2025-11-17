@@ -13,14 +13,6 @@
  */
 
 /**
- * Helper function to create authenticated user JWT token
- */
-function getUserToken(): string {
-  // TODO: Implement JWT token generation
-  return "test-user-token";
-}
-
-/**
  * Test Suite: GET /api/articles - Success Scenarios
  */
 describe("GET /api/articles - Success Scenarios", () => {
