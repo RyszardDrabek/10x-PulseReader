@@ -18,3 +18,16 @@ AI - Komunikacja z modelami przez usługę Openrouter.ai:
 CI/CD i Hosting:
 - Github Actions do tworzenia pipeline’ów CI/CD
 - DigitalOcean do hostowania aplikacji za pośrednictwem obrazu docker
+
+Testowanie - Kompleksowe rozwiązanie dla zapewnienia jakości kodu:
+- Vitest 2.x jako framework do testów jednostkowych i integracyjnych (szybszy od Jest, natywna integracja z Vite)
+- happy-dom jako lekkie środowisko testowe dla komponentów React (lżejsze niż jsdom)
+- @testing-library/react i @testing-library/user-event do testowania komponentów React w sposób behawioralny
+- @vitest/coverage-v8 do mierzenia pokrycia kodu testami (target: >80%)
+- Playwright 1.x do testów end-to-end z wsparciem dla wielu przeglądarek (Chromium, Firefox, WebKit)
+- Lighthouse CI do monitorowania wydajności (FCP <2s, LCP <2.5s, TTI <3.5s)
+- k6 (Grafana Labs) do testów obciążeniowych z metrykami p50/p95/p99
+- Snyk, Trivy i npm audit do skanowania bezpieczeństwa i podatności
+- MSW v2 (Mock Service Worker) do mockowania API zewnętrznych (RSS, OpenRouter.ai)
+- Historia do tworzenia biblioteki komponentów UI z interaktywnymi przykładami
+- Codecov do śledzenia trendów pokrycia kodu przez czas

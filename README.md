@@ -27,6 +27,7 @@ The project is built using a modern, scalable, and efficient technology stack:
 | **Frontend**  | [Astro 5](https://astro.build/), [React 19](https://react.dev/), [TypeScript 5](https://www.typescriptlang.org/), [Tailwind 4](https://tailwindcss.com/), [Shadcn/ui](https://ui.shadcn.com/) |
 | **Backend**   | [Supabase](https://supabase.com/) (PostgreSQL, Authentication, BaaS)      |
 | **AI**        | [OpenRouter.ai](https://openrouter.ai/) for multi-model access            |
+| **Testing**   | [Vitest](https://vitest.dev/) for unit/integration tests, [Playwright](https://playwright.dev/) for E2E tests, [k6](https://k6.io/) for load testing |
 | **DevOps**    | [GitHub Actions](https://github.com/features/actions) for CI/CD, [DigitalOcean](https://www.digitalocean.com/) for hosting |
 
 ## Getting Started Locally
