@@ -1,4 +1,5 @@
 /// <reference types="astro/client" />
+/// <reference types="@astrojs/cloudflare/types" />
 
 import type { User } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";

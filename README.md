@@ -15,7 +15,6 @@ An intelligent news aggregator designed to provide users with a personalized and
 ## Project Description
 
 In a world saturated with content, finding valuable and truly relevant information is a significant challenge. PulseReader addresses this by giving users full control over their news feed. It's an intelligent aggregator that filters articles from various RSS sources based on the user's mood, preferred topics, and a custom blocklist of keywords and domains.
-
 By leveraging AI for sentiment and topic analysis, PulseReader aims to combat information fatigue and deliver a reading experience tailored to individual needs and state of mind.
 
 ## Tech Stack
