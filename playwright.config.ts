@@ -1,4 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+dotenv.config({ path: path.resolve(process.cwd(), ".env.test") });
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -35,41 +43,12 @@ export default defineConfig({
   },
 
   /* Configure projects for major browsers */
+  /* Per testing rules: Initialize configuration only with Chromium/Desktop Chrome browser */
   projects: [
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
-
-    {
-      name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
-    },
-
-    {
-      name: "webkit",
-      use: { ...devices["Desktop Safari"] },
-    },
-
-    /* Test against mobile viewports. */
-    {
-      name: "Mobile Chrome",
-      use: { ...devices["Pixel 5"] },
-    },
-    {
-      name: "Mobile Safari",
-      use: { ...devices["iPhone 12"] },
-    },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
   ],
 
   /* Run your local dev server before starting the tests */
@@ -92,6 +71,6 @@ export default defineConfig({
   outputDir: "test-results/",
 
   /* Global setup and teardown */
-  globalSetup: require.resolve("./e2e/global-setup"),
-  globalTeardown: require.resolve("./e2e/global-teardown"),
+  globalSetup: path.resolve(__dirname, "./e2e/global-setup.ts"),
+  globalTeardown: path.resolve(__dirname, "./e2e/global-teardown.ts"),
 });

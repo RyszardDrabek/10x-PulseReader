@@ -29,5 +29,8 @@ coverage/
 # playwright test results
 test-results/
 
+# playwright reports
+playwright-report/
+
 # playwright browser binaries
 playwright/.cache/

@@ -56,7 +56,7 @@ export default function FilterBanner({ currentFilters, onTogglePersonalization, 
       <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div className="flex flex-wrap items-center gap-2 md:gap-4" role="group" aria-label="Active filters">
           {isAuthenticated && isPersonalized && profile?.mood && (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2" data-testid="active-filter">
               <span className="text-sm text-muted-foreground" id="mood-label">
                 Mood:
               </span>
@@ -68,7 +68,7 @@ export default function FilterBanner({ currentFilters, onTogglePersonalization, 
           )}
 
           {isAuthenticated && isPersonalized && profile?.blocklist && profile.blocklist.length > 0 && (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2" data-testid="active-filter">
               <span className="text-sm text-muted-foreground" id="blocked-label">
                 Blocked:
               </span>
@@ -83,7 +83,7 @@ export default function FilterBanner({ currentFilters, onTogglePersonalization, 
           )}
 
           {currentFilters?.sentiment && (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2" data-testid="active-filter">
               <span className="text-sm text-muted-foreground" id="sentiment-label">
                 Sentiment:
               </span>
@@ -113,6 +113,7 @@ export default function FilterBanner({ currentFilters, onTogglePersonalization, 
             disabled={!isAuthenticated}
             aria-labelledby="personalization-label"
             aria-describedby={!isAuthenticated ? "personalization-description" : undefined}
+            data-testid="filter-button"
           />
           {!isAuthenticated && (
             <span className="text-xs text-muted-foreground ml-2 flex-shrink-0" id="personalization-description">

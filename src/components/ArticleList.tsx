@@ -140,7 +140,13 @@ export default function ArticleList({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 md:py-6">
-      <div className="space-y-4 md:space-y-6" role="feed" aria-label="Article feed" aria-busy={loading}>
+      <div
+        className="space-y-4 md:space-y-6"
+        role="feed"
+        aria-label="Article feed"
+        aria-busy={loading}
+        data-testid="article-list"
+      >
         {displayArticles.map((article, index) => (
           <article
             key={article.id}

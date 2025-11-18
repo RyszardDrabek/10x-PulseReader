@@ -55,6 +55,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
       rel="noopener noreferrer"
       className="block border rounded-lg p-4 md:p-6 hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
       aria-label={`Open article: ${article.title}. Published by ${article.source.name} on ${formatDate(article.publicationDate)}.`}
+      data-testid="article-card"
     >
       <div className="flex items-start justify-between mb-3">
         <h3

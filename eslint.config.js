@@ -58,10 +58,27 @@ const reactConfig = tseslint.config({
 });
 
 export default tseslint.config(
+  {
+    ignores: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.astro/**",
+      "**/coverage/**",
+      "**/test-results/**",
+      "**/playwright-report/**",
+      "**/playwright/.cache/**",
+      "**/*.min.js",
+      "**/*.bundle.js",
+    ],
+  },
   includeIgnoreFile(gitignorePath),
   baseConfig,
   jsxA11yConfig,
   reactConfig,
   eslintPluginAstro.configs["flat/recommended"],
-  eslintPluginPrettier
+  eslintPluginPrettier,
+  {
+    // Ignore auto-generated database types file
+    ignores: ["**/database.types.ts"],
+  }
 );
