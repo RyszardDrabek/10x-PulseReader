@@ -156,7 +156,7 @@ describe("ArticleService.validateSource", () => {
 
     mocks.single.mockResolvedValue({
       data: null,
-      error: { code: "PGRST116", message: "No rows found", details: "", hint: "" },
+      error: { code: "PGRST116", message: "No rows found", details: "", hint: "", name: "PostgrestError" },
     });
 
     const result = await service.validateSource("invalid-source-id");
@@ -170,7 +170,7 @@ describe("ArticleService.validateSource", () => {
 
     mocks.single.mockResolvedValue({
       data: null,
-      error: { code: "PGRST301", message: "Database error", details: "", hint: "" },
+      error: { code: "PGRST301", message: "Database error", details: "", hint: "", name: "PostgrestError" },
     });
 
     const result = await service.validateSource("any-id");
@@ -189,7 +189,7 @@ describe("ArticleService.validateTopics", () => {
     mocks.in.mockResolvedValue({
       data: [{ id: "topic-1" }, { id: "topic-2" }, { id: "topic-3" }],
       error: null,
-    });
+    } as any);
 
     const result = await service.validateTopics(validTopicIds);
 
@@ -209,7 +209,7 @@ describe("ArticleService.validateTopics", () => {
     mocks.in.mockResolvedValue({
       data: [{ id: "valid-1" }, { id: "valid-2" }],
       error: null,
-    });
+    } as any);
 
     const result = await service.validateTopics(topicIds);
 
@@ -254,8 +254,8 @@ describe("ArticleService.validateTopics", () => {
 
     mocks.in.mockResolvedValue({
       data: null,
-      error: { code: "PGRST301", message: "Database error", details: "", hint: "" },
-    });
+      error: { code: "PGRST301", message: "Database error", details: "", hint: "", name: "PostgrestError" },
+    } as any);
 
     const result = await service.validateTopics(topicIds);
 
@@ -367,7 +367,7 @@ describe("ArticleService.createArticle", () => {
     mocks.in.mockResolvedValue({
       data: topicIds.map((id) => ({ id })),
       error: null,
-    });
+    } as any);
 
     // Mock insert article
     mocks.insert.mockReturnValue({
@@ -381,7 +381,7 @@ describe("ArticleService.createArticle", () => {
     mocks.insert.mockResolvedValueOnce({
       data: null,
       error: null,
-    });
+    } as any);
 
     const result = await service.createArticle(command);
 
@@ -413,7 +413,7 @@ describe("ArticleService.createArticle", () => {
     } as any);
     mocks.single.mockResolvedValue({
       data: null,
-      error: { code: "PGRST116", message: "No rows found", details: "", hint: "" },
+      error: { code: "PGRST116", message: "No rows found", details: "", hint: "", name: "PostgrestError" },
     });
 
     await expect(service.createArticle(command)).rejects.toThrow("RSS_SOURCE_NOT_FOUND");
@@ -445,7 +445,7 @@ describe("ArticleService.createArticle", () => {
     mocks.in.mockResolvedValue({
       data: [{ id: "valid-1" }, { id: "valid-2" }],
       error: null,
-    });
+    } as any);
 
     await expect(service.createArticle(command)).rejects.toThrow("INVALID_TOPIC_IDS");
   });
@@ -469,6 +469,7 @@ describe("ArticleService.createArticle", () => {
         message: "duplicate key value violates unique constraint",
         details: "",
         hint: "",
+        name: "PostgrestError",
       },
     });
 
@@ -502,7 +503,7 @@ describe("ArticleService.createArticle", () => {
     mocks.in.mockResolvedValueOnce({
       data: [{ id: "topic-1" }],
       error: null,
-    });
+    } as any);
     // insert article call - .insert().select().single()
     mocks.single.mockResolvedValueOnce({
       data: mockArticle,
@@ -1035,7 +1036,7 @@ describe("ArticleService.getArticles", () => {
 
     mocks.single.mockResolvedValue({
       data: null,
-      error: { code: "PGRST116", message: "No rows found", details: "", hint: "" },
+      error: { code: "PGRST116", message: "No rows found", details: "", hint: "", name: "PostgrestError" },
     });
 
     const params: GetArticlesQueryParams = {
@@ -1054,7 +1055,7 @@ describe("ArticleService.getArticles", () => {
     mocks.range.mockResolvedValue({
       data: null,
       count: null,
-      error: { code: "PGRST301", message: "Database error", details: "", hint: "" },
+      error: { code: "PGRST301", message: "Database error", details: "", hint: "", name: "PostgrestError" },
     });
 
     const params: GetArticlesQueryParams = {
