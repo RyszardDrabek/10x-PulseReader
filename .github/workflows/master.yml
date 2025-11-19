@@ -57,11 +57,10 @@ jobs:
           path: coverage/
           retention-days: 5
 
-
   build:
     name: Build Application
     runs-on: ubuntu-latest
-    needs: [unit-test]
+    needs: unit-test
     
     steps:
       - name: Checkout code
@@ -118,8 +117,6 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: 10x-pulsereader
           directory: dist
-          # Optional: Set production branch
-          # production: true
-          # Optional: Set git commit message as deployment message
+          production: true
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
