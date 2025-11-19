@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface QueryProviderProps {
   children: React.ReactNode;
@@ -28,10 +27,21 @@ export default function QueryProvider({ children }: QueryProviderProps) {
       })
   );
 
+  const [devtools, setDevtools] = useState<React.ReactNode>(null);
+
+  useEffect(() => {
+    // Only load ReactQueryDevtools in browser and development
+    if (typeof window !== "undefined" && import.meta.env.DEV) {
+      import("@tanstack/react-query-devtools").then((module) => {
+        setDevtools(<module.ReactQueryDevtools initialIsOpen={false} />);
+      });
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {devtools}
     </QueryClientProvider>
   );
 }
