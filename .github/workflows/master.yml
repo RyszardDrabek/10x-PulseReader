@@ -131,6 +131,5 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: 10x-pulsereader
           directory: dist
-          production: true
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
