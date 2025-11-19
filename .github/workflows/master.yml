@@ -61,6 +61,14 @@ jobs:
     name: Build Application
     runs-on: ubuntu-latest
     needs: unit-test
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENROUTER_DEFAULT_MODEL: ${{ vars.OPENROUTER_DEFAULT_MODEL }}
+    permissions:
+      contents: read
+      deployments: write
     
     steps:
       - name: Checkout code
@@ -81,58 +89,6 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: npm run build
 
-      - name: Organize chunks for Cloudflare Pages
-        run: |
-          echo "Organizing chunks directory structure for Cloudflare Pages..."
-          # Cloudflare Pages needs chunks at dist/chunks/ for runtime (accessible as pages/chunks/)
-          # Wrangler build needs chunks locally accessible for bundling
-          mkdir -p dist/chunks
-          
-          if [ -d "dist/_worker.js" ]; then
-            cd dist/_worker.js
-            # Ensure chunks directory exists in _worker.js for Wrangler build
-            mkdir -p chunks
-            # Copy chunk files from root to both locations:
-            # 1. dist/chunks/ for Cloudflare Pages runtime
-            # 2. _worker.js/chunks/ for Wrangler build
-            copied_files=()
-            for file in *.mjs; do
-              if [ -f "$file" ] && [[ "$file" != "index.mjs" ]] && [[ ! "$file" =~ ^manifest ]] && [[ "$file" != "renderers.mjs" ]]; then
-                cp "$file" ../chunks/  # For Cloudflare Pages runtime
-                cp "$file" chunks/     # For Wrangler build
-                copied_files+=("$file")
-              fi
-            done
-            # Copy chunks directory structure to both locations
-            if [ -d "chunks" ] && [ "$(ls -A chunks 2>/dev/null)" ]; then
-              # Copy to dist/chunks/ for Cloudflare Pages runtime
-              cp -r chunks/* ../chunks/ 2>/dev/null || true
-              # Keep original chunks/ in _worker.js/ for Wrangler build
-            fi
-            # Revert any pages/chunks/ imports back to chunks/ for Wrangler build
-            # Wrangler will bundle these locally, and Cloudflare Pages will resolve chunks/ to pages/chunks/ at runtime
-            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]pages/chunks/|from 'chunks/|g" {} \;
-            find . -name "*.js" -type f -exec sed -i "s|from ['\"]pages/chunks/|from 'chunks/|g" {} \;
-            echo "Chunks copied to dist/chunks/ (for Cloudflare Pages runtime):"
-            ls -la ../chunks/ || echo "No chunks found"
-            echo "Checking for nested chunks directories (e.g., astro/):"
-            find ../chunks -type d -name "astro" -exec ls -la {} \; 2>/dev/null || echo "No astro subdirectory found"
-            find ../chunks -type f -name "*.mjs" | head -20 || echo "No .mjs files in chunks"
-            echo "Chunks in _worker.js/chunks/ (for Wrangler build):"
-            ls -la chunks/ 2>/dev/null || echo "No chunks directory in _worker.js"
-            echo "Files remaining in _worker.js/ root:"
-            ls -la *.mjs 2>/dev/null || echo "No .mjs files in root"
-            echo "Checking import statements in index.js (should use chunks/, not pages/chunks/):"
-            cat index.js 2>/dev/null | grep -E "chunks|from" | head -10 || echo "Could not read index.js"
-          fi
-
-      - name: Verify build output
-        run: |
-          echo "Checking build output structure..."
-          ls -la dist/
-          ls -la dist/_worker.js/ || echo "_worker.js directory not found"
-          ls -la dist/_worker.js/chunks/ || echo "chunks directory not found"
-
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -148,6 +104,9 @@ jobs:
     # Secrets are accessed from the 'production' environment
     # Ensure these secrets are configured in: Settings → Environments → production
     environment: production
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
     permissions:
       contents: read
       deployments: write
@@ -162,15 +121,6 @@ jobs:
         with:
           name: dist
           path: dist/
-
-      - name: Verify deployment artifacts
-        run: |
-          echo "Verifying artifacts before deployment..."
-          ls -la dist/
-          echo "Checking chunks directory (should be at dist/chunks/):"
-          ls -la dist/chunks/ || echo "Warning: chunks directory not found at root level"
-          echo "Checking _worker.js structure:"
-          ls -la dist/_worker.js/ || echo "_worker.js directory not found"
 
       - name: Set Cloudflare Pages environment variables
         env:
