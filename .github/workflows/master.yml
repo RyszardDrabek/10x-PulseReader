@@ -83,32 +83,40 @@ jobs:
 
       - name: Organize chunks for Cloudflare Pages
         run: |
-          echo "Organizing chunks directory structure..."
+          echo "Organizing chunks directory structure for Cloudflare Pages..."
+          # Cloudflare Pages bundled worker expects chunks at dist/chunks/ (root level)
+          # Collect all chunk files from _worker.js and move them to dist/chunks/
+          mkdir -p dist/chunks
+          
           if [ -d "dist/_worker.js" ]; then
             cd dist/_worker.js
-            # Create chunks directory if it doesn't exist
-            mkdir -p chunks
-            # Move chunk files to chunks directory
-            # Keep entry files (index.mjs, manifest, renderers) and directories in root
-            # Move all other .mjs files to chunks/
+            # Move chunk files to dist/chunks/ (root level)
+            # Keep entry files (index.mjs, manifest, renderers) in _worker.js root
             moved_files=()
             for file in *.mjs; do
               if [ -f "$file" ] && [[ "$file" != "index.mjs" ]] && [[ ! "$file" =~ ^manifest ]] && [[ "$file" != "renderers.mjs" ]]; then
-                mv "$file" chunks/
+                mv "$file" ../chunks/
                 moved_files+=("$file")
               fi
             done
-            # Update import paths in all .mjs files to point to chunks/
+            # Also move any existing chunks subdirectory contents
+            if [ -d "chunks" ]; then
+              mv chunks/* ../chunks/ 2>/dev/null || true
+              rmdir chunks 2>/dev/null || true
+            fi
+            # Update import paths in all .mjs files to point to chunks/ (relative to dist root)
             if [ ${#moved_files[@]} -gt 0 ]; then
               for file in "${moved_files[@]}"; do
-                # Update imports in all .mjs files (including subdirectories)
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./${file}|from './chunks/${file}|g" {} \;
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]${file}|from './chunks/${file}|g" {} \;
+                # Update imports in all .mjs files to use ../chunks/ (go up from _worker.js to dist, then into chunks)
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./${file}|from '../chunks/${file}|g" {} \;
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]${file}|from '../chunks/${file}|g" {} \;
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from '../chunks/${file}|g" {} \;
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]chunks/${file}|from '../chunks/${file}|g" {} \;
               done
             fi
-            echo "Chunks organized:"
-            ls -la chunks/ || echo "No chunks found"
-            echo "Root files remaining:"
+            echo "Chunks moved to dist/chunks/:"
+            ls -la ../chunks/ || echo "No chunks found"
+            echo "Files remaining in _worker.js/:"
             ls -la *.mjs 2>/dev/null || echo "No .mjs files in root"
           fi
 

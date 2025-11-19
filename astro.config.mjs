@@ -13,15 +13,6 @@ export default defineConfig({
   server: { port: 3000 },
   vite: {
     plugins: [tailwindcss()],
-    build: {
-      rollupOptions: {
-        output: {
-          // Organize chunks in a chunks directory for Cloudflare Pages compatibility
-          chunkFileNames: "chunks/[name]-[hash].mjs",
-          entryFileNames: "[name].mjs",
-        },
-      },
-    },
   },
   adapter: cloudflare(),
 });
