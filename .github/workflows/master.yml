@@ -85,54 +85,52 @@ jobs:
         run: |
           echo "Organizing chunks directory structure for Cloudflare Pages..."
           # Cloudflare Pages bundled worker expects chunks at dist/chunks/ (root level)
-          # Collect all chunk files from _worker.js and move them to dist/chunks/
+          # Copy chunk files to dist/chunks/ while keeping originals in _worker.js for compatibility
           mkdir -p dist/chunks
           
           if [ -d "dist/_worker.js" ]; then
             cd dist/_worker.js
-            # Move chunk files to dist/chunks/ (root level)
+            # Copy chunk files to dist/chunks/ (root level) instead of moving
             # Keep entry files (index.mjs, manifest, renderers) in _worker.js root
-            moved_files=()
+            copied_files=()
             for file in *.mjs; do
               if [ -f "$file" ] && [[ "$file" != "index.mjs" ]] && [[ ! "$file" =~ ^manifest ]] && [[ "$file" != "renderers.mjs" ]]; then
-                mv "$file" ../chunks/
-                moved_files+=("$file")
+                cp "$file" ../chunks/
+                copied_files+=("$file")
               fi
             done
-            # Also move any existing chunks subdirectory contents
+            # Also copy any existing chunks subdirectory contents
             if [ -d "chunks" ]; then
-              mv chunks/* ../chunks/ 2>/dev/null || true
-              rmdir chunks 2>/dev/null || true
+              cp -r chunks/* ../chunks/ 2>/dev/null || true
             fi
-            # Update import paths in all files (.mjs and .js) to point to chunks/ (relative to dist root)
-            if [ ${#moved_files[@]} -gt 0 ]; then
-              for file in "${moved_files[@]}"; do
-                # Update imports in all .mjs and .js files to use ../chunks/ (go up from _worker.js to dist, then into chunks)
-                # Also handle imports that reference chunks/ directly (Cloudflare Pages bundled worker format)
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./${file}|from '../chunks/${file}|g" {} \;
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]${file}|from '../chunks/${file}|g" {} \;
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from '../chunks/${file}|g" {} \;
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]chunks/${file}|from '../chunks/${file}|g" {} \;
+            # Update import paths in all files to use chunks/ (Cloudflare Pages resolves from root)
+            # The bundled worker will look for chunks/ relative to dist root
+            if [ ${#copied_files[@]} -gt 0 ]; then
+              for file in "${copied_files[@]}"; do
+                # Update imports to use chunks/ (relative to dist root, not _worker.js)
+                # Cloudflare Pages bundled worker resolves chunks/ from dist root
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./${file}|from 'chunks/${file}|g" {} \;
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]${file}|from 'chunks/${file}|g" {} \;
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from 'chunks/${file}|g" {} \;
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/${file}|from 'chunks/${file}|g" {} \;
                 # Also update .js files (like index.js)
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./${file}|from '../chunks/${file}|g" {} \;
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]${file}|from '../chunks/${file}|g" {} \;
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from '../chunks/${file}|g" {} \;
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]chunks/${file}|from '../chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./${file}|from 'chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]${file}|from 'chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from 'chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/${file}|from 'chunks/${file}|g" {} \;
               done
             fi
-            # Also ensure any imports that reference chunks/ directly are updated
-            # Cloudflare Pages bundled worker might use chunks/ path directly
-            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]chunks/|from '../chunks/|g" {} \;
-            find . -name "*.js" -type f -exec sed -i "s|from ['\"]chunks/|from '../chunks/|g" {} \;
-            echo "Chunks moved to dist/chunks/:"
+            # Ensure all chunks/ imports use the root-level path
+            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/|from 'chunks/|g" {} \;
+            find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/|from 'chunks/|g" {} \;
+            echo "Chunks copied to dist/chunks/:"
             ls -la ../chunks/ || echo "No chunks found"
-            # Create symlink in _worker.js/chunks pointing to ../chunks for compatibility
-            # This ensures chunks are accessible from both root level and _worker.js level
-            ln -sf ../chunks chunks || echo "Could not create symlink (may already exist)"
             echo "Files remaining in _worker.js/:"
             ls -la *.mjs 2>/dev/null || echo "No .mjs files in root"
-            echo "Checking chunks symlink:"
-            ls -la chunks/ 2>/dev/null || echo "Symlink check failed"
+            echo "Checking import statements in index.js:"
+            cat index.js 2>/dev/null | grep -E "chunks|from" | head -10 || echo "Could not read index.js"
+            echo "Checking import statements in manifest:"
+            cat manifest*.mjs 2>/dev/null | grep -E "chunks|from" | head -10 || echo "Could not read manifest"
           fi
 
       - name: Verify build output
