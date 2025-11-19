@@ -104,20 +104,35 @@ jobs:
               mv chunks/* ../chunks/ 2>/dev/null || true
               rmdir chunks 2>/dev/null || true
             fi
-            # Update import paths in all .mjs files to point to chunks/ (relative to dist root)
+            # Update import paths in all files (.mjs and .js) to point to chunks/ (relative to dist root)
             if [ ${#moved_files[@]} -gt 0 ]; then
               for file in "${moved_files[@]}"; do
-                # Update imports in all .mjs files to use ../chunks/ (go up from _worker.js to dist, then into chunks)
+                # Update imports in all .mjs and .js files to use ../chunks/ (go up from _worker.js to dist, then into chunks)
+                # Also handle imports that reference chunks/ directly (Cloudflare Pages bundled worker format)
                 find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./${file}|from '../chunks/${file}|g" {} \;
                 find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]${file}|from '../chunks/${file}|g" {} \;
                 find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from '../chunks/${file}|g" {} \;
                 find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]chunks/${file}|from '../chunks/${file}|g" {} \;
+                # Also update .js files (like index.js)
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./${file}|from '../chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]${file}|from '../chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from '../chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]chunks/${file}|from '../chunks/${file}|g" {} \;
               done
             fi
+            # Also ensure any imports that reference chunks/ directly are updated
+            # Cloudflare Pages bundled worker might use chunks/ path directly
+            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]chunks/|from '../chunks/|g" {} \;
+            find . -name "*.js" -type f -exec sed -i "s|from ['\"]chunks/|from '../chunks/|g" {} \;
             echo "Chunks moved to dist/chunks/:"
             ls -la ../chunks/ || echo "No chunks found"
+            # Create symlink in _worker.js/chunks pointing to ../chunks for compatibility
+            # This ensures chunks are accessible from both root level and _worker.js level
+            ln -sf ../chunks chunks || echo "Could not create symlink (may already exist)"
             echo "Files remaining in _worker.js/:"
             ls -la *.mjs 2>/dev/null || echo "No .mjs files in root"
+            echo "Checking chunks symlink:"
+            ls -la chunks/ 2>/dev/null || echo "Symlink check failed"
           fi
 
       - name: Verify build output
