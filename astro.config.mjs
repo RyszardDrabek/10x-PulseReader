@@ -14,8 +14,10 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
     ssr: {
-      external: ["@supabase/supabase-js", "@supabase/ssr"],
-      noExternal: ["@supabase/auth-helpers-shared"],
+      // Bundle @supabase/ssr for Cloudflare compatibility
+      // Keep @supabase/supabase-js external as it's used client-side
+      external: ["@supabase/supabase-js"],
+      noExternal: ["@supabase/auth-helpers-shared", "@supabase/ssr"],
     },
   },
   adapter: cloudflare(),
