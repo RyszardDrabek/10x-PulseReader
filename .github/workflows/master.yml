@@ -161,7 +161,10 @@ jobs:
         run: |
           echo "Verifying artifacts before deployment..."
           ls -la dist/
-          ls -la dist/_worker.js/chunks/ || echo "Warning: chunks directory not found"
+          echo "Checking chunks directory (should be at dist/chunks/):"
+          ls -la dist/chunks/ || echo "Warning: chunks directory not found at root level"
+          echo "Checking _worker.js structure:"
+          ls -la dist/_worker.js/ || echo "_worker.js directory not found"
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
