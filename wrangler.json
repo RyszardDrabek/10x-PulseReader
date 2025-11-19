@@ -12,6 +12,19 @@
   },
   "observability": {
     "enabled": true
-  }
+  },
+  "vars": {
+    "PUBLIC_SUPABASE_URL": "http://localhost:54321",
+    "PUBLIC_SUPABASE_KEY": "your-local-supabase-anon-key",
+    "SUPABASE_URL": "http://localhost:54321",
+    "SUPABASE_KEY": "your-local-supabase-anon-key"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "SESSION",
+      "id": "local-session",
+      "preview_id": "local-session"
+    }
+  ]
 }
 

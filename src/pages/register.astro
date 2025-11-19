@@ -46,6 +46,7 @@ if (Astro.request.method === "POST") {
 
     return Astro.redirect("/");
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.error("Registration error:", err);
     return Astro.redirect("/register?error=unexpected_error");
   }

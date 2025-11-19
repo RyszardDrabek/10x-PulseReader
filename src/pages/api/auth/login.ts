@@ -55,6 +55,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       }
     );
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.error("Login API error:", err);
     return new Response(JSON.stringify({ error: "Something went wrong. Please try again." }), {
       status: 500,

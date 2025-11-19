@@ -37,6 +37,7 @@ export default function QueryProvider({ children }: QueryProviderProps) {
           setDevtools(<module.ReactQueryDevtools initialIsOpen={false} />);
         })
         .catch((error) => {
+          // eslint-disable-next-line no-console
           console.error("[QueryProvider] Error loading ReactQueryDevtools:", error);
         });
     }

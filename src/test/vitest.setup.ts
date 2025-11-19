@@ -73,6 +73,7 @@ Object.defineProperty(window, "scrollTo", {
 });
 
 // Suppress console errors during tests unless explicitly testing for them
+// eslint-disable-next-line no-console
 const originalError = console.error;
 beforeAll(() => {
   // eslint-disable-next-line no-console, @typescript-eslint/no-explicit-any
@@ -85,5 +86,6 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  // eslint-disable-next-line no-console
   console.error = originalError;
 });

@@ -21,33 +21,58 @@ const PUBLIC_PATHS = [
 
 export const onRequest = defineMiddleware(async ({ locals, cookies, url, request, redirect }, next) => {
   // Always set up Supabase client for all routes (both public and protected)
-  const supabase = createSupabaseServerInstance({
-    cookies,
-    headers: request.headers,
-  });
-  locals.supabase = supabase;
+  try {
+    const supabase = createSupabaseServerInstance({
+      cookies,
+      headers: request.headers,
+    });
+    locals.supabase = supabase;
 
-  // IMPORTANT: Always get user session first before any other operations
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    // IMPORTANT: Always get user session first before any other operations
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (user) {
-    locals.user = {
-      email: user.email,
-      id: user.id,
-    };
-  }
+    if (user) {
+      locals.user = {
+        email: user.email,
+        id: user.id,
+      };
+    }
 
-  // Skip auth check for public paths (but user is still set above if authenticated)
-  if (PUBLIC_PATHS.includes(url.pathname)) {
+    // Skip auth check for public paths (but user is still set above if authenticated)
+    if (PUBLIC_PATHS.includes(url.pathname)) {
+      return next();
+    }
+
+    // For protected routes, redirect to login if not authenticated
+    if (!user) {
+      return redirect("/login");
+    }
+
     return next();
-  }
+  } catch (error) {
+    // If Supabase initialization fails, log error but continue
+    // This allows the app to work even if Supabase is not configured
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    // eslint-disable-next-line no-console
+    console.error("[Middleware] Supabase initialization error:", errorMessage);
+    if (errorStack) {
+      // eslint-disable-next-line no-console
+      console.error("[Middleware] Error stack:", errorStack);
+    }
+    // Set supabase to null so pages can handle it gracefully
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    locals.supabase = null as any;
+    locals.user = undefined;
 
-  // For protected routes, redirect to login if not authenticated
-  if (!user) {
+    // For public paths, allow access even if Supabase fails
+    if (PUBLIC_PATHS.includes(url.pathname)) {
+      return next();
+    }
+
+    // For protected routes, redirect to login
     return redirect("/login");
   }
-
-  return next();
 });

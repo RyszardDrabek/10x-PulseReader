@@ -22,6 +22,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.error("Logout API error:", err);
     return new Response(JSON.stringify({ error: "Something went wrong. Please try again." }), {
       status: 500,

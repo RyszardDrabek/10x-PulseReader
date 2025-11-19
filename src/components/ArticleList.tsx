@@ -18,19 +18,17 @@ export default function ArticleList({
 }: ArticleListProps) {
   const { supabase } = useSupabase();
 
+  // Check if we have valid initial data (with articles)
+  const hasInitialData = initialData && initialData.data && initialData.data.length > 0;
+
   const [articles, setArticles] = useState(initialData?.data || []);
-  const [loading, setLoading] = useState(!initialData);
+  const [loading, setLoading] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(initialData?.pagination.hasMore || false);
   const [currentOffset, setCurrentOffset] = useState(initialData?.pagination.offset || 0);
   const [usePersonalization, setUsePersonalization] = useState(isPersonalized);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const prevPersonalizationRef = useRef<boolean | undefined>(undefined);
-
-  // If we have initialData but no articles, something is wrong
-  if (initialData && articles.length === 0) {
-    console.error("InitialData provided but articles array is empty:", initialData);
-  }
 
   const fetchArticles = useCallback(
     async (offset = 0, append = false) => {
@@ -72,12 +70,12 @@ export default function ArticleList({
     [queryParams, usePersonalization, supabase]
   );
 
-  // Initial fetch if no initialData
+  // Initial fetch if no valid initialData (empty or missing)
   useEffect(() => {
-    if (!initialData) {
+    if (!hasInitialData) {
       fetchArticles(0);
     }
-  }, [fetchArticles, initialData]);
+  }, [hasInitialData, fetchArticles]);
 
   useEffect(() => {
     const prevPersonalization = prevPersonalizationRef.current;
@@ -91,7 +89,7 @@ export default function ArticleList({
     }
 
     prevPersonalizationRef.current = isPersonalized;
-  }, [isPersonalized]);
+  }, [isPersonalized, fetchArticles]);
 
   const lastArticleRef = useCallback(
     (node: HTMLDivElement) => {

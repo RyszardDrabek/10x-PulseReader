@@ -62,6 +62,7 @@ export default function SupabaseProvider({ children, initialSession = null, conf
 
           setSupabase(client);
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("[SupabaseProvider] Error creating Supabase client:", error);
         }
       };
@@ -85,6 +86,7 @@ export default function SupabaseProvider({ children, initialSession = null, conf
         error,
       } = await supabase.auth.getSession();
       if (error) {
+        // eslint-disable-next-line no-console
         console.error("Error getting session:", error);
       }
       if (mounted) {

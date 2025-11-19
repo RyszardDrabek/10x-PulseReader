@@ -27,6 +27,7 @@ export default function LogoutHandler() {
             btn.textContent = orig;
           }
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Logout error:", error);
           alert("Sign out failed: Network error. Please try again.");
           btn.disabled = false;

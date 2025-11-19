@@ -30,6 +30,7 @@ export default function VerificationMessage({ onResendVerification, isResending 
       }
       setResendMessage("Verification link sent successfully.");
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to resend verification email:", error);
       if (toast) {
         toast.error("Error sending verification link. Please try again.");

@@ -2,7 +2,6 @@
 import "../styles/global.css";
 import QueryProvider from "../components/QueryProvider.tsx";
 import SupabaseProvider from "../components/SupabaseProvider.tsx";
-import { Toaster } from "../components/ui/sonner";
 import LogoutHandler from "../components/LogoutHandler.tsx";
 
 interface Props {
@@ -89,7 +88,6 @@ const supabaseConfig = {
           </footer>
         </QueryProvider>
       </SupabaseProvider>
-      <Toaster client:only="react" />
     </div>
   </body>
 </html>

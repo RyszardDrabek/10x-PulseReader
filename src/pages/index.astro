@@ -5,14 +5,25 @@ import Homepage from "../components/Homepage.tsx";
 import { ArticleService } from "../lib/services/article.service";
 
 const supabase = Astro.locals.supabase;
-const articleService = new ArticleService(supabase);
-
 let initialArticles;
-try {
-  initialArticles = await articleService.getArticles({ limit: 20, offset: 0 });
-} catch (error) {
-  console.error("Failed to load articles:", error);
-  // Provide fallback empty data
+
+// Fetch articles server-side if Supabase is available
+if (supabase) {
+  try {
+    const articleService = new ArticleService(supabase);
+    initialArticles = await articleService.getArticles({ limit: 20, offset: 0 });
+  } catch (error) {
+    // If server-side fetch fails, provide empty data - client will fetch
+    // eslint-disable-next-line no-console
+    console.error("[index.astro] Failed to load articles server-side:", error);
+    initialArticles = {
+      data: [],
+      pagination: { limit: 20, offset: 0, total: 0, hasMore: false },
+      filtersApplied: { sentiment: undefined, personalization: false },
+    };
+  }
+} else {
+  // If Supabase is not available, provide empty data - client will fetch
   initialArticles = {
     data: [],
     pagination: { limit: 20, offset: 0, total: 0, hasMore: false },
@@ -30,7 +41,7 @@ const supabaseConfig = {
 <GlobalLayout title="PulseReader - Your Personalized News Feed">
   <div style="min-height: 100vh;">
     <App client:only="react" initialSession={null} supabaseConfig={supabaseConfig}>
-      <Homepage initialData={initialArticles} />
+      <Homepage client:only="react" initialData={initialArticles} />
     </App>
   </div>
 </GlobalLayout>

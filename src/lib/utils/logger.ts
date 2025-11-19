@@ -3,6 +3,7 @@
  * Provides consistent logging format across the application.
  */
 
+/* eslint-disable no-console */
 type LogContext = Record<string, unknown>;
 
 /**
