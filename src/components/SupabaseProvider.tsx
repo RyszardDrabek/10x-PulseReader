@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { createClient } from "@supabase/supabase-js";
-import { supabaseClientPublic } from "../db/supabase.client";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseClientPublic } from "../db/supabase.client";
 import type { Session, User } from "@supabase/supabase-js";
 import type { Database } from "../db/database.types";
 
 interface SupabaseContextType {
-  supabase: typeof supabaseClientPublic;
+  supabase: SupabaseClient<Database> | null;
   session: Session | null;
   user: User | null;
   loading: boolean;
@@ -17,8 +17,9 @@ export function useSupabase() {
   const context = useContext(SupabaseContext);
   if (context === undefined) {
     // During SSR or before hydration, return a safe default
+    // We can't access the client during SSR, so return null
     return {
-      supabase: supabaseClientPublic,
+      supabase: null as SupabaseClient<Database> | null,
       session: null,
       user: null,
       loading: true,
@@ -38,12 +39,26 @@ interface SupabaseProviderProps {
 
 export default function SupabaseProvider({ children, initialSession = null, config }: SupabaseProviderProps) {
   // Use a single client instance, memoized to prevent multiple instances
-  const supabase = useState(() => (config ? createClient<Database>(config.url, config.key) : supabaseClientPublic))[0];
+  // Initialize as null and create in useEffect to avoid SSR issues
+  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
   const [session, setSession] = useState<Session | null>(initialSession);
   const [user, setUser] = useState<User | null>(initialSession?.user ?? null);
   const [loading, setLoading] = useState(!initialSession);
 
+  // Initialize Supabase client on client side only
   useEffect(() => {
+    if (typeof window !== "undefined" && !supabase) {
+      const client = config ? createClient<Database>(config.url, config.key) : getSupabaseClientPublic();
+      setSupabase(client);
+    }
+  }, [config, supabase]);
+
+  useEffect(() => {
+    // Skip if supabase client is not available (SSR)
+    if (!supabase) {
+      return;
+    }
+
     let mounted = true;
 
     // Get initial session
@@ -77,7 +92,9 @@ export default function SupabaseProvider({ children, initialSession = null, conf
 
         // Reload page on auth state changes to sync server/client state
         if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
-          window.location.reload();
+          if (typeof window !== "undefined") {
+            window.location.reload();
+          }
         }
       }
     });
@@ -86,7 +103,7 @@ export default function SupabaseProvider({ children, initialSession = null, conf
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase.auth, initialSession]);
+  }, [supabase, initialSession]);
 
   const value: SupabaseContextType = {
     supabase,
