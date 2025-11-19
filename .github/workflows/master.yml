@@ -84,64 +84,46 @@ jobs:
       - name: Organize chunks for Cloudflare Pages
         run: |
           echo "Organizing chunks directory structure for Cloudflare Pages..."
-          # Cloudflare Pages uses 'pages/' namespace for modules
-          # Chunks need to be at dist/chunks/ and accessible as pages/chunks/
+          # Cloudflare Pages needs chunks at dist/chunks/ for runtime (accessible as pages/chunks/)
+          # Wrangler build needs chunks locally accessible for bundling
           mkdir -p dist/chunks
           
           if [ -d "dist/_worker.js" ]; then
             cd dist/_worker.js
-            # Copy all chunk files to dist/chunks/ (root level)
-            # Keep entry files (index.mjs, manifest, renderers) in _worker.js root
+            # Ensure chunks directory exists in _worker.js for Wrangler build
+            mkdir -p chunks
+            # Copy chunk files from root to both locations:
+            # 1. dist/chunks/ for Cloudflare Pages runtime
+            # 2. _worker.js/chunks/ for Wrangler build
             copied_files=()
             for file in *.mjs; do
               if [ -f "$file" ] && [[ "$file" != "index.mjs" ]] && [[ ! "$file" =~ ^manifest ]] && [[ "$file" != "renderers.mjs" ]]; then
-                cp "$file" ../chunks/
+                cp "$file" ../chunks/  # For Cloudflare Pages runtime
+                cp "$file" chunks/     # For Wrangler build
                 copied_files+=("$file")
               fi
             done
-            # Also copy any existing chunks subdirectory contents (preserving directory structure)
-            # This handles nested chunks like chunks/astro/server_*.mjs
-            if [ -d "chunks" ]; then
-              # Copy entire chunks directory structure to dist/chunks/
+            # Copy chunks directory structure to both locations
+            if [ -d "chunks" ] && [ "$(ls -A chunks 2>/dev/null)" ]; then
+              # Copy to dist/chunks/ for Cloudflare Pages runtime
               cp -r chunks/* ../chunks/ 2>/dev/null || true
+              # Keep original chunks/ in _worker.js/ for Wrangler build
             fi
-            # Update import paths to use pages/chunks/ (Cloudflare Pages namespace)
-            # Handle both 'chunks/' and 'pages/chunks/' imports
-            if [ ${#copied_files[@]} -gt 0 ]; then
-              for file in "${copied_files[@]}"; do
-                # Update imports to use pages/chunks/ (Cloudflare Pages namespace)
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./${file}|from 'pages/chunks/${file}|g" {} \;
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]${file}|from 'pages/chunks/${file}|g" {} \;
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from 'pages/chunks/${file}|g" {} \;
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/${file}|from 'pages/chunks/${file}|g" {} \;
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]chunks/${file}|from 'pages/chunks/${file}|g" {} \;
-                # Also update .js files (like index.js)
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./${file}|from 'pages/chunks/${file}|g" {} \;
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]${file}|from 'pages/chunks/${file}|g" {} \;
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from 'pages/chunks/${file}|g" {} \;
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/${file}|from 'pages/chunks/${file}|g" {} \;
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]chunks/${file}|from 'pages/chunks/${file}|g" {} \;
-              done
-            fi
-            # Ensure all chunks/ imports use pages/chunks/ namespace
-            # Handle various import patterns including nested paths like chunks/astro/
-            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/|from 'pages/chunks/|g" {} \;
-            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./chunks/|from 'pages/chunks/|g" {} \;
-            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]chunks/|from 'pages/chunks/|g" {} \;
-            find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/|from 'pages/chunks/|g" {} \;
-            find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./chunks/|from 'pages/chunks/|g" {} \;
-            find . -name "*.js" -type f -exec sed -i "s|from ['\"]chunks/|from 'pages/chunks/|g" {} \;
-            echo "Chunks copied to dist/chunks/ (accessible as pages/chunks/):"
+            # Revert any pages/chunks/ imports back to chunks/ for Wrangler build
+            # Wrangler will bundle these locally, and Cloudflare Pages will resolve chunks/ to pages/chunks/ at runtime
+            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]pages/chunks/|from 'chunks/|g" {} \;
+            find . -name "*.js" -type f -exec sed -i "s|from ['\"]pages/chunks/|from 'chunks/|g" {} \;
+            echo "Chunks copied to dist/chunks/ (for Cloudflare Pages runtime):"
             ls -la ../chunks/ || echo "No chunks found"
             echo "Checking for nested chunks directories (e.g., astro/):"
             find ../chunks -type d -name "astro" -exec ls -la {} \; 2>/dev/null || echo "No astro subdirectory found"
             find ../chunks -type f -name "*.mjs" | head -20 || echo "No .mjs files in chunks"
-            echo "Files remaining in _worker.js/:"
+            echo "Chunks in _worker.js/chunks/ (for Wrangler build):"
+            ls -la chunks/ 2>/dev/null || echo "No chunks directory in _worker.js"
+            echo "Files remaining in _worker.js/ root:"
             ls -la *.mjs 2>/dev/null || echo "No .mjs files in root"
-            echo "Checking import statements in index.js:"
+            echo "Checking import statements in index.js (should use chunks/, not pages/chunks/):"
             cat index.js 2>/dev/null | grep -E "chunks|from" | head -10 || echo "Could not read index.js"
-            echo "Checking import statements in manifest:"
-            cat manifest*.mjs 2>/dev/null | grep -E "chunks|from" | head -10 || echo "Could not read manifest"
           fi
 
       - name: Verify build output
