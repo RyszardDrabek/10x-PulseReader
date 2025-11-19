@@ -30,7 +30,7 @@ interface AppProps {
 export default function App({ children, initialSession, supabaseConfig }: AppProps) {
   console.log("[App.tsx] App component rendering");
   console.log("[App.tsx] typeof window:", typeof window);
-  
+
   try {
     return (
       <SupabaseProvider initialSession={initialSession} config={supabaseConfig}>

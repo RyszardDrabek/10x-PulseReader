@@ -49,7 +49,7 @@ export default function QueryProvider({ children }: QueryProviderProps) {
     console.log("[QueryProvider.tsx] useEffect running");
     console.log("[QueryProvider.tsx] typeof window:", typeof window);
     console.log("[QueryProvider.tsx] import.meta.env.DEV:", import.meta.env.DEV);
-    
+
     // Only load ReactQueryDevtools in browser and development
     if (typeof window !== "undefined" && import.meta.env.DEV) {
       console.log("[QueryProvider.tsx] Loading ReactQueryDevtools");

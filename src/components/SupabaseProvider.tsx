@@ -55,7 +55,7 @@ interface SupabaseProviderProps {
 export default function SupabaseProvider({ children, initialSession = null, config }: SupabaseProviderProps) {
   console.log("[SupabaseProvider.tsx] SupabaseProvider component rendering");
   console.log("[SupabaseProvider.tsx] typeof window:", typeof window);
-  
+
   // Use a single client instance, memoized to prevent multiple instances
   // Initialize as null and create in useEffect to avoid SSR issues
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
@@ -68,7 +68,7 @@ export default function SupabaseProvider({ children, initialSession = null, conf
     console.log("[SupabaseProvider.tsx] useEffect running");
     console.log("[SupabaseProvider.tsx] typeof window:", typeof window);
     console.log("[SupabaseProvider.tsx] supabase:", supabase);
-    
+
     if (typeof window !== "undefined" && !supabase) {
       console.log("[SupabaseProvider.tsx] Creating Supabase client");
       try {

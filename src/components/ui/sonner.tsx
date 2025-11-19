@@ -20,14 +20,14 @@ try {
 const Toaster = ({ ...props }: ToasterProps) => {
   console.log("[sonner.tsx] Toaster component rendering");
   console.log("[sonner.tsx] typeof window:", typeof window);
-  
+
   const [Sonner, setSonner] = useState<typeof import("sonner").Toaster | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     console.log("[sonner.tsx] useEffect running");
     console.log("[sonner.tsx] typeof window:", typeof window);
-    
+
     // Only load sonner in browser
     if (typeof window !== "undefined") {
       console.log("[sonner.tsx] Loading sonner library");
