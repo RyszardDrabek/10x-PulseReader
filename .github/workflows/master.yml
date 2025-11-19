@@ -81,6 +81,37 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: npm run build
 
+      - name: Organize chunks for Cloudflare Pages
+        run: |
+          echo "Organizing chunks directory structure..."
+          if [ -d "dist/_worker.js" ]; then
+            cd dist/_worker.js
+            # Create chunks directory if it doesn't exist
+            mkdir -p chunks
+            # Move chunk files to chunks directory
+            # Keep entry files (index.mjs, manifest, renderers) and directories in root
+            # Move all other .mjs files to chunks/
+            moved_files=()
+            for file in *.mjs; do
+              if [ -f "$file" ] && [[ "$file" != "index.mjs" ]] && [[ ! "$file" =~ ^manifest ]] && [[ "$file" != "renderers.mjs" ]]; then
+                mv "$file" chunks/
+                moved_files+=("$file")
+              fi
+            done
+            # Update import paths in all .mjs files to point to chunks/
+            if [ ${#moved_files[@]} -gt 0 ]; then
+              for file in "${moved_files[@]}"; do
+                # Update imports in all .mjs files (including subdirectories)
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./${file}|from './chunks/${file}|g" {} \;
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]${file}|from './chunks/${file}|g" {} \;
+              done
+            fi
+            echo "Chunks organized:"
+            ls -la chunks/ || echo "No chunks found"
+            echo "Root files remaining:"
+            ls -la *.mjs 2>/dev/null || echo "No .mjs files in root"
+          fi
+
       - name: Verify build output
         run: |
           echo "Checking build output structure..."
