@@ -1,7 +1,6 @@
 ---
 import GlobalLayout from "../layouts/GlobalLayout.astro";
 import VerificationMessage from "../components/VerificationMessage.tsx";
-import { toast } from "sonner";
 
 const title = "Verify Email - PulseReader";
 ---
@@ -13,7 +12,7 @@ const title = "Verify Email - PulseReader";
         onResendVerification={async () => {
           // TODO: Implement resend verification API call
           console.log("Resending verification email");
-          toast.success("Verification link sent successfully.");
+          // Toast notification will be handled inside VerificationMessage component
         }}
         client:only="react"
       />

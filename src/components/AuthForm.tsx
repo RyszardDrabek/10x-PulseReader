@@ -1,8 +1,7 @@
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { toast } from "sonner";
 
 type AuthMode = "register" | "login" | "forgot-password";
 
@@ -16,6 +15,16 @@ export default function AuthForm({ mode, onSubmit, isLoading = false }: AuthForm
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [toast, setToast] = useState<typeof import("sonner").toast | null>(null);
+
+  // Dynamically import toast only on client side
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      import("sonner").then((module) => {
+        setToast(() => module.toast);
+      });
+    }
+  }, []);
 
   const getTitle = () => {
     switch (mode) {
@@ -58,15 +67,19 @@ export default function AuthForm({ mode, onSubmit, isLoading = false }: AuthForm
 
   const validateForm = () => {
     if (!email.trim()) {
-      toast.error("Please enter a valid email address.");
+      if (toast) {
+        toast.error("Please enter a valid email address.");
+      }
       return false;
     }
 
     if (mode !== "forgot-password") {
       if (!password || password.length < 8) {
-        toast.error(
-          "Password must be at least 8 characters long and contain uppercase, lowercase letters and a number."
-        );
+        if (toast) {
+          toast.error(
+            "Password must be at least 8 characters long and contain uppercase, lowercase letters and a number."
+          );
+        }
         return false;
       }
 
@@ -75,14 +88,18 @@ export default function AuthForm({ mode, onSubmit, isLoading = false }: AuthForm
       const hasNumber = /\d/.test(password);
 
       if (!hasUpperCase || !hasLowerCase || !hasNumber) {
-        toast.error(
-          "Password must be at least 8 characters long and contain uppercase, lowercase letters and a number."
-        );
+        if (toast) {
+          toast.error(
+            "Password must be at least 8 characters long and contain uppercase, lowercase letters and a number."
+          );
+        }
         return false;
       }
 
       if (mode === "register" && password !== confirmPassword) {
-        toast.error("Passwords do not match.");
+        if (toast) {
+          toast.error("Passwords do not match.");
+        }
         return false;
       }
     }
@@ -97,6 +114,10 @@ export default function AuthForm({ mode, onSubmit, isLoading = false }: AuthForm
 
     try {
       await onSubmit({ email: email.trim(), password });
+      // Show success toast for forgot-password mode
+      if (mode === "forgot-password" && toast) {
+        toast.success("If an account with that email exists, a password reset link has been sent to your email.");
+      }
     } catch {
       // Error handling will be done in the parent component
     }

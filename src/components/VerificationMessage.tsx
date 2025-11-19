@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Mail, RefreshCw } from "lucide-react";
 
@@ -9,15 +9,31 @@ interface VerificationMessageProps {
 
 export default function VerificationMessage({ onResendVerification, isResending = false }: VerificationMessageProps) {
   const [resendMessage, setResendMessage] = useState("");
+  const [toast, setToast] = useState<typeof import("sonner").toast | null>(null);
+
+  // Dynamically import toast only on client side
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      import("sonner").then((module) => {
+        setToast(() => module.toast);
+      });
+    }
+  }, []);
 
   const handleResendVerification = async () => {
     if (!onResendVerification) return;
 
     try {
       await onResendVerification();
+      if (toast) {
+        toast.success("Verification link sent successfully.");
+      }
       setResendMessage("Verification link sent successfully.");
     } catch (error) {
       console.error("Failed to resend verification email:", error);
+      if (toast) {
+        toast.error("Error sending verification link. Please try again.");
+      }
       setResendMessage("Error sending verification link. Please try again.");
     }
   };
