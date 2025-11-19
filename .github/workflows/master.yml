@@ -173,13 +173,12 @@ jobs:
           ls -la dist/_worker.js/ || echo "_worker.js directory not found"
 
       - name: Set Cloudflare Pages environment variables
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: |
-            echo "${{ secrets.SUPABASE_URL }}" | pages secret put SUPABASE_URL --project-name=10x-pulsereader
-            echo "${{ secrets.SUPABASE_KEY }}" | pages secret put SUPABASE_KEY --project-name=10x-pulsereader
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "${{ secrets.SUPABASE_URL }}" | npx wrangler pages secret put SUPABASE_URL --project-name=10x-pulsereader
+          echo "${{ secrets.SUPABASE_KEY }}" | npx wrangler pages secret put SUPABASE_KEY --project-name=10x-pulsereader
         continue-on-error: true
 
       - name: Deploy to Cloudflare Pages
