@@ -13,6 +13,10 @@ export default defineConfig({
   server: { port: 3000 },
   vite: {
     plugins: [tailwindcss()],
+    ssr: {
+      external: ["@supabase/supabase-js", "@supabase/ssr"],
+      noExternal: ["@supabase/auth-helpers-shared"],
+    },
   },
   adapter: cloudflare(),
 });

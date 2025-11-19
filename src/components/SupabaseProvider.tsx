@@ -1,23 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClientPublic } from "../db/supabase.client";
 import type { Session, User } from "@supabase/supabase-js";
 import type { Database } from "../db/database.types";
-
-/* eslint-disable no-console */
-console.log("[SupabaseProvider.tsx] Module loaded");
-console.log("[SupabaseProvider.tsx] typeof window:", typeof window);
-console.log("[SupabaseProvider.tsx] typeof global:", typeof global);
-
-try {
-  console.log("[SupabaseProvider.tsx] About to import @supabase/supabase-js");
-  console.log("[SupabaseProvider.tsx] createClient:", typeof createClient);
-  console.log("[SupabaseProvider.tsx] About to import getSupabaseClientPublic");
-  console.log("[SupabaseProvider.tsx] getSupabaseClientPublic:", typeof getSupabaseClientPublic);
-} catch (error) {
-  console.error("[SupabaseProvider.tsx] Error importing dependencies:", error);
-  throw error;
-}
 
 interface SupabaseContextType {
   supabase: SupabaseClient<Database> | null;
@@ -53,9 +38,6 @@ interface SupabaseProviderProps {
 }
 
 export default function SupabaseProvider({ children, initialSession = null, config }: SupabaseProviderProps) {
-  console.log("[SupabaseProvider.tsx] SupabaseProvider component rendering");
-  console.log("[SupabaseProvider.tsx] typeof window:", typeof window);
-
   // Use a single client instance, memoized to prevent multiple instances
   // Initialize as null and create in useEffect to avoid SSR issues
   const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
@@ -65,22 +47,26 @@ export default function SupabaseProvider({ children, initialSession = null, conf
 
   // Initialize Supabase client on client side only
   useEffect(() => {
-    console.log("[SupabaseProvider.tsx] useEffect running");
-    console.log("[SupabaseProvider.tsx] typeof window:", typeof window);
-    console.log("[SupabaseProvider.tsx] supabase:", supabase);
-
     if (typeof window !== "undefined" && !supabase) {
-      console.log("[SupabaseProvider.tsx] Creating Supabase client");
-      try {
-        const client = config ? createClient<Database>(config.url, config.key) : getSupabaseClientPublic();
-        console.log("[SupabaseProvider.tsx] Supabase client created successfully");
-        setSupabase(client);
-      } catch (error) {
-        console.error("[SupabaseProvider.tsx] Error creating Supabase client:", error);
-        throw error;
-      }
-    } else {
-      console.log("[SupabaseProvider.tsx] Skipping Supabase client creation (SSR or already exists)");
+      const initClient = async () => {
+        try {
+          let client: SupabaseClient<Database>;
+
+          if (config) {
+            // Dynamic import to avoid loading on server
+            const { createClient } = await import("@supabase/supabase-js");
+            client = createClient<Database>(config.url, config.key);
+          } else {
+            client = await getSupabaseClientPublic();
+          }
+
+          setSupabase(client);
+        } catch (error) {
+          console.error("[SupabaseProvider] Error creating Supabase client:", error);
+        }
+      };
+
+      initClient();
     }
   }, [config, supabase]);
 
@@ -145,4 +131,3 @@ export default function SupabaseProvider({ children, initialSession = null, conf
 
   return <SupabaseContext.Provider value={value}>{children}</SupabaseContext.Provider>;
 }
-/* eslint-enable no-console */

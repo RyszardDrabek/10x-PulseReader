@@ -1,24 +1,8 @@
 ---
-/* eslint-disable no-console */
 import GlobalLayout from "../layouts/GlobalLayout.astro";
 import App from "../components/App.tsx";
 import Homepage from "../components/Homepage.tsx";
 import { ArticleService } from "../lib/services/article.service";
-
-console.log("[index.astro] Starting page render");
-console.log("[index.astro] typeof window:", typeof window);
-console.log("[index.astro] typeof global:", typeof global);
-console.log("[index.astro] import.meta.env.MODE:", import.meta.env.MODE);
-console.log("[index.astro] import.meta.env.SSR:", import.meta.env.SSR);
-
-try {
-  console.log("[index.astro] About to import components");
-  console.log("[index.astro] App component:", typeof App);
-  console.log("[index.astro] Homepage component:", typeof Homepage);
-} catch (error) {
-  console.error("[index.astro] Error importing components:", error);
-  throw error;
-}
 
 const supabase = Astro.locals.supabase;
 const articleService = new ArticleService(supabase);
@@ -50,4 +34,3 @@ const supabaseConfig = {
     </App>
   </div>
 </GlobalLayout>
-/* eslint-enable no-console */

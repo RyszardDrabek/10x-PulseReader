@@ -1,27 +1,9 @@
 ---
-/* eslint-disable no-console */
 import "../styles/global.css";
 import QueryProvider from "../components/QueryProvider.tsx";
 import SupabaseProvider from "../components/SupabaseProvider.tsx";
 import { Toaster } from "../components/ui/sonner";
 import LogoutHandler from "../components/LogoutHandler.tsx";
-
-console.log("[GlobalLayout.astro] Module loaded");
-console.log("[GlobalLayout.astro] typeof window:", typeof window);
-console.log("[GlobalLayout.astro] typeof global:", typeof global);
-console.log("[GlobalLayout.astro] import.meta.env.MODE:", import.meta.env.MODE);
-console.log("[GlobalLayout.astro] import.meta.env.SSR:", import.meta.env.SSR);
-
-try {
-  console.log("[GlobalLayout.astro] About to import components");
-  console.log("[GlobalLayout.astro] QueryProvider:", typeof QueryProvider);
-  console.log("[GlobalLayout.astro] SupabaseProvider:", typeof SupabaseProvider);
-  console.log("[GlobalLayout.astro] Toaster:", typeof Toaster);
-  console.log("[GlobalLayout.astro] LogoutHandler:", typeof LogoutHandler);
-} catch (error) {
-  console.error("[GlobalLayout.astro] Error importing components:", error);
-  throw error;
-}
 
 interface Props {
   title?: string;
@@ -29,9 +11,6 @@ interface Props {
 
 const { title = "PulseReader" } = Astro.props;
 const user = Astro.locals.user;
-
-console.log("[GlobalLayout.astro] Layout rendering");
-console.log("[GlobalLayout.astro] typeof window:", typeof window);
 
 // Pass environment variables to client components
 const supabaseConfig = {
@@ -123,4 +102,3 @@ const supabaseConfig = {
     height: 100%;
   }
 </style>
-/* eslint-enable no-console */
