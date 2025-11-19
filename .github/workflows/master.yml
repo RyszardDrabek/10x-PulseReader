@@ -180,11 +180,10 @@ jobs:
           ls -la dist/_worker.js/ || echo "_worker.js directory not found"
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: 10x-pulsereader
-          directory: dist
+          command: pages deploy dist --project-name=10x-pulsereader
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
