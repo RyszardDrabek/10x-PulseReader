@@ -84,13 +84,13 @@ jobs:
       - name: Organize chunks for Cloudflare Pages
         run: |
           echo "Organizing chunks directory structure for Cloudflare Pages..."
-          # Cloudflare Pages bundled worker expects chunks at dist/chunks/ (root level)
-          # Copy chunk files to dist/chunks/ while keeping originals in _worker.js for compatibility
+          # Cloudflare Pages uses 'pages/' namespace for modules
+          # Chunks need to be at dist/chunks/ and accessible as pages/chunks/
           mkdir -p dist/chunks
           
           if [ -d "dist/_worker.js" ]; then
             cd dist/_worker.js
-            # Copy chunk files to dist/chunks/ (root level) instead of moving
+            # Copy all chunk files to dist/chunks/ (root level)
             # Keep entry files (index.mjs, manifest, renderers) in _worker.js root
             copied_files=()
             for file in *.mjs; do
@@ -99,32 +99,43 @@ jobs:
                 copied_files+=("$file")
               fi
             done
-            # Also copy any existing chunks subdirectory contents
+            # Also copy any existing chunks subdirectory contents (preserving directory structure)
+            # This handles nested chunks like chunks/astro/server_*.mjs
             if [ -d "chunks" ]; then
+              # Copy entire chunks directory structure to dist/chunks/
               cp -r chunks/* ../chunks/ 2>/dev/null || true
             fi
-            # Update import paths in all files to use chunks/ (Cloudflare Pages resolves from root)
-            # The bundled worker will look for chunks/ relative to dist root
+            # Update import paths to use pages/chunks/ (Cloudflare Pages namespace)
+            # Handle both 'chunks/' and 'pages/chunks/' imports
             if [ ${#copied_files[@]} -gt 0 ]; then
               for file in "${copied_files[@]}"; do
-                # Update imports to use chunks/ (relative to dist root, not _worker.js)
-                # Cloudflare Pages bundled worker resolves chunks/ from dist root
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./${file}|from 'chunks/${file}|g" {} \;
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]${file}|from 'chunks/${file}|g" {} \;
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from 'chunks/${file}|g" {} \;
-                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/${file}|from 'chunks/${file}|g" {} \;
+                # Update imports to use pages/chunks/ (Cloudflare Pages namespace)
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./${file}|from 'pages/chunks/${file}|g" {} \;
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]${file}|from 'pages/chunks/${file}|g" {} \;
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from 'pages/chunks/${file}|g" {} \;
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/${file}|from 'pages/chunks/${file}|g" {} \;
+                find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]chunks/${file}|from 'pages/chunks/${file}|g" {} \;
                 # Also update .js files (like index.js)
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./${file}|from 'chunks/${file}|g" {} \;
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]${file}|from 'chunks/${file}|g" {} \;
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from 'chunks/${file}|g" {} \;
-                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/${file}|from 'chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./${file}|from 'pages/chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]${file}|from 'pages/chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./chunks/${file}|from 'pages/chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/${file}|from 'pages/chunks/${file}|g" {} \;
+                find . -name "*.js" -type f -exec sed -i "s|from ['\"]chunks/${file}|from 'pages/chunks/${file}|g" {} \;
               done
             fi
-            # Ensure all chunks/ imports use the root-level path
-            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/|from 'chunks/|g" {} \;
-            find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/|from 'chunks/|g" {} \;
-            echo "Chunks copied to dist/chunks/:"
+            # Ensure all chunks/ imports use pages/chunks/ namespace
+            # Handle various import patterns including nested paths like chunks/astro/
+            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/|from 'pages/chunks/|g" {} \;
+            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]\\./chunks/|from 'pages/chunks/|g" {} \;
+            find . -name "*.mjs" -type f -exec sed -i "s|from ['\"]chunks/|from 'pages/chunks/|g" {} \;
+            find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\.\\./chunks/|from 'pages/chunks/|g" {} \;
+            find . -name "*.js" -type f -exec sed -i "s|from ['\"]\\./chunks/|from 'pages/chunks/|g" {} \;
+            find . -name "*.js" -type f -exec sed -i "s|from ['\"]chunks/|from 'pages/chunks/|g" {} \;
+            echo "Chunks copied to dist/chunks/ (accessible as pages/chunks/):"
             ls -la ../chunks/ || echo "No chunks found"
+            echo "Checking for nested chunks directories (e.g., astro/):"
+            find ../chunks -type d -name "astro" -exec ls -la {} \; 2>/dev/null || echo "No astro subdirectory found"
+            find ../chunks -type f -name "*.mjs" | head -20 || echo "No .mjs files in chunks"
             echo "Files remaining in _worker.js/:"
             ls -la *.mjs 2>/dev/null || echo "No .mjs files in root"
             echo "Checking import statements in index.js:"
