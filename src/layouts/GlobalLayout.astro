@@ -30,9 +30,9 @@ const supabaseConfig = {
   </head>
   <body class="min-h-screen bg-background font-sans antialiased">
     <div id="root">
-      <SupabaseProvider client:load config={supabaseConfig}>
-        <QueryProvider client:load>
-          <LogoutHandler client:load />
+      <SupabaseProvider client:only="react" config={supabaseConfig}>
+        <QueryProvider client:only="react">
+          <LogoutHandler client:only="react" />
           <header
             class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
             role="banner"
@@ -89,7 +89,7 @@ const supabaseConfig = {
           </footer>
         </QueryProvider>
       </SupabaseProvider>
-      <Toaster client:load />
+      <Toaster client:only="react" />
     </div>
   </body>
 </html>
