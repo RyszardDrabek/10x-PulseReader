@@ -81,12 +81,20 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: npm run build
 
+      - name: Verify build output
+        run: |
+          echo "Checking build output structure..."
+          ls -la dist/
+          ls -la dist/_worker.js/ || echo "_worker.js directory not found"
+          ls -la dist/_worker.js/chunks/ || echo "chunks directory not found"
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
           retention-days: 1
+          include-hidden-files: true
 
   deploy:
     name: Deploy to Cloudflare Pages
@@ -109,6 +117,12 @@ jobs:
         with:
           name: dist
           path: dist/
+
+      - name: Verify deployment artifacts
+        run: |
+          echo "Verifying artifacts before deployment..."
+          ls -la dist/
+          ls -la dist/_worker.js/chunks/ || echo "Warning: chunks directory not found"
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
