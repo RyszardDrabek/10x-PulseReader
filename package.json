@@ -31,7 +31,9 @@
     "security:container": "trivy image --exit-code 1 --no-progress --format table",
     "coverage:upload": "codecov",
     "storybook": "historia",
-    "storybook:build": "historia build"
+    "storybook:build": "historia build",
+    "seed": "tsx scripts/seed.ts",
+    "seed:reset": "tsx scripts/seed.ts --reset"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^12.6.11",
@@ -92,6 +94,7 @@
     "msw": "^2.12.2",
     "playwright": "^1.56.1",
     "prettier-plugin-astro": "0.14.1",
+    "tsx": "^4.19.2",
     "typescript-eslint": "8.28.0",
     "vitest": "^2.1.9",
     "wrangler": "^4.49.0"
