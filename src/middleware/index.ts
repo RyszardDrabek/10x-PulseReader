@@ -19,6 +19,25 @@ const PUBLIC_PATHS = [
   "/api/articles",
 ];
 
+/**
+ * Checks if a path matches a public path pattern.
+ * Handles exact matches and dynamic route patterns.
+ */
+function isPublicPath(pathname: string, method: string): boolean {
+  // Check exact matches first
+  if (PUBLIC_PATHS.includes(pathname)) {
+    return true;
+  }
+
+  // Check dynamic API routes
+  // GET /api/articles/:id is publicly accessible
+  if (method === "GET" && pathname.startsWith("/api/articles/")) {
+    return true;
+  }
+
+  return false;
+}
+
 export const onRequest = defineMiddleware(async ({ locals, cookies, url, request, redirect }, next) => {
   // Always set up Supabase client for all routes (both public and protected)
   try {
@@ -40,11 +59,17 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
     }
 
     // Skip auth check for public paths (but user is still set above if authenticated)
-    if (PUBLIC_PATHS.includes(url.pathname)) {
+    if (isPublicPath(url.pathname, request.method)) {
       return next();
     }
 
-    // For protected routes, redirect to login if not authenticated
+    // For API routes, let the route handler decide authentication/authorization
+    // API routes return JSON errors instead of redirects
+    if (url.pathname.startsWith("/api/")) {
+      return next();
+    }
+
+    // For protected non-API routes, redirect to login if not authenticated
     if (!user) {
       return redirect("/login");
     }
@@ -67,7 +92,12 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
     locals.user = null;
 
     // For public paths, allow access even if Supabase fails
-    if (PUBLIC_PATHS.includes(url.pathname)) {
+    if (isPublicPath(url.pathname, request.method)) {
+      return next();
+    }
+
+    // For API routes, let the route handler decide (even if Supabase fails)
+    if (url.pathname.startsWith("/api/")) {
       return next();
     }
 

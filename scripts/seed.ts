@@ -305,7 +305,7 @@ async function clearExistingData() {
   // Delete in order to respect foreign key constraints
   // Using .neq() with a non-existent UUID effectively deletes all rows
   const nonExistentUuid = "00000000-0000-0000-0000-000000000000";
-  
+
   const { error: topicsError } = await supabaseAdmin
     .schema("app")
     .from("article_topics")
@@ -555,13 +555,10 @@ async function seedArticles(sourceIdMap: Map<number, string>, topicIdMap: Map<nu
         continue;
       }
 
-      const { error: relationError } = await supabaseAdmin
-        .schema("app")
-        .from("article_topics")
-        .insert({
-          article_id: article.id,
-          topic_id: topicId,
-        });
+      const { error: relationError } = await supabaseAdmin.schema("app").from("article_topics").insert({
+        article_id: article.id,
+        topic_id: topicId,
+      });
 
       if (relationError) {
         log(
@@ -625,4 +622,3 @@ async function main() {
 
 // Run the seed script
 main();
-

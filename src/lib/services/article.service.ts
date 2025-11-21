@@ -17,6 +17,7 @@ class DatabaseError extends Error {
 import type {
   ArticleEntity,
   CreateArticleCommand,
+  UpdateArticleCommand,
   ArticleDto,
   ArticleListResponse,
   GetArticlesQueryParams,
@@ -294,6 +295,243 @@ export class ArticleService {
       createdAt: article.created_at,
       updatedAt: article.updated_at,
     };
+  }
+
+  /**
+   * Retrieves a single article by ID with nested source and topics.
+   *
+   * @param id - UUID of the article to retrieve
+   * @returns ArticleDto with nested source and topics
+   * @throws Error with code "ARTICLE_NOT_FOUND" if article doesn't exist
+   */
+  async getArticleById(id: string): Promise<ArticleDto> {
+    // Query article with nested selects for source and topics
+    // Using Supabase foreign key relationship syntax
+    const { data, error } = await this.supabase
+      .schema("app")
+      .from("articles")
+      .select(
+        `
+        *,
+        rss_sources!articles_source_id_fkey (
+          id,
+          name,
+          url
+        ),
+        article_topics (
+          topics (
+            id,
+            name
+          )
+        )
+      `
+      )
+      .eq("id", id)
+      .single();
+
+    if (error || !data) {
+      throw new Error("ARTICLE_NOT_FOUND");
+    }
+
+    // Map to DTO format
+    // The nested data structure from Supabase will have:
+    // - rss_sources as the source (via foreign key)
+    // - article_topics array with nested topics
+    const articleWithRelations = data as JoinedArticle & {
+      rss_sources: { id: string; name: string; url: string } | null;
+      article_topics: { topics: { id: string; name: string } | null }[];
+    };
+
+    return this.mapArticleToDto(articleWithRelations);
+  }
+
+  /**
+   * Updates an article with optional sentiment and topic associations.
+   * Implements transaction-like behavior: if topic associations fail,
+   * the article update is rolled back.
+   *
+   * @param id - UUID of the article to update
+   * @param command - Update command with optional fields
+   * @returns Updated article entity in camelCase format
+   * @throws Error with specific codes:
+   *   - ARTICLE_NOT_FOUND: article doesn't exist
+   *   - INVALID_TOPIC_IDS: one or more topicIds don't exist
+   */
+  async updateArticle(id: string, command: UpdateArticleCommand): Promise<ArticleEntity> {
+    // Step 1: Verify article exists and fetch current state for rollback
+    const { data: existingArticle, error: fetchError } = await this.supabase
+      .schema("app")
+      .from("articles")
+      .select("id, sentiment")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !existingArticle) {
+      throw new Error("ARTICLE_NOT_FOUND");
+    }
+
+    // Step 2: Validate topics exist (if provided)
+    if (command.topicIds && command.topicIds.length > 0) {
+      const topicValidation = await this.validateTopics(command.topicIds);
+      if (!topicValidation.valid) {
+        throw new Error(`INVALID_TOPIC_IDS:${JSON.stringify(topicValidation.invalidIds)}`);
+      }
+    }
+
+    // Step 3: Update article fields (only provided fields)
+    const updateData: Database["app"]["Tables"]["articles"]["Update"] = {};
+    if (command.sentiment !== undefined) {
+      updateData.sentiment = command.sentiment;
+    }
+
+    // Only update if there are fields to update
+    if (Object.keys(updateData).length > 0) {
+      const { data: updatedArticle, error: updateError } = await this.supabase
+        .schema("app")
+        .from("articles")
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new DatabaseError(`Failed to update article: ${updateError.message}`, updateError);
+      }
+
+      // Step 4: Update topic associations (if provided)
+      if (command.topicIds !== undefined) {
+        // Delete all existing associations for this article
+        const { error: deleteError } = await this.supabase
+          .schema("app")
+          .from("article_topics")
+          .delete()
+          .eq("article_id", id);
+
+        if (deleteError) {
+          throw new DatabaseError(`Failed to delete existing topic associations: ${deleteError.message}`, deleteError);
+        }
+
+        // Insert new associations (if any)
+        if (command.topicIds.length > 0) {
+          const associations = command.topicIds.map((topicId) => ({
+            article_id: id,
+            topic_id: topicId,
+          }));
+
+          const { error: associationError } = await this.supabase
+            .schema("app")
+            .from("article_topics")
+            .insert(associations);
+
+          if (associationError) {
+            // Rollback: restore original article state
+            await this.supabase
+              .schema("app")
+              .from("articles")
+              .update({ sentiment: existingArticle.sentiment })
+              .eq("id", id);
+
+            throw new Error("TOPIC_ASSOCIATION_FAILED");
+          }
+        }
+      }
+
+      // Return updated article entity
+      return {
+        id: updatedArticle.id,
+        sourceId: updatedArticle.source_id,
+        title: updatedArticle.title,
+        description: updatedArticle.description,
+        link: updatedArticle.link,
+        publicationDate: updatedArticle.publication_date,
+        sentiment: updatedArticle.sentiment,
+        createdAt: updatedArticle.created_at,
+        updatedAt: updatedArticle.updated_at,
+      };
+    }
+
+    // If no fields to update but topicIds provided, just update associations
+    if (command.topicIds !== undefined) {
+      // Delete all existing associations
+      const { error: deleteError } = await this.supabase
+        .schema("app")
+        .from("article_topics")
+        .delete()
+        .eq("article_id", id);
+
+      if (deleteError) {
+        throw new DatabaseError(`Failed to delete existing topic associations: ${deleteError.message}`, deleteError);
+      }
+
+      // Insert new associations (if any)
+      if (command.topicIds.length > 0) {
+        const associations = command.topicIds.map((topicId) => ({
+          article_id: id,
+          topic_id: topicId,
+        }));
+
+        const { error: associationError } = await this.supabase
+          .schema("app")
+          .from("article_topics")
+          .insert(associations);
+
+        if (associationError) {
+          throw new Error("TOPIC_ASSOCIATION_FAILED");
+        }
+      }
+    }
+
+    // Fetch and return the article (in case only topic associations were updated)
+    const { data: article, error: fetchArticleError } = await this.supabase
+      .schema("app")
+      .from("articles")
+      .select()
+      .eq("id", id)
+      .single();
+
+    if (fetchArticleError || !article) {
+      throw new Error("ARTICLE_NOT_FOUND");
+    }
+
+    return {
+      id: article.id,
+      sourceId: article.source_id,
+      title: article.title,
+      description: article.description,
+      link: article.link,
+      publicationDate: article.publication_date,
+      sentiment: article.sentiment,
+      createdAt: article.created_at,
+      updatedAt: article.updated_at,
+    };
+  }
+
+  /**
+   * Deletes an article by ID.
+   * Database CASCADE automatically removes article_topics associations.
+   *
+   * @param id - UUID of the article to delete
+   * @throws Error with code "ARTICLE_NOT_FOUND" if article doesn't exist
+   */
+  async deleteArticle(id: string): Promise<void> {
+    // Verify article exists before deletion
+    const { data: existingArticle, error: fetchError } = await this.supabase
+      .schema("app")
+      .from("articles")
+      .select("id")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !existingArticle) {
+      throw new Error("ARTICLE_NOT_FOUND");
+    }
+
+    // Delete article (CASCADE handles article_topics)
+    const { error: deleteError } = await this.supabase.schema("app").from("articles").delete().eq("id", id);
+
+    if (deleteError) {
+      throw new DatabaseError(`Failed to delete article: ${deleteError.message}`, deleteError);
+    }
   }
 
   /**

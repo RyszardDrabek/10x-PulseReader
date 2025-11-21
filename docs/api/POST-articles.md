@@ -286,6 +286,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ## See Also
 
 - [GET /api/articles](./get-articles.md) - Retrieve articles
-- [GET /api/articles/:id](./get-article-by-id.md) - Get specific article
-- [PATCH /api/articles/:id](./update-article.md) - Update article (service role)
+- [GET /api/articles/:id](./GET-article-by-id.md) - Get specific article
+- [PATCH /api/articles/:id](./PATCH-article-by-id.md) - Update article (service role)
+- [DELETE /api/articles/:id](./DELETE-article-by-id.md) - Delete article (service role)
 
