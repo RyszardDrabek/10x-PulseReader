@@ -581,34 +581,36 @@ describe("TopicService.deleteTopic", () => {
       updated_at: "2024-01-01T00:00:00Z",
     };
 
+    // Track eq() call count to differentiate between findById and delete calls
+    let eqCallCount = 0;
+    mocks.eq.mockImplementation(() => {
+      eqCallCount++;
+      // First call: findById (select().eq().single()) - return chain object with single()
+      if (eqCallCount === 1) {
+        return {
+          eq: mocks.eq,
+          ilike: mocks.ilike,
+          order: mocks.order,
+          range: mocks.range,
+          select: mocks.select,
+          insert: mocks.insert,
+          delete: mocks.delete,
+          single: mocks.single,
+          maybeSingle: mocks.maybeSingle,
+          from: mocks.from,
+        };
+      }
+      // Second call: delete().eq() - return promise with error
+      return Promise.resolve({
+        data: null,
+        error: { code: "PGRST301", message: "Database error", details: "", hint: "", name: "PostgrestError" },
+      }) as unknown as MockQueryBuilder;
+    });
+
     // First call: verify exists
     mocks.single.mockResolvedValueOnce({
       data: mockTopic,
       error: null,
-    });
-
-    // Delete fails
-    mocks.eq.mockImplementationOnce(() => {
-      const chainObj = {
-        eq: mocks.eq,
-        ilike: mocks.ilike,
-        order: mocks.order,
-        range: mocks.range,
-        select: mocks.select,
-        insert: mocks.insert,
-        delete: mocks.delete,
-        single: mocks.single,
-        maybeSingle: mocks.maybeSingle,
-        from: mocks.from,
-      };
-      const thenable = Promise.resolve({
-        data: null,
-        error: { code: "PGRST301", message: "Database error", details: "", hint: "", name: "PostgrestError" },
-      });
-      return Object.assign(chainObj, {
-        then: thenable.then.bind(thenable),
-        catch: thenable.catch.bind(thenable),
-      });
     });
 
     await expect(service.deleteTopic("topic-1")).rejects.toThrow("Failed to delete topic");

@@ -38,13 +38,15 @@ export class TopicService {
       .schema("app")
       .from("topics")
       .select("*", { count: "exact" })
-      .order("name", { ascending: true })
-      .range(offset, offset + limit - 1);
+      .order("name", { ascending: true });
 
     // Apply search filter if provided (case-insensitive)
+    // Note: ilike must be called before range()
     if (params.search) {
       query = query.ilike("name", `%${params.search}%`);
     }
+
+    query = query.range(offset, offset + limit - 1);
 
     const { data, count, error } = await query;
 

@@ -78,7 +78,7 @@ describe("GET /api/topics/:id", () => {
 
   test("should return 200 with topic when found", async () => {
     const mockTopic = {
-      id: "topic-1",
+      id: "550e8400-e29b-41d4-a716-446655440000",
       name: "Technology",
       createdAt: "2024-01-01T00:00:00Z",
       updatedAt: "2024-01-01T00:00:00Z",
@@ -86,14 +86,18 @@ describe("GET /api/topics/:id", () => {
 
     vi.spyOn(TopicService.prototype, "findById").mockResolvedValue(mockTopic);
 
-    const context = createMockContext("http://localhost:3000/api/topics/topic-1", "GET", "topic-1");
+    const context = createMockContext(
+      "http://localhost:3000/api/topics/550e8400-e29b-41d4-a716-446655440000",
+      "GET",
+      "550e8400-e29b-41d4-a716-446655440000"
+    );
     const response = await GET(context);
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/json");
 
     const body = await response.json();
-    expect(body.id).toBe("topic-1");
+    expect(body.id).toBe("550e8400-e29b-41d4-a716-446655440000");
     expect(body.name).toBe("Technology");
     expect(body.createdAt).toBe("2024-01-01T00:00:00Z");
     expect(body.updatedAt).toBe("2024-01-01T00:00:00Z");
@@ -102,7 +106,11 @@ describe("GET /api/topics/:id", () => {
   test("should return 404 when topic not found", async () => {
     vi.spyOn(TopicService.prototype, "findById").mockResolvedValue(null);
 
-    const context = createMockContext("http://localhost:3000/api/topics/non-existent", "GET", "non-existent");
+    const context = createMockContext(
+      "http://localhost:3000/api/topics/550e8400-e29b-41d4-a716-446655440001",
+      "GET",
+      "550e8400-e29b-41d4-a716-446655440001"
+    );
     const response = await GET(context);
 
     expect(response.status).toBe(404);
@@ -123,7 +131,11 @@ describe("GET /api/topics/:id", () => {
   });
 
   test("should return 400 when id parameter is missing", async () => {
-    const context = createMockContext("http://localhost:3000/api/topics/", "GET", "");
+    const context = createMockContext(
+      "http://localhost:3000/api/topics/550e8400-e29b-41d4-a716-446655440000",
+      "GET",
+      ""
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (context.params as any).id = undefined;
 
@@ -136,7 +148,11 @@ describe("GET /api/topics/:id", () => {
   });
 
   test("should return 500 when Supabase client is not initialized", async () => {
-    const context = createMockContext("http://localhost:3000/api/topics/topic-1", "GET", "topic-1");
+    const context = createMockContext(
+      "http://localhost:3000/api/topics/550e8400-e29b-41d4-a716-446655440000",
+      "GET",
+      "550e8400-e29b-41d4-a716-446655440000"
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context.locals.supabase = null as any;
 
@@ -150,7 +166,7 @@ describe("GET /api/topics/:id", () => {
 
   test("should be publicly accessible (no authentication required)", async () => {
     const mockTopic = {
-      id: "topic-1",
+      id: "550e8400-e29b-41d4-a716-446655440000",
       name: "Technology",
       createdAt: "2024-01-01T00:00:00Z",
       updatedAt: "2024-01-01T00:00:00Z",
@@ -159,12 +175,17 @@ describe("GET /api/topics/:id", () => {
     vi.spyOn(TopicService.prototype, "findById").mockResolvedValue(mockTopic);
 
     // No user provided
-    const context = createMockContext("http://localhost:3000/api/topics/topic-1", "GET", "topic-1", null);
+    const context = createMockContext(
+      "http://localhost:3000/api/topics/550e8400-e29b-41d4-a716-446655440000",
+      "GET",
+      "550e8400-e29b-41d4-a716-446655440000",
+      null
+    );
     const response = await GET(context);
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.id).toBe("topic-1");
+    expect(body.id).toBe("550e8400-e29b-41d4-a716-446655440000");
   });
 });
 
@@ -177,7 +198,12 @@ describe("DELETE /api/topics/:id - Authentication", () => {
   });
 
   test("should return 401 when not authenticated", async () => {
-    const context = createMockContext("http://localhost:3000/api/topics/topic-1", "DELETE", "topic-1", null);
+    const context = createMockContext(
+      "http://localhost:3000/api/topics/550e8400-e29b-41d4-a716-446655440000",
+      "DELETE",
+      "550e8400-e29b-41d4-a716-446655440000",
+      null
+    );
     const response = await DELETE(context);
 
     expect(response.status).toBe(401);
@@ -194,7 +220,12 @@ describe("DELETE /api/topics/:id - Authentication", () => {
       role: "authenticated",
     } as User;
 
-    const context = createMockContext("http://localhost:3000/api/topics/topic-1", "DELETE", "topic-1", regularUser);
+    const context = createMockContext(
+      "http://localhost:3000/api/topics/550e8400-e29b-41d4-a716-446655440000",
+      "DELETE",
+      "550e8400-e29b-41d4-a716-446655440000",
+      regularUser
+    );
     const response = await DELETE(context);
 
     expect(response.status).toBe(401);
@@ -256,7 +287,12 @@ describe("DELETE /api/topics/:id - Success Cases", () => {
     vi.spyOn(TopicService.prototype, "deleteTopic").mockResolvedValue();
 
     const serviceUser = createMockServiceRoleUser();
-    const context = createMockContext("http://localhost:3000/api/topics/topic-1", "DELETE", "topic-1", serviceUser);
+    const context = createMockContext(
+      "http://localhost:3000/api/topics/550e8400-e29b-41d4-a716-446655440000",
+      "DELETE",
+      "550e8400-e29b-41d4-a716-446655440000",
+      serviceUser
+    );
     const response = await DELETE(context);
 
     expect(response.status).toBe(204);
@@ -268,9 +304,9 @@ describe("DELETE /api/topics/:id - Success Cases", () => {
 
     const serviceUser = createMockServiceRoleUser();
     const context = createMockContext(
-      "http://localhost:3000/api/topics/non-existent",
+      "http://localhost:3000/api/topics/550e8400-e29b-41d4-a716-446655440001",
       "DELETE",
-      "non-existent",
+      "550e8400-e29b-41d4-a716-446655440001",
       serviceUser
     );
     const response = await DELETE(context);
@@ -283,7 +319,12 @@ describe("DELETE /api/topics/:id - Success Cases", () => {
 
   test("should return 500 when Supabase client is not initialized", async () => {
     const serviceUser = createMockServiceRoleUser();
-    const context = createMockContext("http://localhost:3000/api/topics/topic-1", "DELETE", "topic-1", serviceUser);
+    const context = createMockContext(
+      "http://localhost:3000/api/topics/550e8400-e29b-41d4-a716-446655440000",
+      "DELETE",
+      "550e8400-e29b-41d4-a716-446655440000",
+      serviceUser
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context.locals.supabase = null as any;
 
@@ -298,7 +339,12 @@ describe("DELETE /api/topics/:id - Success Cases", () => {
     vi.spyOn(TopicService.prototype, "deleteTopic").mockRejectedValue(new Error("Database connection failed"));
 
     const serviceUser = createMockServiceRoleUser();
-    const context = createMockContext("http://localhost:3000/api/topics/topic-1", "DELETE", "topic-1", serviceUser);
+    const context = createMockContext(
+      "http://localhost:3000/api/topics/550e8400-e29b-41d4-a716-446655440000",
+      "DELETE",
+      "550e8400-e29b-41d4-a716-446655440000",
+      serviceUser
+    );
     const response = await DELETE(context);
 
     expect(response.status).toBe(500);
