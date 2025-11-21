@@ -1,5 +1,6 @@
 import { createSupabaseServerInstance } from "../db/supabase.client.ts";
 import { defineMiddleware } from "astro:middleware";
+import type { Database } from "../db/database.types.ts";
 
 // Public paths - Auth API endpoints & Server-Rendered Astro Pages
 const PUBLIC_PATHS = [
@@ -41,6 +42,47 @@ function isPublicPath(pathname: string, method: string): boolean {
 export const onRequest = defineMiddleware(async ({ locals, cookies, url, request, redirect }, next) => {
   // Always set up Supabase client for all routes (both public and protected)
   try {
+    // Check for service role authentication first
+    const authHeader = request.headers.get("Authorization");
+    const serviceRoleKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (authHeader && serviceRoleKey && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.substring(7); // Remove "Bearer " prefix
+
+      // If token matches service role key, create service role client
+      if (token === serviceRoleKey) {
+        const supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+
+        if (supabaseUrl) {
+          // Create service role client using @supabase/supabase-js directly
+          const { createClient } = await import("@supabase/supabase-js");
+          const supabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false,
+            },
+          });
+
+          locals.supabase = supabase;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          locals.user = { role: "service_role" } as any;
+
+          // Skip auth check for public paths
+          if (isPublicPath(url.pathname, request.method)) {
+            return next();
+          }
+
+          // For API routes, let the route handler decide
+          if (url.pathname.startsWith("/api/")) {
+            return next();
+          }
+
+          return next();
+        }
+      }
+    }
+
+    // Normal authentication flow
     const supabase = createSupabaseServerInstance({
       cookies,
       headers: request.headers,
