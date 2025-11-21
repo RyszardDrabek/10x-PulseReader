@@ -39,3 +39,4 @@ playwright/.cache/
 
 # wrangler cache
 .wrangler/
+.dev.vars

@@ -34,10 +34,9 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
     } = await supabase.auth.getUser();
 
     if (user) {
-      locals.user = {
-        email: user.email,
-        id: user.id,
-      };
+      locals.user = user;
+    } else {
+      locals.user = null;
     }
 
     // Skip auth check for public paths (but user is still set above if authenticated)
@@ -65,7 +64,7 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
     // Set supabase to null so pages can handle it gracefully
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     locals.supabase = null as any;
-    locals.user = undefined;
+    locals.user = null;
 
     // For public paths, allow access even if Supabase fails
     if (PUBLIC_PATHS.includes(url.pathname)) {
