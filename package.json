@@ -33,7 +33,10 @@
     "storybook": "historia",
     "storybook:build": "historia build",
     "seed": "tsx scripts/seed.ts",
-    "seed:reset": "tsx scripts/seed.ts --reset"
+    "seed:reset": "tsx scripts/seed.ts --reset",
+    "docs:api": "npx swagger-ui-serve docs/openapi.yaml",
+    "docs:api:validate": "npx swagger-cli validate docs/openapi.yaml",
+    "docs:api:build": "npx @redocly/cli build-docs docs/openapi.yaml --output docs/api-docs.html"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^12.6.11",

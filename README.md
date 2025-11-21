@@ -83,6 +83,9 @@ The following scripts are available in the `package.json`:
 -   `npm run lint`: Lints the codebase for errors and style issues.
 -   `npm run lint:fix`: Automatically fixes fixable linting issues.
 -   `npm run format`: Formats the code using Prettier.
+-   `npm run docs:api`: Serves the API documentation using Swagger UI.
+-   `npm run docs:api:validate`: Validates the OpenAPI specification.
+-   `npm run docs:api:build`: Generates static HTML documentation from the OpenAPI spec.
 
 ## Project Scope
 
@@ -104,6 +107,17 @@ The following features are not planned for the initial release:
 -   Push or email notifications.
 -   Integration with paid, commercial news APIs.
 -   Manual content moderation by administrators.
+
+## API Documentation
+
+The REST API is fully documented using OpenAPI 3.0 specification. You can:
+
+- **View interactive documentation**: Run `npm run docs:api` to start Swagger UI
+- **Read the spec**: See [`docs/openapi.yaml`](docs/openapi.yaml)
+- **Generate client SDKs**: Use the OpenAPI spec with code generators
+- **Validate the spec**: Run `npm run docs:api:validate`
+
+For more details, see [`docs/API.md`](docs/API.md).
 
 ## Project Status
 

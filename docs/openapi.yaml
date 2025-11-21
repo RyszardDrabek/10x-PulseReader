@@ -1,0 +1,1410 @@
+openapi: 3.0.3
+info:
+  title: PulseReader API
+  description: |
+    REST API for PulseReader - an intelligent news aggregator that provides personalized content filtering 
+    based on user mood, topics, and blocklists.
+    
+    ## Authentication
+    
+    PulseReader uses Supabase Auth for user authentication. Most endpoints support both authenticated and 
+    guest access, with personalized features requiring authentication.
+    
+    ### Authentication Flow
+    
+    1. Register or login via Supabase Auth SDK
+    2. Receive JWT token from Supabase
+    3. Include token in `Authorization` header: `Bearer <token>`
+    4. API validates token and extracts user context
+    
+    ### Authorization Levels
+    
+    - **Guest**: Read-only access to articles, RSS sources, and topics
+    - **Authenticated User**: Full access to own profile, personalized article filtering
+    - **Service Role**: Full CRUD access to all resources (backend jobs only)
+  version: 1.0.0
+  contact:
+    name: PulseReader API Support
+  license:
+    name: MIT
+
+servers:
+  - url: https://api.pulsereader.com/api
+    description: Production server
+  - url: http://localhost:3000/api
+    description: Local development server
+
+tags:
+  - name: Articles
+    description: News articles with AI-generated sentiment and topic classification
+  - name: Profile
+    description: User preferences including mood and blocklist settings
+  - name: RSS Sources
+    description: Predefined RSS feed sources
+  - name: Topics
+    description: AI-generated topics for article categorization
+  - name: Authentication
+    description: User authentication endpoints (handled by Supabase Auth)
+
+paths:
+  /articles:
+    get:
+      summary: List articles
+      description: |
+        Retrieves a paginated list of articles with optional filtering and personalization.
+        
+        **Personalization**: When `applyPersonalization=true`, articles are filtered based on:
+        - User's mood preference (sentiment matching)
+        - User's blocklist (keywords and URL fragments)
+        
+        **Filtering**: Multiple filters can be combined (AND logic).
+      tags:
+        - Articles
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - name: limit
+          in: query
+          description: Number of articles per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Pagination offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: sentiment
+          in: query
+          description: Filter by sentiment
+          required: false
+          schema:
+            $ref: '#/components/schemas/ArticleSentiment'
+        - name: topicId
+          in: query
+          description: Filter by topic ID (UUID)
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: sourceId
+          in: query
+          description: Filter by RSS source ID (UUID)
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: applyPersonalization
+          in: query
+          description: Apply authenticated user's preferences (mood and blocklist)
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          required: false
+          schema:
+            type: string
+            enum: [publication_date, created_at]
+            default: publication_date
+        - name: sortOrder
+          in: query
+          description: Sort order
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Successful response with paginated articles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleListResponse'
+              examples:
+                guest:
+                  summary: Guest user response
+                  value:
+                    data:
+                      - id: "550e8400-e29b-41d4-a716-446655440000"
+                        title: "Breaking News Article"
+                        description: "This is a sample article description"
+                        link: "https://example.com/article"
+                        publicationDate: "2025-11-15T10:30:00Z"
+                        sentiment: "positive"
+                        source:
+                          id: "660e8400-e29b-41d4-a716-446655440001"
+                          name: "BBC News - World"
+                          url: "http://feeds.bbci.co.uk/news/world/rss.xml"
+                        topics:
+                          - id: "770e8400-e29b-41d4-a716-446655440002"
+                            name: "technology"
+                        createdAt: "2025-11-15T10:35:00Z"
+                    pagination:
+                      limit: 20
+                      offset: 0
+                      total: 150
+                      hasMore: true
+                personalized:
+                  summary: Authenticated user with personalization
+                  value:
+                    data:
+                      - id: "550e8400-e29b-41d4-a716-446655440000"
+                        title: "Positive News Article"
+                        description: "This article matches user's positive mood preference"
+                        link: "https://example.com/article"
+                        publicationDate: "2025-11-15T10:30:00Z"
+                        sentiment: "positive"
+                        source:
+                          id: "660e8400-e29b-41d4-a716-446655440001"
+                          name: "BBC News - World"
+                          url: "http://feeds.bbci.co.uk/news/world/rss.xml"
+                        topics:
+                          - id: "770e8400-e29b-41d4-a716-446655440002"
+                            name: "technology"
+                        createdAt: "2025-11-15T10:35:00Z"
+                    pagination:
+                      limit: 20
+                      offset: 0
+                      total: 45
+                      hasMore: true
+                    filtersApplied:
+                      sentiment: "positive"
+                      personalization: true
+                      blockedItemsCount: 5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/UnauthorizedPersonalization'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create article
+      description: |
+        Creates a new article. **Service role only** - used by RSS fetching cron job.
+        
+        The article link must be unique. If a duplicate link is provided, a 409 Conflict response is returned.
+      tags:
+        - Articles
+      security:
+        - ServiceRoleAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateArticleCommand'
+            examples:
+              basic:
+                summary: Basic article creation
+                value:
+                  sourceId: "660e8400-e29b-41d4-a716-446655440001"
+                  title: "New Article Title"
+                  description: "Article description or excerpt"
+                  link: "https://example.com/new-article"
+                  publicationDate: "2025-11-15T10:30:00Z"
+              withSentimentAndTopics:
+                summary: Article with sentiment and topics
+                value:
+                  sourceId: "660e8400-e29b-41d4-a716-446655440001"
+                  title: "New Article Title"
+                  description: "Article description"
+                  link: "https://example.com/new-article"
+                  publicationDate: "2025-11-15T10:30:00Z"
+                  sentiment: "positive"
+                  topicIds:
+                    - "770e8400-e29b-41d4-a716-446655440002"
+                    - "880e8400-e29b-41d4-a716-446655440003"
+      responses:
+        '201':
+          description: Article created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleEntity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/UnauthorizedServiceRole'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /articles/{id}:
+    get:
+      summary: Get article by ID
+      description: Retrieves a single article by its ID with nested source and topics.
+      tags:
+        - Articles
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Article ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Article found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Update article
+      description: |
+        Updates an article. **Service role only** - used by AI analysis job to add sentiment and topics.
+        
+        Only `sentiment` and `topicIds` can be updated. Other fields are immutable after creation.
+      tags:
+        - Articles
+      security:
+        - ServiceRoleAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Article ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateArticleCommand'
+            examples:
+              addSentiment:
+                summary: Add sentiment analysis
+                value:
+                  sentiment: "neutral"
+              addTopics:
+                summary: Add topic associations
+                value:
+                  topicIds:
+                    - "770e8400-e29b-41d4-a716-446655440002"
+                    - "880e8400-e29b-41d4-a716-446655440003"
+              fullUpdate:
+                summary: Update sentiment and topics
+                value:
+                  sentiment: "positive"
+                  topicIds:
+                    - "770e8400-e29b-41d4-a716-446655440002"
+      responses:
+        '200':
+          description: Article updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleEntity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/UnauthorizedServiceRole'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete article
+      description: |
+        Deletes an article. **Service role only** - primarily used by retention policy cron job.
+        
+        Associated topic relationships are automatically removed (CASCADE).
+      tags:
+        - Articles
+      security:
+        - ServiceRoleAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Article ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Article deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedServiceRole'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /profile:
+    get:
+      summary: Get user profile
+      description: |
+        Retrieves the authenticated user's profile with mood preferences and blocklist settings.
+        
+        If the profile doesn't exist, returns 404. The frontend should call POST /api/profile to create one.
+      tags:
+        - Profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileDto'
+              examples:
+                withPreferences:
+                  summary: Profile with mood and blocklist
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    userId: "660e8400-e29b-41d4-a716-446655440001"
+                    mood: "positive"
+                    blocklist:
+                      - "covid"
+                      - "election"
+                      - "tabloid.com"
+                    createdAt: "2025-11-10T08:00:00Z"
+                    updatedAt: "2025-11-15T09:00:00Z"
+                default:
+                  summary: Default profile (no preferences)
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    userId: "660e8400-e29b-41d4-a716-446655440001"
+                    mood: null
+                    blocklist: []
+                    createdAt: "2025-11-10T08:00:00Z"
+                    updatedAt: "2025-11-10T08:00:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Profile not found"
+                code: "PROFILE_NOT_FOUND"
+                timestamp: "2025-11-15T10:30:00Z"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create profile
+      description: |
+        Creates a profile for the authenticated user. Automatically called after registration if profile doesn't exist.
+        
+        User ID is derived from authentication context, not from request body.
+      tags:
+        - Profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProfileCommand'
+            examples:
+              default:
+                summary: Create with default values
+                value:
+                  mood: null
+                  blocklist: []
+              withPreferences:
+                summary: Create with initial preferences
+                value:
+                  mood: "neutral"
+                  blocklist:
+                    - "spam"
+      responses:
+        '201':
+          description: Profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Profile already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Profile already exists for this user"
+                code: "CONFLICT"
+                timestamp: "2025-11-15T10:30:00Z"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Update profile
+      description: |
+        Updates the authenticated user's profile preferences.
+        
+        All fields are optional for partial updates. User ID cannot be changed.
+      tags:
+        - Profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileCommand'
+            examples:
+              updateMood:
+                summary: Update mood only
+                value:
+                  mood: "positive"
+              updateBlocklist:
+                summary: Update blocklist only
+                value:
+                  blocklist:
+                    - "covid"
+                    - "election"
+                    - "tabloid.com"
+              updateBoth:
+                summary: Update mood and blocklist
+                value:
+                  mood: "negative"
+                  blocklist:
+                    - "spam"
+                    - "ads"
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete profile
+      description: Deletes the authenticated user's profile.
+      tags:
+        - Profile
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Profile deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rss-sources:
+    get:
+      summary: List RSS sources
+      description: Retrieves all RSS sources with pagination.
+      tags:
+        - RSS Sources
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - name: limit
+          in: query
+          description: Number of sources per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Pagination offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RssSourceListResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create RSS source
+      description: |
+        Creates a new RSS source. **Service role only**.
+        
+        The source URL must be unique. If a duplicate URL is provided, a 409 Conflict response is returned.
+      tags:
+        - RSS Sources
+      security:
+        - ServiceRoleAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRssSourceCommand'
+            example:
+              name: "The Guardian - World"
+              url: "https://www.theguardian.com/world/rss"
+      responses:
+        '201':
+          description: RSS source created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RssSourceDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/UnauthorizedServiceRole'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rss-sources/{id}:
+    get:
+      summary: Get RSS source by ID
+      description: Retrieves a single RSS source by its ID.
+      tags:
+        - RSS Sources
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: RSS source ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: RSS source found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RssSourceDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Update RSS source
+      description: Updates an RSS source. **Service role only**.
+      tags:
+        - RSS Sources
+      security:
+        - ServiceRoleAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: RSS source ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRssSourceCommand'
+            example:
+              name: "The Guardian - World News"
+              url: "https://www.theguardian.com/world/rss"
+      responses:
+        '200':
+          description: RSS source updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RssSourceDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/UnauthorizedServiceRole'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete RSS source
+      description: |
+        Deletes an RSS source. **Service role only**.
+        
+        Associated articles are automatically deleted (CASCADE).
+      tags:
+        - RSS Sources
+      security:
+        - ServiceRoleAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: RSS source ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: RSS source deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedServiceRole'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /topics:
+    get:
+      summary: List topics
+      description: |
+        Retrieves all topics with optional filtering and pagination.
+        
+        Supports case-insensitive search by topic name.
+      tags:
+        - Topics
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - name: limit
+          in: query
+          description: Number of topics per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+        - name: offset
+          in: query
+          description: Pagination offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: search
+          in: query
+          description: Case-insensitive search by topic name
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicListResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create topic
+      description: |
+        Creates a new topic or returns existing one if name already exists (case-insensitive). **Service role only**.
+        
+        Used by AI analysis job to create topics dynamically.
+      tags:
+        - Topics
+      security:
+        - ServiceRoleAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTopicCommand'
+            example:
+              name: "climate change"
+      responses:
+        '200':
+          description: Topic found (already exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicDto'
+        '201':
+          description: Topic created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/UnauthorizedServiceRole'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /topics/{id}:
+    get:
+      summary: Get topic by ID
+      description: Retrieves a single topic by its ID.
+      tags:
+        - Topics
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Topic ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Topic found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete topic
+      description: |
+        Deletes a topic. **Service role only**.
+        
+        Associated article-topic relationships are automatically removed (CASCADE).
+      tags:
+        - Topics
+      security:
+        - ServiceRoleAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Topic ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Topic deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedServiceRole'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Supabase JWT token obtained from Supabase Auth.
+        Include in Authorization header: `Bearer <token>`
+    ServiceRoleAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Service role JWT token with elevated permissions.
+        Used by backend jobs (RSS fetching, AI analysis, data retention).
+
+  schemas:
+    # Enums
+    ArticleSentiment:
+      type: string
+      enum: [positive, neutral, negative]
+      description: Article sentiment determined by AI analysis
+      example: positive
+
+    UserMood:
+      type: string
+      enum: [positive, neutral, negative]
+      description: User mood preference for article filtering
+      example: positive
+
+    # Article Schemas
+    ArticleSourceDto:
+      type: object
+      required:
+        - id
+        - name
+        - url
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: RSS source ID
+        name:
+          type: string
+          description: RSS source name
+          example: "BBC News - World"
+        url:
+          type: string
+          format: uri
+          description: RSS feed URL
+          example: "http://feeds.bbci.co.uk/news/world/rss.xml"
+
+    ArticleTopicDto:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Topic ID
+        name:
+          type: string
+          description: Topic name
+          example: "technology"
+
+    ArticleDto:
+      type: object
+      required:
+        - id
+        - title
+        - link
+        - publicationDate
+        - source
+        - topics
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Article ID
+        title:
+          type: string
+          maxLength: 1000
+          description: Article title
+          example: "Breaking News Article"
+        description:
+          type: string
+          nullable: true
+          maxLength: 5000
+          description: Article description or excerpt
+          example: "This is a sample article description"
+        link:
+          type: string
+          format: uri
+          description: Link to original article
+          example: "https://example.com/article"
+        publicationDate:
+          type: string
+          format: date-time
+          description: Article publication date (ISO 8601)
+          example: "2025-11-15T10:30:00Z"
+        sentiment:
+          $ref: '#/components/schemas/ArticleSentiment'
+          nullable: true
+        source:
+          $ref: '#/components/schemas/ArticleSourceDto'
+        topics:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArticleTopicDto'
+          description: Associated topics
+        createdAt:
+          type: string
+          format: date-time
+          description: When the article was created in the system
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the article was last updated
+
+    ArticleEntity:
+      type: object
+      required:
+        - id
+        - sourceId
+        - title
+        - link
+        - publicationDate
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 1000
+        description:
+          type: string
+          nullable: true
+          maxLength: 5000
+        link:
+          type: string
+          format: uri
+        publicationDate:
+          type: string
+          format: date-time
+        sentiment:
+          $ref: '#/components/schemas/ArticleSentiment'
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ArticleFiltersApplied:
+      type: object
+      properties:
+        sentiment:
+          $ref: '#/components/schemas/ArticleSentiment'
+        personalization:
+          type: boolean
+          description: Whether personalization filters were applied
+        blockedItemsCount:
+          type: integer
+          description: Number of articles blocked by user's blocklist
+          example: 5
+
+    ArticleListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArticleDto'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+        filtersApplied:
+          $ref: '#/components/schemas/ArticleFiltersApplied'
+
+    CreateArticleCommand:
+      type: object
+      required:
+        - sourceId
+        - title
+        - link
+        - publicationDate
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+          description: RSS source ID (must exist)
+        title:
+          type: string
+          maxLength: 1000
+        description:
+          type: string
+          nullable: true
+          maxLength: 5000
+        link:
+          type: string
+          format: uri
+          description: Article URL (must be unique)
+        publicationDate:
+          type: string
+          format: date-time
+        sentiment:
+          $ref: '#/components/schemas/ArticleSentiment'
+          nullable: true
+        topicIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Array of topic IDs to associate with the article
+
+    UpdateArticleCommand:
+      type: object
+      properties:
+        sentiment:
+          $ref: '#/components/schemas/ArticleSentiment'
+          nullable: true
+        topicIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Array of topic IDs to associate with the article
+
+    # Profile Schemas
+    ProfileDto:
+      type: object
+      required:
+        - id
+        - userId
+        - blocklist
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Profile ID
+        userId:
+          type: string
+          format: uuid
+          description: User ID (matches authenticated user)
+        mood:
+          $ref: '#/components/schemas/UserMood'
+          nullable: true
+          description: User's preferred mood filter
+        blocklist:
+          type: array
+          items:
+            type: string
+            maxLength: 500
+          maxItems: 1000
+          description: List of keywords and URL fragments to filter out
+          example: ["covid", "election", "tabloid.com"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateProfileCommand:
+      type: object
+      properties:
+        mood:
+          $ref: '#/components/schemas/UserMood'
+          nullable: true
+        blocklist:
+          type: array
+          items:
+            type: string
+            maxLength: 500
+          maxItems: 1000
+          default: []
+
+    UpdateProfileCommand:
+      type: object
+      properties:
+        mood:
+          $ref: '#/components/schemas/UserMood'
+          nullable: true
+        blocklist:
+          type: array
+          items:
+            type: string
+            maxLength: 500
+          maxItems: 1000
+
+    # RSS Source Schemas
+    RssSourceDto:
+      type: object
+      required:
+        - id
+        - name
+        - url
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 200
+          example: "BBC News - World"
+        url:
+          type: string
+          format: uri
+          example: "http://feeds.bbci.co.uk/news/world/rss.xml"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RssSourceListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RssSourceDto'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    CreateRssSourceCommand:
+      type: object
+      required:
+        - name
+        - url
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        url:
+          type: string
+          format: uri
+          description: RSS feed URL (must be unique)
+
+    UpdateRssSourceCommand:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        url:
+          type: string
+          format: uri
+
+    # Topic Schemas
+    TopicDto:
+      type: object
+      required:
+        - id
+        - name
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 100
+          example: "technology"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TopicListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopicDto'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    CreateTopicCommand:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: Topic name (case-insensitive unique)
+
+    # Common Schemas
+    PaginationMetadata:
+      type: object
+      required:
+        - limit
+        - offset
+        - total
+        - hasMore
+      properties:
+        limit:
+          type: integer
+          description: Number of items per page
+          example: 20
+        offset:
+          type: integer
+          description: Pagination offset
+          example: 0
+        total:
+          type: integer
+          description: Total number of items available
+          example: 150
+        hasMore:
+          type: boolean
+          description: Whether there are more items available
+          example: true
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "Authentication required"
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "AUTHENTICATION_REQUIRED"
+        details:
+          type: object
+          description: Additional error context
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2025-11-15T10:30:00Z"
+
+    ValidationErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          required:
+            - details
+          properties:
+            details:
+              type: array
+              items:
+                type: object
+                required:
+                  - field
+                  - message
+                properties:
+                  field:
+                    type: string
+                    description: Field path (e.g., "title", "blocklist.0")
+                    example: "title"
+                  message:
+                    type: string
+                    description: Validation error message
+                    example: "title is required"
+
+  responses:
+    BadRequest:
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+          examples:
+            validation:
+              summary: Validation error
+              value:
+                error: "Validation failed"
+                details:
+                  - field: "title"
+                    message: "title is required"
+                  - field: "link"
+                    message: "link must be a valid URL"
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Authentication required"
+            code: "AUTHENTICATION_REQUIRED"
+            timestamp: "2025-11-15T10:30:00Z"
+
+    UnauthorizedPersonalization:
+      description: Unauthorized - authentication required for personalization
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Authentication required for personalized filtering"
+            code: "AUTHENTICATION_REQUIRED"
+            timestamp: "2025-11-15T10:30:00Z"
+
+    UnauthorizedServiceRole:
+      description: Unauthorized - service role required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Service role required for this endpoint"
+            code: "FORBIDDEN"
+            timestamp: "2025-11-15T10:30:00Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Resource not found"
+            code: "NOT_FOUND"
+            timestamp: "2025-11-15T10:30:00Z"
+
+    Conflict:
+      description: Conflict - resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            duplicateArticle:
+              summary: Duplicate article link
+              value:
+                error: "Article with this link already exists"
+                code: "ARTICLE_ALREADY_EXISTS"
+                timestamp: "2025-11-15T10:30:00Z"
+            duplicateRssSource:
+              summary: Duplicate RSS source URL
+              value:
+                error: "RSS source with this URL already exists"
+                code: "RSS_SOURCE_ALREADY_EXISTS"
+                timestamp: "2025-11-15T10:30:00Z"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Internal server error"
+            code: "INTERNAL_ERROR"
+            timestamp: "2025-11-15T10:30:00Z"
+
