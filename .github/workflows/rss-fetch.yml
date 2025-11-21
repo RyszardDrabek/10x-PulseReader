@@ -1,0 +1,48 @@
+name: RSS Feed Fetcher
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  fetch-rss:
+    name: Fetch RSS Feeds
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch RSS Feeds
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "Error: APP_URL secret is not set"
+            exit 1
+          fi
+          
+          if [ -z "$SERVICE_ROLE_KEY" ]; then
+            echo "Error: SUPABASE_SERVICE_ROLE_KEY secret is not set"
+            exit 1
+          fi
+          
+          echo "Calling RSS fetch endpoint: $APP_URL/api/cron/fetch-rss"
+          
+          response=$(curl -s -w "\n%{http_code}" -X POST "$APP_URL/api/cron/fetch-rss" \
+            -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          # Exit with error if status code is not 2xx
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "Error: RSS fetch failed with HTTP $http_code"
+            exit 1
+          fi
+          
+          echo "RSS fetch completed successfully"
+

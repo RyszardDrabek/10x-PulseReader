@@ -205,6 +205,52 @@ export class RssSourceService {
   }
 
   /**
+   * Fetches all active RSS sources for cron job processing.
+   *
+   * @returns Array of active RSS source DTOs
+   * @throws DatabaseError if database query fails
+   */
+  async getActiveRssSources(): Promise<RssSourceDto[]> {
+    const { data, error } = await this.supabase
+      .schema("app")
+      .from("rss_sources")
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      throw new DatabaseError(`Failed to fetch active RSS sources: ${error.message}`, error);
+    }
+
+    return (data || []).map((source) => this.mapToDto(source));
+  }
+
+  /**
+   * Updates the fetch status of an RSS source after a fetch attempt.
+   *
+   * @param id - UUID of the RSS source
+   * @param success - Whether the fetch was successful
+   * @param errorMessage - Error message if fetch failed (optional)
+   * @throws DatabaseError if database update fails
+   */
+  async updateFetchStatus(id: string, success: boolean, errorMessage?: string): Promise<void> {
+    const updateData: Database["app"]["Tables"]["rss_sources"]["Update"] = {};
+
+    if (success) {
+      updateData.last_fetched_at = new Date().toISOString();
+      updateData.last_fetch_error = null;
+    } else {
+      updateData.last_fetch_error = errorMessage || "Unknown error";
+    }
+
+    const { error } = await this.supabase.schema("app").from("rss_sources").update(updateData).eq("id", id);
+
+    if (error) {
+      throw new DatabaseError(`Failed to update fetch status: ${error.message}`, error);
+    }
+  }
+
+  /**
    * Finds an RSS source by URL.
    *
    * @param url - URL to search for
@@ -236,6 +282,9 @@ export class RssSourceService {
       id: row.id,
       name: row.name,
       url: row.url,
+      isActive: row.is_active ?? true,
+      lastFetchedAt: row.last_fetched_at ?? null,
+      lastFetchError: row.last_fetch_error ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

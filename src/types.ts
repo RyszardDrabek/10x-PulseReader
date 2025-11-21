@@ -47,6 +47,9 @@ export interface RssSourceEntity {
   id: string;
   name: string;
   url: string;
+  isActive: boolean;
+  lastFetchedAt: string | null;
+  lastFetchError: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -192,6 +195,9 @@ export interface ProfileUpdate {
 export interface RssSourceUpdate {
   name?: string;
   url?: string;
+  isActive?: boolean;
+  lastFetchedAt?: string | null;
+  lastFetchError?: string | null;
   updatedAt?: string;
 }
 

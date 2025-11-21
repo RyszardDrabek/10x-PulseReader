@@ -119,6 +119,9 @@ describe("RssSourceService.getRssSources", () => {
         id: "source-1",
         name: "BBC News",
         url: "https://bbc.com/rss",
+        is_active: true,
+        last_fetched_at: null,
+        last_fetch_error: null,
         created_at: "2024-01-01T00:00:00Z",
         updated_at: "2024-01-01T00:00:00Z",
       },
@@ -126,6 +129,9 @@ describe("RssSourceService.getRssSources", () => {
         id: "source-2",
         name: "The Guardian",
         url: "https://guardian.com/rss",
+        is_active: true,
+        last_fetched_at: null,
+        last_fetch_error: null,
         created_at: "2024-01-02T00:00:00Z",
         updated_at: "2024-01-02T00:00:00Z",
       },
@@ -233,6 +239,9 @@ describe("RssSourceService.getRssSources", () => {
     expect(result.data[0]).toHaveProperty("id");
     expect(result.data[0]).toHaveProperty("name");
     expect(result.data[0]).toHaveProperty("url");
+    expect(result.data[0]).toHaveProperty("isActive");
+    expect(result.data[0]).toHaveProperty("lastFetchedAt");
+    expect(result.data[0]).toHaveProperty("lastFetchError");
     expect(result.data[0]).toHaveProperty("createdAt");
     expect(result.data[0]).toHaveProperty("updatedAt");
     expect(result.data[0]).not.toHaveProperty("created_at");
@@ -262,6 +271,9 @@ describe("RssSourceService.getRssSourceById", () => {
       id: "source-1",
       name: "BBC News",
       url: "https://bbc.com/rss",
+      is_active: true,
+      last_fetched_at: null,
+      last_fetch_error: null,
       created_at: "2024-01-01T00:00:00Z",
       updated_at: "2024-01-01T00:00:00Z",
     };
@@ -622,5 +634,373 @@ describe("RssSourceService.deleteRssSource", () => {
     });
 
     await expect(service.deleteRssSource(id)).rejects.toThrow("NOT_FOUND");
+  });
+});
+
+describe("RssSourceService.getActiveRssSources", () => {
+  test("should fetch all active RSS sources", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new RssSourceService(client);
+
+    const mockSources = [
+      {
+        id: "source-1",
+        name: "BBC News",
+        url: "https://bbc.com/rss",
+        is_active: true,
+        last_fetched_at: "2024-01-01T10:00:00Z",
+        last_fetch_error: null,
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+      },
+      {
+        id: "source-2",
+        name: "The Guardian",
+        url: "https://guardian.com/rss",
+        is_active: true,
+        last_fetched_at: null,
+        last_fetch_error: null,
+        created_at: "2024-01-02T00:00:00Z",
+        updated_at: "2024-01-02T00:00:00Z",
+      },
+    ];
+
+    // Mock eq() to return a chainable object that resolves to data
+    mocks.eq.mockImplementation(() => {
+      const chainObj = {
+        eq: mocks.eq,
+        order: mocks.order,
+        range: mocks.range,
+        select: mocks.select,
+        insert: mocks.insert,
+        update: mocks.update,
+        delete: mocks.delete,
+        single: mocks.single,
+        from: mocks.from,
+      };
+      const thenable = Promise.resolve({ data: mockSources, error: null });
+      return Object.assign(chainObj, {
+        then: thenable.then.bind(thenable),
+        catch: thenable.catch.bind(thenable),
+      });
+    });
+
+    mocks.order.mockImplementation(() => {
+      const chainObj = {
+        eq: mocks.eq,
+        order: mocks.order,
+        range: mocks.range,
+        select: mocks.select,
+        insert: mocks.insert,
+        update: mocks.update,
+        delete: mocks.delete,
+        single: mocks.single,
+        from: mocks.from,
+      };
+      const thenable = Promise.resolve({ data: mockSources, error: null });
+      return Object.assign(chainObj, {
+        then: thenable.then.bind(thenable),
+        catch: thenable.catch.bind(thenable),
+      });
+    });
+
+    const result = await service.getActiveRssSources();
+
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe("source-1");
+    expect(result[0].isActive).toBe(true);
+    expect(result[0].lastFetchedAt).toBe("2024-01-01T10:00:00Z");
+    expect(result[1].id).toBe("source-2");
+    expect(result[1].isActive).toBe(true);
+    expect(result[1].lastFetchedAt).toBeNull();
+    expect(mocks.schema).toHaveBeenCalledWith("app");
+    expect(mocks.from).toHaveBeenCalledWith("rss_sources");
+    expect(mocks.select).toHaveBeenCalledWith("*");
+    expect(mocks.eq).toHaveBeenCalledWith("is_active", true);
+    expect(mocks.order).toHaveBeenCalledWith("created_at", { ascending: true });
+  });
+
+  test("should return empty array when no active sources", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new RssSourceService(client);
+
+    mocks.eq.mockImplementation(() => {
+      const chainObj = {
+        eq: mocks.eq,
+        order: mocks.order,
+        range: mocks.range,
+        select: mocks.select,
+        insert: mocks.insert,
+        update: mocks.update,
+        delete: mocks.delete,
+        single: mocks.single,
+        from: mocks.from,
+      };
+      const thenable = Promise.resolve({ data: [], error: null });
+      return Object.assign(chainObj, {
+        then: thenable.then.bind(thenable),
+        catch: thenable.catch.bind(thenable),
+      });
+    });
+
+    mocks.order.mockImplementation(() => {
+      const chainObj = {
+        eq: mocks.eq,
+        order: mocks.order,
+        range: mocks.range,
+        select: mocks.select,
+        insert: mocks.insert,
+        update: mocks.update,
+        delete: mocks.delete,
+        single: mocks.single,
+        from: mocks.from,
+      };
+      const thenable = Promise.resolve({ data: [], error: null });
+      return Object.assign(chainObj, {
+        then: thenable.then.bind(thenable),
+        catch: thenable.catch.bind(thenable),
+      });
+    });
+
+    const result = await service.getActiveRssSources();
+
+    expect(result).toEqual([]);
+  });
+
+  test("should map database rows to camelCase DTOs with new fields", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new RssSourceService(client);
+
+    const mockSource = {
+      id: "source-1",
+      name: "Test Source",
+      url: "https://example.com/rss",
+      is_active: true,
+      last_fetched_at: "2024-01-01T10:00:00Z",
+      last_fetch_error: "Some error",
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-01T00:00:00Z",
+    };
+
+    mocks.eq.mockImplementation(() => {
+      const chainObj = {
+        eq: mocks.eq,
+        order: mocks.order,
+        range: mocks.range,
+        select: mocks.select,
+        insert: mocks.insert,
+        update: mocks.update,
+        delete: mocks.delete,
+        single: mocks.single,
+        from: mocks.from,
+      };
+      const thenable = Promise.resolve({ data: [mockSource], error: null });
+      return Object.assign(chainObj, {
+        then: thenable.then.bind(thenable),
+        catch: thenable.catch.bind(thenable),
+      });
+    });
+
+    mocks.order.mockImplementation(() => {
+      const chainObj = {
+        eq: mocks.eq,
+        order: mocks.order,
+        range: mocks.range,
+        select: mocks.select,
+        insert: mocks.insert,
+        update: mocks.update,
+        delete: mocks.delete,
+        single: mocks.single,
+        from: mocks.from,
+      };
+      const thenable = Promise.resolve({ data: [mockSource], error: null });
+      return Object.assign(chainObj, {
+        then: thenable.then.bind(thenable),
+        catch: thenable.catch.bind(thenable),
+      });
+    });
+
+    const result = await service.getActiveRssSources();
+
+    expect(result[0]).toHaveProperty("isActive");
+    expect(result[0]).toHaveProperty("lastFetchedAt");
+    expect(result[0]).toHaveProperty("lastFetchError");
+    expect(result[0].isActive).toBe(true);
+    expect(result[0].lastFetchedAt).toBe("2024-01-01T10:00:00Z");
+    expect(result[0].lastFetchError).toBe("Some error");
+  });
+
+  test("should throw DatabaseError on database error", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new RssSourceService(client);
+
+    mocks.order.mockImplementation(() => {
+      const chainObj = {
+        eq: mocks.eq,
+        order: mocks.order,
+        range: mocks.range,
+        select: mocks.select,
+        insert: mocks.insert,
+        update: mocks.update,
+        delete: mocks.delete,
+        single: mocks.single,
+        from: mocks.from,
+      };
+      const thenable = Promise.resolve({
+        data: null,
+        error: { code: "PGRST301", message: "Database error", details: "", hint: "", name: "PostgrestError" },
+      });
+      return Object.assign(chainObj, {
+        then: thenable.then.bind(thenable),
+        catch: thenable.catch.bind(thenable),
+      });
+    });
+
+    await expect(service.getActiveRssSources()).rejects.toThrow();
+  });
+});
+
+describe("RssSourceService.updateFetchStatus", () => {
+  test("should update fetch status on success", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new RssSourceService(client);
+
+    const id = "source-1";
+
+    mocks.eq.mockImplementation(() => {
+      const chainObj = {
+        eq: mocks.eq,
+        order: mocks.order,
+        range: mocks.range,
+        select: mocks.select,
+        insert: mocks.insert,
+        update: mocks.update,
+        delete: mocks.delete,
+        single: mocks.single,
+        from: mocks.from,
+      };
+      const thenable = Promise.resolve({ data: null, error: null });
+      return Object.assign(chainObj, {
+        then: thenable.then.bind(thenable),
+        catch: thenable.catch.bind(thenable),
+      });
+    });
+
+    await service.updateFetchStatus(id, true);
+
+    expect(mocks.schema).toHaveBeenCalledWith("app");
+    expect(mocks.from).toHaveBeenCalledWith("rss_sources");
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        last_fetched_at: expect.any(String),
+        last_fetch_error: null,
+      })
+    );
+    expect(mocks.eq).toHaveBeenCalledWith("id", id);
+  });
+
+  test("should update fetch status on failure with error message", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new RssSourceService(client);
+
+    const id = "source-1";
+    const errorMessage = "Network timeout";
+
+    mocks.eq.mockImplementation(() => {
+      const chainObj = {
+        eq: mocks.eq,
+        order: mocks.order,
+        range: mocks.range,
+        select: mocks.select,
+        insert: mocks.insert,
+        update: mocks.update,
+        delete: mocks.delete,
+        single: mocks.single,
+        from: mocks.from,
+      };
+      const thenable = Promise.resolve({ data: null, error: null });
+      return Object.assign(chainObj, {
+        then: thenable.then.bind(thenable),
+        catch: thenable.catch.bind(thenable),
+      });
+    });
+
+    await service.updateFetchStatus(id, false, errorMessage);
+
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        last_fetch_error: errorMessage,
+      })
+    );
+    expect(mocks.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        last_fetched_at: expect.anything(),
+      })
+    );
+  });
+
+  test("should use default error message when not provided", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new RssSourceService(client);
+
+    const id = "source-1";
+
+    mocks.eq.mockImplementation(() => {
+      const chainObj = {
+        eq: mocks.eq,
+        order: mocks.order,
+        range: mocks.range,
+        select: mocks.select,
+        insert: mocks.insert,
+        update: mocks.update,
+        delete: mocks.delete,
+        single: mocks.single,
+        from: mocks.from,
+      };
+      const thenable = Promise.resolve({ data: null, error: null });
+      return Object.assign(chainObj, {
+        then: thenable.then.bind(thenable),
+        catch: thenable.catch.bind(thenable),
+      });
+    });
+
+    await service.updateFetchStatus(id, false);
+
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        last_fetch_error: "Unknown error",
+      })
+    );
+  });
+
+  test("should throw DatabaseError on database error", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new RssSourceService(client);
+
+    const id = "source-1";
+
+    mocks.eq.mockImplementation(() => {
+      const chainObj = {
+        eq: mocks.eq,
+        order: mocks.order,
+        range: mocks.range,
+        select: mocks.select,
+        insert: mocks.insert,
+        update: mocks.update,
+        delete: mocks.delete,
+        single: mocks.single,
+        from: mocks.from,
+      };
+      const thenable = Promise.resolve({
+        data: null,
+        error: { code: "PGRST301", message: "Database error", details: "", hint: "", name: "PostgrestError" },
+      });
+      return Object.assign(chainObj, {
+        then: thenable.then.bind(thenable),
+        catch: thenable.catch.bind(thenable),
+      });
+    });
+
+    await expect(service.updateFetchStatus(id, true)).rejects.toThrow();
   });
 });
