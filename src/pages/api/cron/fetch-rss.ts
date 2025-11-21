@@ -19,27 +19,36 @@ export const prerender = false;
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const POST: APIRoute = async (context) => {
-  const supabase = context.locals.supabase;
-  const user = context.locals.user;
+  try {
+    const supabase = context.locals.supabase;
+    const user = context.locals.user;
 
-  // Validate Supabase client is available
-  if (!supabase) {
-    logger.error("Supabase client not initialized", {
-      endpoint: "POST /api/cron/fetch-rss",
-    });
+    // Validate Supabase client is available
+    if (!supabase) {
+      logger.error("Supabase client not initialized", {
+        endpoint: "POST /api/cron/fetch-rss",
+      });
 
-    return new Response(
-      JSON.stringify({
-        error: "Server configuration error: Supabase client not available",
-        code: "CONFIGURATION_ERROR",
-        timestamp: new Date().toISOString(),
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
+      return new Response(
+        JSON.stringify({
+          error: "Server configuration error: Supabase client not available",
+          code: "CONFIGURATION_ERROR",
+          timestamp: new Date().toISOString(),
+          debug: {
+            hasSupabase: !!supabase,
+            hasUser: !!user,
+            envVars: {
+              hasServiceRoleKey: !!import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
+              hasSupabaseUrl: !!(import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL),
+            },
+          },
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
 
   // Check authentication
   if (!user) {
@@ -252,6 +261,24 @@ export const POST: APIRoute = async (context) => {
         code: "INTERNAL_ERROR",
         timestamp: new Date().toISOString(),
         ...(errorDetails && { details: errorDetails }),
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  } catch (outerError) {
+    // Catch any errors that occur outside the main try block
+    logger.error("Critical error in RSS fetch endpoint", outerError, {
+      endpoint: "POST /api/cron/fetch-rss",
+    });
+
+    return new Response(
+      JSON.stringify({
+        error: "Critical server error",
+        code: "CRITICAL_ERROR",
+        timestamp: new Date().toISOString(),
+        message: outerError instanceof Error ? outerError.message : String(outerError),
       }),
       {
         status: 500,
