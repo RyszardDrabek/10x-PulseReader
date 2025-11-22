@@ -24,6 +24,10 @@ export default defineConfig({
       external: ["sonner"], // Exclude sonner from SSR bundle
       noExternal: ["@supabase/supabase-js", "@supabase/ssr", "@supabase/auth-helpers-shared"],
     },
+    define: {
+      // Polyfill global for compatibility
+      global: "globalThis",
+    },
   },
   adapter: cloudflare(),
 });

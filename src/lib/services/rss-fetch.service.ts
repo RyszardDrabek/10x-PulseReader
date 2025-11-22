@@ -1,5 +1,3 @@
-import Parser from "rss-parser";
-
 import { logger } from "../utils/logger.ts";
 
 /**
@@ -24,28 +22,9 @@ export interface RssFetchResult {
 /**
  * Service for fetching and parsing RSS feeds.
  * Handles RSS feed fetching, XML parsing, and error handling.
+ * Uses native DOMParser for Cloudflare Workers compatibility.
  */
 export class RssFetchService {
-  private parser: Parser;
-
-  constructor() {
-    this.parser = new Parser({
-      timeout: 30000, // 30 seconds timeout per feed
-      customFields: {
-        item: [
-          ["pubDate", "pubDate"],
-          ["dc:date", "dcDate"],
-        ],
-      },
-      // Use fetch API for Cloudflare Workers compatibility
-      requestOptions: {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; RSS Reader/1.0)",
-        },
-      },
-    });
-  }
-
   /**
    * Fetches and parses an RSS feed from a given URL.
    *
@@ -56,8 +35,7 @@ export class RssFetchService {
     try {
       logger.info("Fetching RSS feed", { url });
 
-      // Use fetch API for Cloudflare Workers compatibility
-      // Fetch the RSS feed first, then parse it
+      // Fetch the RSS feed
       const response = await fetch(url, {
         headers: {
           "User-Agent": "Mozilla/5.0 (compatible; RSS Reader/1.0)",
@@ -70,23 +48,11 @@ export class RssFetchService {
       }
 
       const xmlText = await response.text();
-      const feed = await this.parser.parseString(xmlText);
-
-      if (!feed.items || feed.items.length === 0) {
-        logger.warn("RSS feed contains no items", { url });
-        return {
-          success: true,
-          items: [],
-        };
-      }
-
-      const items: ParsedRssItem[] = feed.items
-        .map((item) => this.parseRssItem(item))
-        .filter((item): item is ParsedRssItem => item !== null);
+      const items = this.parseRssXml(xmlText);
 
       logger.info("RSS feed fetched successfully", {
         url,
-        itemsFound: feed.items.length,
+        itemsFound: items.length,
         itemsParsed: items.length,
       });
 
@@ -107,61 +73,194 @@ export class RssFetchService {
   }
 
   /**
-   * Parses a single RSS item into a structured format.
+   * Parses RSS XML using DOMParser (Cloudflare Workers compatible).
    *
-   * @param item - RSS item from rss-parser
+   * @param xmlText - RSS XML as string
+   * @returns Array of parsed RSS items
+   */
+  private parseRssXml(xmlText: string): ParsedRssItem[] {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlText, "text/xml");
+
+      // Check for parser errors
+      const parseError = doc.querySelector("parsererror");
+      if (parseError) {
+        throw new Error("Invalid XML format");
+      }
+
+      // Find all item elements (works for RSS and Atom feeds)
+      const items: ParsedRssItem[] = [];
+      const itemElements = doc.querySelectorAll("item, entry");
+
+      for (const itemElement of itemElements) {
+        const item = this.parseRssItemElement(itemElement);
+        if (item) {
+          items.push(item);
+        }
+      }
+
+      return items;
+    } catch (error) {
+      logger.warn("Failed to parse RSS XML with DOMParser, falling back to regex", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Fallback to simple regex parsing if DOMParser fails
+      return this.parseRssWithRegex(xmlText);
+    }
+  }
+
+  /**
+   * Parses a single RSS item element using DOM API.
+   *
+   * @param itemElement - XML element representing an RSS item
    * @returns ParsedRssItem or null if item is invalid
    */
-  private parseRssItem(item: Parser.Item): ParsedRssItem | null {
-    // Validate required fields
-    if (!item.title || !item.link) {
-      return null;
+  private parseRssItemElement(itemElement: Element): ParsedRssItem | null {
+    // Get title (required)
+    const titleElement = itemElement.querySelector("title");
+    const title = titleElement?.textContent?.trim();
+    if (!title) return null;
+
+    // Get link (required) - try multiple possible tag names
+    const linkSelectors = ["link", "guid"];
+    let link: string | null = null;
+
+    for (const selector of linkSelectors) {
+      const linkElement = itemElement.querySelector(selector);
+      if (linkElement) {
+        // For Atom feeds, link might be an attribute
+        link = linkElement.getAttribute("href") || linkElement.textContent?.trim() || null;
+        if (link) break;
+      }
     }
 
-    // Parse publication date
-    let publicationDate: Date;
-    try {
-      // Try multiple date formats
-      if (item.pubDate) {
-        publicationDate = new Date(item.pubDate);
-      } else if (item.isoDate) {
-        publicationDate = new Date(item.isoDate);
-      } else if ((item as { dcDate?: string }).dcDate) {
-        publicationDate = new Date((item as { dcDate: string }).dcDate);
-      } else {
-        // Default to current date if no date found
-        publicationDate = new Date();
-      }
+    if (!link) return null;
 
-      // Validate date
-      if (Number.isNaN(publicationDate.getTime())) {
-        publicationDate = new Date();
-      }
-    } catch {
-      // Fallback to current date on parse error
-      publicationDate = new Date();
-    }
-
-    // Normalize description (can be HTML, plain text, or null)
+    // Get description/content
+    const descriptionSelectors = ["description", "summary", "content"];
     let description: string | null = null;
-    if (item.contentSnippet) {
-      description = item.contentSnippet.trim();
-    } else if (item.content) {
-      // Strip HTML tags for content field
-      description = this.stripHtml(item.content).trim();
-    } else if (item.summary) {
-      description = item.summary.trim();
+
+    for (const selector of descriptionSelectors) {
+      const descElement = itemElement.querySelector(selector);
+      if (descElement?.textContent) {
+        description = descElement.textContent.trim();
+        break;
+      }
     }
 
-    // Limit description length to 5000 characters (database constraint)
-    if (description && description.length > 5000) {
-      description = description.substring(0, 5000);
+    // Get publication date
+    const dateSelectors = ["pubDate", "published", "updated", "dc\\:date"];
+    let publicationDate: Date = new Date();
+
+    for (const selector of dateSelectors) {
+      const dateElement = itemElement.querySelector(selector);
+      if (dateElement?.textContent) {
+        try {
+          publicationDate = new Date(dateElement.textContent.trim());
+          if (!Number.isNaN(publicationDate.getTime())) {
+            break;
+          }
+        } catch {
+          // Continue to next selector
+        }
+      }
+    }
+
+    // Clean and limit description
+    if (description) {
+      description = this.stripHtml(description);
+      if (description.length > 5000) {
+        description = description.substring(0, 5000);
+      }
     }
 
     return {
-      title: item.title.trim(),
+      title,
       description: description || null,
-      link: item.link.trim(),
+      link,
+      publicationDate: publicationDate.toISOString(),
+    };
+  }
+
+  /**
+   * Fallback RSS parsing using regex (simpler but less reliable).
+   *
+   * @param xmlText - RSS XML as string
+   * @returns Array of parsed RSS items
+   */
+  private parseRssWithRegex(xmlText: string): ParsedRssItem[] {
+    const items: ParsedRssItem[] = [];
+
+    // Simple regex to extract items
+    const itemRegex = /<item[^>]*>(.*?)<\/item>/gis;
+    let itemMatch;
+
+    while ((itemMatch = itemRegex.exec(xmlText)) !== null) {
+      const itemXml = itemMatch[1];
+      const item = this.parseRssItemWithRegex(itemXml);
+      if (item) {
+        items.push(item);
+      }
+    }
+
+    return items;
+  }
+
+  /**
+   * Parses a single RSS item using regex.
+   *
+   * @param itemXml - XML content of a single item
+   * @returns ParsedRssItem or null if invalid
+   */
+  private parseRssItemWithRegex(itemXml: string): ParsedRssItem | null {
+    // Extract title
+    const titleMatch = itemXml.match(/<title[^>]*>(.*?)<\/title>/i);
+    const title = titleMatch?.[1]?.replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim();
+    if (!title) return null;
+
+    // Extract link
+    const linkMatch =
+      itemXml.match(/<link[^>]*>(.*?)<\/link>/i) ||
+      itemXml.match(/<guid[^>]*>(.*?)<\/guid>/i) ||
+      itemXml.match(/<link[^>]*href=["']([^"']+)["'][^>]*\/?>/i);
+    const link = linkMatch?.[1]?.trim();
+    if (!link) return null;
+
+    // Extract description
+    const descMatch =
+      itemXml.match(/<description[^>]*>(.*?)<\/description>/i) ||
+      itemXml.match(/<summary[^>]*>(.*?)<\/summary>/i) ||
+      itemXml.match(/<content[^>]*>(.*?)<\/content>/i);
+    let description = descMatch?.[1]?.replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim() || null;
+
+    // Extract publication date
+    const dateMatch =
+      itemXml.match(/<pubDate[^>]*>(.*?)<\/pubDate>/i) ||
+      itemXml.match(/<published[^>]*>(.*?)<\/published>/i) ||
+      itemXml.match(/<updated[^>]*>(.*?)<\/updated>/i);
+    let publicationDate = new Date();
+
+    if (dateMatch?.[1]) {
+      try {
+        publicationDate = new Date(dateMatch[1].trim());
+      } catch {
+        // Keep default date
+      }
+    }
+
+    // Clean description
+    if (description) {
+      description = this.stripHtml(description);
+      if (description.length > 5000) {
+        description = description.substring(0, 5000);
+      }
+    }
+
+    return {
+      title,
+      description,
+      link,
       publicationDate: publicationDate.toISOString(),
     };
   }
