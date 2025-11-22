@@ -267,8 +267,9 @@ export const POST: APIRoute = async (context) => {
         headers: { "Content-Type": "application/json" },
       }
     );
+  }
   } catch (outerError) {
-    // Catch any errors that occur outside the main try block
+    // Catch any errors that occur outside the main try block (e.g., during validation)
     logger.error("Critical error in RSS fetch endpoint", outerError, {
       endpoint: "POST /api/cron/fetch-rss",
     });

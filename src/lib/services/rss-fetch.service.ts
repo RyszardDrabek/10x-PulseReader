@@ -37,6 +37,12 @@ export class RssFetchService {
           ["dc:date", "dcDate"],
         ],
       },
+      // Use fetch API for Cloudflare Workers compatibility
+      requestOptions: {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; RSS Reader/1.0)",
+        },
+      },
     });
   }
 
@@ -50,7 +56,21 @@ export class RssFetchService {
     try {
       logger.info("Fetching RSS feed", { url });
 
-      const feed = await this.parser.parseURL(url);
+      // Use fetch API for Cloudflare Workers compatibility
+      // Fetch the RSS feed first, then parse it
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; RSS Reader/1.0)",
+        },
+        signal: AbortSignal.timeout(30000), // 30 seconds timeout
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const xmlText = await response.text();
+      const feed = await this.parser.parseString(xmlText);
 
       if (!feed.items || feed.items.length === 0) {
         logger.warn("RSS feed contains no items", { url });
