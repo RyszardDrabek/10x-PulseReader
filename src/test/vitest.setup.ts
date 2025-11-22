@@ -4,7 +4,7 @@ import { setupServer } from "msw/node";
 import { handlers } from "./msw-handlers";
 
 // MSW setup for API mocking
-const server = setupServer(...handlers);
+export const server = setupServer(...handlers);
 
 // Establish API mocking before all tests
 beforeAll(() => {

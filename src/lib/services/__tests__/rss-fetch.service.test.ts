@@ -2,10 +2,12 @@
  * Unit tests for RssFetchService
  *
  * Tests are implemented using Vitest following the project's testing guidelines.
- * Uses vi.mock() for mocking rss-parser.
+ * Uses vi.mock() for mocking rss-parser and global.fetch.
  */
 
 import { describe, test, expect, vi, beforeEach } from "vitest";
+import { http, HttpResponse } from "msw";
+import { server } from "../../../test/vitest.setup.ts";
 import Parser from "rss-parser";
 import { RssFetchService } from "../rss-fetch.service.ts";
 
@@ -19,16 +21,18 @@ vi.mock("rss-parser", () => {
 describe("RssFetchService", () => {
   let service: RssFetchService;
   let mockParser: {
-    parseURL: ReturnType<typeof vi.fn>;
+    parseString: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockParser = {
-      parseURL: vi.fn(),
+      parseString: vi.fn(),
     };
     (Parser as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => mockParser);
     service = new RssFetchService();
+    // Reset MSW handlers
+    server.resetHandlers();
   });
 
   describe("fetchRssFeed", () => {
@@ -50,7 +54,12 @@ describe("RssFetchService", () => {
         ],
       };
 
-      mockParser.parseURL.mockResolvedValue(mockFeed);
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("<rss>...</rss>");
+        })
+      );
+      mockParser.parseString.mockResolvedValue(mockFeed);
 
       const result = await service.fetchRssFeed("https://example.com/rss");
 
@@ -68,11 +77,16 @@ describe("RssFetchService", () => {
         description: "Article 2 description",
         publicationDate: expect.any(String),
       });
-      expect(mockParser.parseURL).toHaveBeenCalledWith("https://example.com/rss");
+      expect(mockParser.parseString).toHaveBeenCalledWith("<rss>...</rss>");
     });
 
     test("should handle feed with no items", async () => {
-      mockParser.parseURL.mockResolvedValue({
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("<rss></rss>");
+        })
+      );
+      mockParser.parseString.mockResolvedValue({
         items: [],
       });
 
@@ -83,7 +97,12 @@ describe("RssFetchService", () => {
     });
 
     test("should handle feed with null items", async () => {
-      mockParser.parseURL.mockResolvedValue({
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("<rss></rss>");
+        })
+      );
+      mockParser.parseString.mockResolvedValue({
         items: null,
       });
 
@@ -119,7 +138,12 @@ describe("RssFetchService", () => {
         ],
       };
 
-      mockParser.parseURL.mockResolvedValue(mockFeed);
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("<rss>...</rss>");
+        })
+      );
+      mockParser.parseString.mockResolvedValue(mockFeed);
 
       const result = await service.fetchRssFeed("https://example.com/rss");
 
@@ -155,7 +179,12 @@ describe("RssFetchService", () => {
         ],
       };
 
-      mockParser.parseURL.mockResolvedValue(mockFeed);
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("<rss>...</rss>");
+        })
+      );
+      mockParser.parseString.mockResolvedValue(mockFeed);
 
       const result = await service.fetchRssFeed("https://example.com/rss");
 
@@ -178,7 +207,12 @@ describe("RssFetchService", () => {
         ],
       };
 
-      mockParser.parseURL.mockResolvedValue(mockFeed);
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("<rss>...</rss>");
+        })
+      );
+      mockParser.parseString.mockResolvedValue(mockFeed);
 
       const result = await service.fetchRssFeed("https://example.com/rss");
 
@@ -213,7 +247,12 @@ describe("RssFetchService", () => {
         ],
       };
 
-      mockParser.parseURL.mockResolvedValue(mockFeed);
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("<rss>...</rss>");
+        })
+      );
+      mockParser.parseString.mockResolvedValue(mockFeed);
 
       const result = await service.fetchRssFeed("https://example.com/rss");
 
@@ -236,7 +275,12 @@ describe("RssFetchService", () => {
         ],
       };
 
-      mockParser.parseURL.mockResolvedValue(mockFeed);
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("<rss>...</rss>");
+        })
+      );
+      mockParser.parseString.mockResolvedValue(mockFeed);
 
       const result = await service.fetchRssFeed("https://example.com/rss");
 
@@ -256,7 +300,12 @@ describe("RssFetchService", () => {
         ],
       };
 
-      mockParser.parseURL.mockResolvedValue(mockFeed);
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("<rss>...</rss>");
+        })
+      );
+      mockParser.parseString.mockResolvedValue(mockFeed);
 
       const result = await service.fetchRssFeed("https://example.com/rss");
 
@@ -266,29 +315,53 @@ describe("RssFetchService", () => {
     });
 
     test("should handle network errors", async () => {
-      const error = new Error("Network timeout");
-      mockParser.parseURL.mockRejectedValue(error);
+      server.use(
+        http.get("https://example.com/rss", () => {
+          throw new Error("Network timeout");
+        })
+      );
 
       const result = await service.fetchRssFeed("https://example.com/rss");
 
       expect(result.success).toBe(false);
       expect(result.items).toEqual([]);
-      expect(result.error).toBe("Network timeout");
+      expect(result.error).toBe("HTTP 500: Unhandled Exception");
     });
 
-    test("should handle timeout errors", async () => {
-      const error = new Error("Request timeout");
-      mockParser.parseURL.mockRejectedValue(error);
+    test("should handle HTTP errors", async () => {
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("Not Found", { status: 404, statusText: "Not Found" });
+        })
+      );
 
       const result = await service.fetchRssFeed("https://example.com/rss");
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe("Request timeout");
+      expect(result.error).toBe("HTTP 404: Not Found");
+    });
+
+    test("should handle timeout errors", async () => {
+      server.use(
+        http.get("https://example.com/rss", () => {
+          throw new Error("Request timeout");
+        })
+      );
+
+      const result = await service.fetchRssFeed("https://example.com/rss");
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("HTTP 500: Unhandled Exception");
     });
 
     test("should handle invalid XML errors", async () => {
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("invalid xml");
+        })
+      );
       const error = new Error("Invalid XML");
-      mockParser.parseURL.mockRejectedValue(error);
+      mockParser.parseString.mockRejectedValue(error);
 
       const result = await service.fetchRssFeed("https://example.com/rss");
 
@@ -307,7 +380,12 @@ describe("RssFetchService", () => {
         ],
       };
 
-      mockParser.parseURL.mockResolvedValue(mockFeed);
+      server.use(
+        http.get("https://example.com/rss", () => {
+          return HttpResponse.text("<rss>...</rss>");
+        })
+      );
+      mockParser.parseString.mockResolvedValue(mockFeed);
 
       const result = await service.fetchRssFeed("https://example.com/rss");
 
