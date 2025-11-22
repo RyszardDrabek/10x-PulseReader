@@ -158,7 +158,9 @@ Use the included test script:
 export DEPLOYMENT_URL=https://your-app.pages.dev
 export PUBLIC_SUPABASE_KEY=your_public_key
 
-# Run tests
+# Run tests (ensure DEPLOYMENT_URL doesn't end with /)
+export DEPLOYMENT_URL=https://your-app.pages.dev
+export PUBLIC_SUPABASE_KEY=your_key
 node scripts/test-deployment.cjs
 ```
 
@@ -194,15 +196,20 @@ The **Functions tab** shows logs in this priority order:
    - Check Cloudflare plan supports logging
    - Wait a few minutes for logs to propagate
 
-2. **Logs are too verbose?**
+2. **Double slashes in URLs (//)?**
+   - Check that your BASE_URL doesn't end with `/`
+   - The test script automatically removes trailing slashes
+   - Double slashes can cause routing issues in some cases
+
+3. **Logs are too verbose?**
    - Temporarily disable debug logging in production
    - Filter logs by level or message content
 
-3. **Missing request context?**
+4. **Missing request context?**
    - Ensure you're using `createRequestLogger(request)` in API routes
    - Check that middleware is running for all requests
 
-4. **Performance issues?**
+5. **Performance issues?**
    - JSON logging has minimal performance impact
    - Consider sampling for high-traffic applications
 

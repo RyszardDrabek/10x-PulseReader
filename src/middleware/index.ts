@@ -64,8 +64,24 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
     const authHeader = request.headers.get("Authorization");
     const serviceRoleKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
+    // Debug logging for authorization header
+    if (authHeader) {
+      const headerPreview = authHeader.length > 20 ? authHeader.substring(0, 20) + "..." : authHeader;
+      cfLogger.trace("AUTH_HEADER_PRESENT", { headerPreview, startsWithBearer: authHeader.startsWith("Bearer ") });
+      reqLogger.debug("Authorization header present", { headerLength: authHeader.length, startsWithBearer: authHeader.startsWith("Bearer ") });
+    } else {
+      cfLogger.trace("AUTH_HEADER_MISSING");
+      reqLogger.debug("No authorization header present");
+    }
+
     if (authHeader && serviceRoleKey && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7); // Remove "Bearer " prefix
+
+      // Debug logging for token comparison
+      const tokenPreview = token.length > 10 ? token.substring(0, 10) + "..." : token;
+      const serviceKeyPreview = serviceRoleKey ? (serviceRoleKey.length > 10 ? serviceRoleKey.substring(0, 10) + "..." : serviceRoleKey) : "undefined";
+      cfLogger.trace("AUTH_TOKEN_CHECK", { tokenLength: token.length, serviceKeyLength: serviceRoleKey?.length, tokensMatch: token === serviceRoleKey });
+      reqLogger.debug("Checking service role token", { tokenPreview, serviceKeyPreview, tokensMatch: token === serviceRoleKey });
 
       // If token matches service role key, create service role client
       if (token === serviceRoleKey) {

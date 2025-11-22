@@ -11,7 +11,7 @@ const https = require("https");
 const http = require("http");
 
 // Configuration
-const BASE_URL = process.env.DEPLOYMENT_URL || "https://10x-pulsereader.pages.dev/";
+const BASE_URL = (process.env.DEPLOYMENT_URL || "https://10x-pulsereader.pages.dev").replace(/\/$/, "");
 const SUPABASE_KEY = process.env.PUBLIC_SUPABASE_KEY;
 
 if (!SUPABASE_KEY) {
