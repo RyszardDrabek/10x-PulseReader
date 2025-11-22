@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { ZodError } from "zod";
 
 import { ArticleService } from "../../../lib/services/article.service.ts";
-import { logger } from "../../../lib/utils/logger.ts";
+import { logger, createCloudflareLogger } from "../../../lib/utils/logger.ts";
 import { GetArticlesQueryParamsSchema } from "../../../lib/validation/article-query.schema.ts";
 import { CreateArticleCommandSchema } from "../../../lib/validation/article.schema.ts";
 
@@ -22,6 +22,9 @@ export const prerender = false;
 export const GET: APIRoute = async (context) => {
   const supabase = context.locals.supabase;
   const user = context.locals.user;
+  const cfLogger = createCloudflareLogger(context.request);
+
+  cfLogger.trace("API_ARTICLES_GET_START");
 
   // Validate Supabase client is available
   if (!supabase) {
@@ -109,6 +112,12 @@ export const GET: APIRoute = async (context) => {
     const result = await articleService.getArticles(validatedParams, user?.id);
 
     // Log success
+    cfLogger.trace("API_ARTICLES_GET_SUCCESS", {
+      resultCount: result.data.length,
+      totalCount: result.pagination.total,
+      userId: user?.id || "anonymous",
+    });
+
     logger.info("Articles fetched successfully", {
       endpoint: "GET /api/articles",
       resultCount: result.data.length,

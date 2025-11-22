@@ -57,6 +57,26 @@ const reactConfig = tseslint.config({
   },
 });
 
+// Node.js scripts configuration
+const nodeScriptsConfig = tseslint.config({
+  files: ["scripts/**/*.{js,cjs}"],
+  languageOptions: {
+    globals: {
+      console: "readonly",
+      process: "readonly",
+      require: "readonly",
+      module: "readonly",
+      __dirname: "readonly",
+      __filename: "readonly",
+    },
+  },
+  rules: {
+    "no-console": "off",
+    "@typescript-eslint/no-require-imports": "off",
+    "@typescript-eslint/no-unused-vars": "off",
+  },
+});
+
 export default tseslint.config(
   {
     ignores: [
@@ -73,6 +93,7 @@ export default tseslint.config(
   },
   includeIgnoreFile(gitignorePath),
   baseConfig,
+  nodeScriptsConfig,
   jsxA11yConfig,
   reactConfig,
   eslintPluginAstro.configs["flat/recommended"],
