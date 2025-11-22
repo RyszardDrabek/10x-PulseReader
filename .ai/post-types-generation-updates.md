@@ -9,49 +9,55 @@ After generating database types with the `app` schema, the ArticleService was qu
 Updated `src/lib/services/article.service.ts` to use `.schema("app")` before all `.from()` calls:
 
 ### 1. validateSource()
+
 ```typescript
 const { data, error } = await this.supabase
-  .schema("app")  // ✅ Added
-  .from("rss_sources")
-  // ...
+  .schema("app") // ✅ Added
+  .from("rss_sources");
+// ...
 ```
 
 ### 2. validateTopics()
+
 ```typescript
 const { data, error } = await this.supabase
-  .schema("app")  // ✅ Added
-  .from("topics")
-  // ...
+  .schema("app") // ✅ Added
+  .from("topics");
+// ...
 ```
 
 ### 3. createArticle() - Article Insert
+
 ```typescript
 const { data: article, error: insertError } = await this.supabase
-  .schema("app")  // ✅ Added
-  .from("articles")
-  // ...
+  .schema("app") // ✅ Added
+  .from("articles");
+// ...
 ```
 
 ### 4. createArticle() - Topic Associations
+
 ```typescript
 const { error: associationError } = await this.supabase
-  .schema("app")  // ✅ Added
-  .from("article_topics")
-  // ...
+  .schema("app") // ✅ Added
+  .from("article_topics");
+// ...
 ```
 
 ### 5. createArticle() - Rollback Delete
+
 ```typescript
 await this.supabase
-  .schema("app")  // ✅ Added
+  .schema("app") // ✅ Added
   .from("articles")
-  .delete()
-  // ...
+  .delete();
+// ...
 ```
 
 ## Why This Is Necessary
 
 Supabase client needs to know which schema to query from when multiple schemas exist:
+
 - `public` - Default PostgreSQL schema
 - `graphql_public` - GraphQL API schema
 - `app` - Our application schema (custom)
@@ -71,7 +77,7 @@ Without `.schema("app")`, the client defaults to `public` schema and won't find 
 ## Next Steps
 
 Test the endpoint with:
+
 1. Start dev server: `npm run dev`
 2. Make a POST request to `/api/articles` with service role token
 3. Verify article is created in the `app.articles` table
-

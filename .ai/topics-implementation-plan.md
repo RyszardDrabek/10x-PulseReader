@@ -5,12 +5,14 @@
 The Topics API endpoints provide CRUD operations for managing article topics in the PulseReader application. Topics are AI-generated categories used to classify articles, enabling users to filter and discover content by subject matter.
 
 **Endpoints Covered:**
+
 - `GET /api/topics` - List all topics with pagination and search
 - `GET /api/topics/:id` - Retrieve a single topic by ID
 - `POST /api/topics` - Create a new topic (service role only)
 - `DELETE /api/topics/:id` - Delete a topic (service role only)
 
 **Key Features:**
+
 - Public read access (no authentication required for GET operations)
 - Service role required for write operations (POST, DELETE)
 - Case-insensitive topic name uniqueness enforced at database level
@@ -18,6 +20,7 @@ The Topics API endpoints provide CRUD operations for managing article topics in 
 - Cascade deletion: Deleting a topic automatically removes all article-topic associations
 
 **Primary Use Cases:**
+
 1. Frontend components displaying topic filters/selectors
 2. AI analysis job creating new topics during article processing
 3. Admin interfaces managing topic taxonomy
@@ -34,17 +37,18 @@ The Topics API endpoints provide CRUD operations for managing article topics in 
 **HTTP Method:** `GET`
 
 **URL Structure:**
+
 ```
 GET /api/topics
 ```
 
 **Query Parameters:**
 
-| Parameter | Type | Default | Validation | Description |
-|-----------|------|---------|------------|-------------|
-| `limit` | integer | 100 | Min: 1, Max: 500 | Number of topics per page |
-| `offset` | integer | 0 | Min: 0 | Pagination offset |
-| `search` | string | - | Optional, case-insensitive | Search topics by name |
+| Parameter | Type    | Default | Validation                 | Description               |
+| --------- | ------- | ------- | -------------------------- | ------------------------- |
+| `limit`   | integer | 100     | Min: 1, Max: 500           | Number of topics per page |
+| `offset`  | integer | 0       | Min: 0                     | Pagination offset         |
+| `search`  | string  | -       | Optional, case-insensitive | Search topics by name     |
 
 **Authentication:** Optional (public endpoint)
 
@@ -67,15 +71,16 @@ GET /api/topics?search=technology&limit=100
 **HTTP Method:** `GET`
 
 **URL Structure:**
+
 ```
 GET /api/topics/:id
 ```
 
 **Path Parameters:**
 
-| Parameter | Type | Required | Validation | Description |
-|-----------|------|----------|------------|-------------|
-| `id` | UUID | Yes | Valid UUID format | Topic ID |
+| Parameter | Type | Required | Validation        | Description |
+| --------- | ---- | -------- | ----------------- | ----------- |
+| `id`      | UUID | Yes      | Valid UUID format | Topic ID    |
 
 **Authentication:** Optional (public endpoint)
 
@@ -94,6 +99,7 @@ GET /api/topics/550e8400-e29b-41d4-a716-446655440000
 **HTTP Method:** `POST`
 
 **URL Structure:**
+
 ```
 POST /api/topics
 ```
@@ -111,6 +117,7 @@ POST /api/topics
 ```
 
 **Request Body Schema:**
+
 - `name` (string, required): Topic name (case-insensitive uniqueness enforced)
 
 **Example Request:**
@@ -126,6 +133,7 @@ Content-Type: application/json
 ```
 
 **Special Behavior:**
+
 - If a topic with the same name (case-insensitive) already exists, returns the existing topic with status 200 OK instead of creating a duplicate
 - This enables idempotent topic creation for AI analysis jobs
 
@@ -136,15 +144,16 @@ Content-Type: application/json
 **HTTP Method:** `DELETE`
 
 **URL Structure:**
+
 ```
 DELETE /api/topics/:id
 ```
 
 **Path Parameters:**
 
-| Parameter | Type | Required | Validation | Description |
-|-----------|------|----------|------------|-------------|
-| `id` | UUID | Yes | Valid UUID format | Topic ID |
+| Parameter | Type | Required | Validation        | Description |
+| --------- | ---- | -------- | ----------------- | ----------- |
+| `id`      | UUID | Yes      | Valid UUID format | Topic ID    |
 
 **Authentication:** Required (service_role only)
 
@@ -158,6 +167,7 @@ Authorization: Bearer <service_role_token>
 ```
 
 **Cascade Behavior:**
+
 - Deleting a topic automatically removes all associated records from `app.article_topics` table (CASCADE DELETE)
 - No manual cleanup required
 
@@ -259,6 +269,7 @@ ErrorResponse {
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid query parameters
 - `500 Internal Server Error`: Database error or unexpected failure
 
@@ -278,6 +289,7 @@ ErrorResponse {
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid UUID format
 - `404 Not Found`: Topic does not exist
 - `500 Internal Server Error`: Database error or unexpected failure
@@ -309,6 +321,7 @@ ErrorResponse {
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Name is required or invalid
 - `401 Unauthorized`: Not authenticated as service_role
 - `500 Internal Server Error`: Database error or unexpected failure
@@ -322,6 +335,7 @@ ErrorResponse {
 Empty response body
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid UUID format
 - `401 Unauthorized`: Not authenticated as service_role
 - `404 Not Found`: Topic does not exist
@@ -509,44 +523,44 @@ All error responses follow this structure:
 
 #### GET /api/topics
 
-| Error Scenario | Status Code | Error Code | Response Message |
-|----------------|-------------|------------|-------------------|
-| Invalid `limit` value | 400 | VALIDATION_ERROR | Limit must be integer between 1 and 500 |
-| Invalid `offset` value | 400 | VALIDATION_ERROR | Offset must be non-negative integer |
-| Database connection error | 500 | DATABASE_ERROR | Database unavailable or connection failed |
-| Unexpected error | 500 | INTERNAL_ERROR | Unhandled exception occurred |
+| Error Scenario            | Status Code | Error Code       | Response Message                          |
+| ------------------------- | ----------- | ---------------- | ----------------------------------------- |
+| Invalid `limit` value     | 400         | VALIDATION_ERROR | Limit must be integer between 1 and 500   |
+| Invalid `offset` value    | 400         | VALIDATION_ERROR | Offset must be non-negative integer       |
+| Database connection error | 500         | DATABASE_ERROR   | Database unavailable or connection failed |
+| Unexpected error          | 500         | INTERNAL_ERROR   | Unhandled exception occurred              |
 
 #### GET /api/topics/:id
 
-| Error Scenario | Status Code | Error Code | Response Message |
-|----------------|-------------|------------|-------------------|
-| Invalid `id` UUID format | 400 | VALIDATION_ERROR | Must be valid UUID format |
-| Topic not found | 404 | NOT_FOUND | Topic does not exist |
-| Database connection error | 500 | DATABASE_ERROR | Database unavailable or connection failed |
-| Unexpected error | 500 | INTERNAL_ERROR | Unhandled exception occurred |
+| Error Scenario            | Status Code | Error Code       | Response Message                          |
+| ------------------------- | ----------- | ---------------- | ----------------------------------------- |
+| Invalid `id` UUID format  | 400         | VALIDATION_ERROR | Must be valid UUID format                 |
+| Topic not found           | 404         | NOT_FOUND        | Topic does not exist                      |
+| Database connection error | 500         | DATABASE_ERROR   | Database unavailable or connection failed |
+| Unexpected error          | 500         | INTERNAL_ERROR   | Unhandled exception occurred              |
 
 #### POST /api/topics
 
-| Error Scenario | Status Code | Error Code | Response Message |
-|----------------|-------------|------------|-------------------|
-| Missing `name` field | 400 | VALIDATION_ERROR | Name is required |
-| Invalid JSON in request body | 400 | INVALID_JSON | Invalid JSON in request body |
-| Name too long | 400 | VALIDATION_ERROR | Name exceeds maximum length |
-| Not authenticated | 401 | AUTHENTICATION_REQUIRED | Valid token required |
-| Not service role | 401 | FORBIDDEN | Service role required for this endpoint |
-| Database connection error | 500 | DATABASE_ERROR | Database unavailable or connection failed |
-| Unexpected error | 500 | INTERNAL_ERROR | Unhandled exception occurred |
+| Error Scenario               | Status Code | Error Code              | Response Message                          |
+| ---------------------------- | ----------- | ----------------------- | ----------------------------------------- |
+| Missing `name` field         | 400         | VALIDATION_ERROR        | Name is required                          |
+| Invalid JSON in request body | 400         | INVALID_JSON            | Invalid JSON in request body              |
+| Name too long                | 400         | VALIDATION_ERROR        | Name exceeds maximum length               |
+| Not authenticated            | 401         | AUTHENTICATION_REQUIRED | Valid token required                      |
+| Not service role             | 401         | FORBIDDEN               | Service role required for this endpoint   |
+| Database connection error    | 500         | DATABASE_ERROR          | Database unavailable or connection failed |
+| Unexpected error             | 500         | INTERNAL_ERROR          | Unhandled exception occurred              |
 
 #### DELETE /api/topics/:id
 
-| Error Scenario | Status Code | Error Code | Response Message |
-|----------------|-------------|------------|-------------------|
-| Invalid `id` UUID format | 400 | VALIDATION_ERROR | Must be valid UUID format |
-| Not authenticated | 401 | AUTHENTICATION_REQUIRED | Valid token required |
-| Not service role | 401 | FORBIDDEN | Service role required for this endpoint |
-| Topic not found | 404 | NOT_FOUND | Topic does not exist |
-| Database connection error | 500 | DATABASE_ERROR | Database unavailable or connection failed |
-| Unexpected error | 500 | INTERNAL_ERROR | Unhandled exception occurred |
+| Error Scenario            | Status Code | Error Code              | Response Message                          |
+| ------------------------- | ----------- | ----------------------- | ----------------------------------------- |
+| Invalid `id` UUID format  | 400         | VALIDATION_ERROR        | Must be valid UUID format                 |
+| Not authenticated         | 401         | AUTHENTICATION_REQUIRED | Valid token required                      |
+| Not service role          | 401         | FORBIDDEN               | Service role required for this endpoint   |
+| Topic not found           | 404         | NOT_FOUND               | Topic does not exist                      |
+| Database connection error | 500         | DATABASE_ERROR          | Database unavailable or connection failed |
+| Unexpected error          | 500         | INTERNAL_ERROR          | Unhandled exception occurred              |
 
 ### Error Handling Implementation
 
@@ -560,13 +574,13 @@ try {
     return new Response(
       JSON.stringify({
         error: "Validation failed",
-        details: error.errors.map(e => ({
-          field: e.path.join('.'),
-          message: e.message
+        details: error.errors.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
         })),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
+      { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 }
@@ -576,14 +590,14 @@ try {
 
 ```typescript
 const user = context.locals.user;
-if (!user || user.role !== 'service_role') {
+if (!user || user.role !== "service_role") {
   return new Response(
     JSON.stringify({
       error: "Service role required for this endpoint",
       code: "FORBIDDEN",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
-    { status: 401, headers: { 'Content-Type': 'application/json' } }
+    { status: 401, headers: { "Content-Type": "application/json" } }
   );
 }
 ```
@@ -597,9 +611,9 @@ if (!topic) {
     JSON.stringify({
       error: "Topic does not exist",
       code: "NOT_FOUND",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
-    { status: 404, headers: { 'Content-Type': 'application/json' } }
+    { status: 404, headers: { "Content-Type": "application/json" } }
   );
 }
 ```
@@ -611,14 +625,14 @@ try {
   const result = await topicService.createOrFindTopic(command);
 } catch (error) {
   if (error instanceof DatabaseError) {
-    logger.error('Database error creating topic', { error: error.message });
+    logger.error("Database error creating topic", { error: error.message });
     return new Response(
       JSON.stringify({
         error: "Database error",
         code: "DATABASE_ERROR",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
   throw error;
@@ -677,11 +691,13 @@ try {
 **File:** `src/lib/validation/topic.schemas.ts`
 
 Create Zod schemas for:
+
 - `GetTopicsQueryParamsSchema` - Query parameters for GET /api/topics
 - `CreateTopicCommandSchema` - Request body for POST /api/topics
 - `TopicIdParamSchema` - Path parameter for GET/DELETE /api/topics/:id
 
 **Tasks:**
+
 - Define schema for query parameters with defaults and constraints
 - Define schema for create command with name validation
 - Define UUID schema for path parameters
@@ -694,12 +710,14 @@ Create Zod schemas for:
 **File:** `src/lib/services/topic.service.ts`
 
 Create service class with methods:
+
 - `findAll(params: GetTopicsQueryParams): Promise<PaginatedResponse<TopicEntity>>`
 - `findById(id: string): Promise<TopicEntity | null>`
 - `createOrFindTopic(command: CreateTopicCommand): Promise<{ topic: TopicEntity; created: boolean }>`
 - `deleteTopic(id: string): Promise<void>`
 
 **Tasks:**
+
 - Implement pagination logic with limit/offset
 - Implement case-insensitive search using `ILIKE`
 - Implement case-insensitive topic lookup for upsert behavior
@@ -714,6 +732,7 @@ Create service class with methods:
 **File:** `src/pages/api/topics/index.ts`
 
 Implement GET handler:
+
 - Extract query parameters from URL
 - Validate query parameters using Zod schema
 - Call `TopicService.findAll()`
@@ -721,6 +740,7 @@ Implement GET handler:
 - Handle errors appropriately
 
 **Tasks:**
+
 - Parse query parameters from `context.url.searchParams`
 - Apply validation and defaults
 - Call service method
@@ -736,12 +756,14 @@ Implement GET handler:
 **File:** `src/pages/api/topics/[id].ts`
 
 Implement GET handler:
+
 - Extract `id` from path parameters
 - Validate UUID format
 - Call `TopicService.findById()`
 - Return topic or 404
 
 **Tasks:**
+
 - Extract `id` from `context.params.id`
 - Validate UUID format using Zod
 - Call service method
@@ -757,12 +779,14 @@ Implement GET handler:
 **File:** `src/pages/api/topics/index.ts`
 
 Implement POST handler:
+
 - Check service role authentication
 - Parse and validate request body
 - Call `TopicService.createOrFindTopic()`
 - Return 201 Created or 200 OK based on whether topic was created
 
 **Tasks:**
+
 - Check `user.role === 'service_role'` → 401 if not
 - Parse JSON request body
 - Validate using Zod schema
@@ -779,12 +803,14 @@ Implement POST handler:
 **File:** `src/pages/api/topics/[id].ts`
 
 Implement DELETE handler:
+
 - Check service role authentication
 - Validate UUID format
 - Call `TopicService.deleteTopic()`
 - Return 204 No Content
 
 **Tasks:**
+
 - Check `user.role === 'service_role'` → 401 if not
 - Extract and validate `id` from path parameters
 - Call service method
@@ -801,10 +827,12 @@ Implement DELETE handler:
 **File:** `src/middleware/index.ts`
 
 Ensure topics endpoints are handled correctly:
+
 - GET endpoints should be publicly accessible
 - POST/DELETE endpoints should require authentication (handled in route handlers)
 
 **Tasks:**
+
 - Verify middleware doesn't block public GET requests
 - Ensure API routes can handle their own authentication logic
 - Test that service role tokens are properly recognized
@@ -816,12 +844,14 @@ Ensure topics endpoints are handled correctly:
 **File:** Route handlers and service
 
 Implement comprehensive error logging:
+
 - Log validation errors with context
 - Log authentication failures
 - Log database errors with details
 - Log unexpected errors with stack traces
 
 **Tasks:**
+
 - Use consistent logging format across all handlers
 - Include endpoint, user ID, and error details in logs
 - Avoid logging sensitive information (tokens, passwords)
@@ -835,6 +865,7 @@ Implement comprehensive error logging:
 **File:** `src/lib/services/__tests__/topic.service.test.ts`
 
 Test TopicService methods:
+
 - `findAll()` with various query parameters
 - `findById()` with valid and invalid IDs
 - `createOrFindTopic()` creating new topics
@@ -847,6 +878,7 @@ Test TopicService methods:
 **File:** `src/pages/api/topics/__tests__/topics.test.ts`
 
 Test API endpoints:
+
 - GET /api/topics with pagination
 - GET /api/topics with search
 - GET /api/topics/:id with valid ID
@@ -863,6 +895,7 @@ Test API endpoints:
 **File:** `tests/e2e/topics.spec.ts`
 
 Test end-to-end flows:
+
 - Guest user browsing topics list
 - Service role creating topics
 - Service role deleting topics
@@ -875,12 +908,14 @@ Test end-to-end flows:
 **File:** `docs/api/topics.md`
 
 Create API documentation:
+
 - Endpoint descriptions
 - Request/response examples
 - Error scenarios
 - Authentication requirements
 
 **Tasks:**
+
 - Document all endpoints with examples
 - Include curl commands for testing
 - Document error codes and meanings
@@ -892,12 +927,12 @@ Create API documentation:
 
 ### app.topics Table
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | UUID | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique topic identifier |
-| `name` | TEXT | NOT NULL | Topic name |
-| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() | Creation timestamp |
-| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() | Last update timestamp |
+| Column       | Type        | Constraints                            | Description             |
+| ------------ | ----------- | -------------------------------------- | ----------------------- |
+| `id`         | UUID        | PRIMARY KEY, DEFAULT gen_random_uuid() | Unique topic identifier |
+| `name`       | TEXT        | NOT NULL                               | Topic name              |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now()                | Creation timestamp      |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now()                | Last update timestamp   |
 
 ### Indexes
 
@@ -916,6 +951,7 @@ Create API documentation:
 ### Case-Insensitive Uniqueness
 
 The database enforces case-insensitive uniqueness through a unique index on `lower(name)`. This means:
+
 - "Technology" and "technology" are considered the same topic
 - Attempting to insert a duplicate (case-insensitive) will fail at the database level
 - The application should check for existing topics before inserting to provide better error messages
@@ -923,6 +959,7 @@ The database enforces case-insensitive uniqueness through a unique index on `low
 ### Upsert Behavior
 
 The POST endpoint implements an "upsert" pattern:
+
 - If topic exists (case-insensitive match): Return existing topic with 200 OK
 - If topic doesn't exist: Create new topic and return with 201 Created
 
@@ -931,6 +968,7 @@ This enables idempotent topic creation for AI analysis jobs that may attempt to 
 ### Cascade Deletion
 
 When deleting a topic:
+
 - The topic record is removed from `app.topics`
 - Database CASCADE automatically removes all associated records from `app.article_topics`
 - No manual cleanup of associations is required
@@ -939,6 +977,7 @@ When deleting a topic:
 ### Pagination Strategy
 
 The GET /api/topics endpoint uses offset-based pagination:
+
 - Simple to implement and understand
 - Works well for small to medium datasets (<10,000 topics)
 - `hasMore` flag enables efficient client-side pagination
@@ -955,4 +994,3 @@ The GET /api/topics endpoint uses offset-based pagination:
 5. **Bulk Operations**: Support creating/deleting multiple topics in one request
 6. **Topic Aliases**: Support alternative names for the same topic
 7. **Topic Merging**: Allow merging two topics into one
-

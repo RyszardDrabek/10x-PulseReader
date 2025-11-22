@@ -20,9 +20,9 @@ Authorization: Bearer <service_role_jwt_token>
 
 ### Path Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string (UUID) | Yes | The unique identifier of the article to delete |
+| Parameter | Type          | Required | Description                                    |
+| --------- | ------------- | -------- | ---------------------------------------------- |
+| `id`      | string (UUID) | Yes      | The unique identifier of the article to delete |
 
 ### Example Request
 
@@ -115,6 +115,7 @@ Returned when the article with the specified ID does not exist.
 ### Cascade Behavior
 
 The database schema enforces CASCADE deletion:
+
 - When an article is deleted, all associated `article_topics` records are automatically removed
 - No manual cleanup of topic associations is required
 
@@ -127,25 +128,24 @@ The deletion operation is atomic. If the article exists, it will be deleted alon
 ### TypeScript Example
 
 ```typescript
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client with service role key
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 async function deleteOldArticles(articleIds: string[]) {
   // Get service role token
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
 
   const results = await Promise.allSettled(
     articleIds.map(async (articleId) => {
       const response = await fetch(`https://your-domain.com/api/articles/${articleId}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -163,7 +163,7 @@ async function deleteOldArticles(articleIds: string[]) {
     })
   );
 
-  const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+  const successful = results.filter((r) => r.status === "fulfilled" && r.value.success).length;
   const failed = results.length - successful;
 
   console.log(`Deletion complete: ${successful} successful, ${failed} failed`);
@@ -201,4 +201,3 @@ When using this endpoint in a retention policy cron job:
 - [GET /api/articles/:id](./GET-article-by-id.md) - Get specific article
 - [POST /api/articles](./POST-articles.md) - Create article (service role)
 - [PATCH /api/articles/:id](./PATCH-article-by-id.md) - Update article (service role)
-

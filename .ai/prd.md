@@ -1,12 +1,15 @@
 # Dokument wymagań produktu (PRD) - PulseReader
 
 ## 1. Przegląd produktu
+
 PulseReader to inteligentny agregator wiadomości zaprojektowany, aby dostarczać użytkownikom spersonalizowany i wartościowy strumień treści. Aplikacja umożliwia filtrowanie artykułów z różnych źródeł RSS na podstawie nastroju użytkownika, preferowanych tematów oraz zdefiniowanej listy blokowanych słów kluczowych i domen. Dzięki wykorzystaniu AI do analizy sentymentu i kategoryzacji tematycznej, PulseReader ma na celu zwalczanie przeładowania informacyjnego i zapewnienie doświadczenia czytelniczego dopasowanego do indywidualnych potrzeb.
 
 ## 2. Problem użytkownika
+
 W świecie przesyconym treściami, odnalezienie wartościowych i naprawdę istotnych informacji jest znaczącym wyzwaniem. Tradycyjne agregatory wiadomości często ignorują indywidualne preferencje użytkownika, jego aktualny nastrój czy wiarygodność źródeł. Prowadzi to do zmęczenia informacyjnego oraz konsumpcji treści o niskiej jakości lub niepożądanych. PulseReader rozwiązuje ten problem, dając użytkownikowi pełną kontrolę nad swoim feedem informacyjnym, co gwarantuje, że konsumowane treści są zgodne z jego zainteresowaniami i stanem umysłu.
 
 ## 3. Wymagania funkcjonalne
+
 - FR-001: Agregacja Treści
   - System automatycznie pobiera artykuły z predefiniowanych w bazie danych źródeł RSS (m.in. Wyborcza, Rzeczpospolita, BBC, Reuters).
   - Proces pobierania jest uruchamiany cyklicznie co 15 minut za pomocą zadania cron.
@@ -32,7 +35,9 @@ W świecie przesyconym treściami, odnalezienie wartościowych i naprawdę istot
   - W przypadku braku wyników po zastosowaniu filtrów, wyświetlany jest przyjazny komunikat.
 
 ## 4. Granice produktu
+
 Następujące funkcjonalności znajdują się poza zakresem wersji MVP (Minimum Viable Product):
+
 - Wyświetlanie pełnych treści artykułów w aplikacji.
 - Zaawansowane systemy rekomendacji AI oparte na zachowaniu użytkownika.
 - Funkcje społecznościowe (komentarze, oceny, udostępnianie).
@@ -112,7 +117,6 @@ Następujące funkcjonalności znajdują się poza zakresem wersji MVP (Minimum 
   2. Interfejs wyraźnie informuje, jakie filtry są aktywne (np. "Nastrój: Pozytywny", "Aktywne filtry: 3").
   3. Użytkownik ma możliwość tymczasowego wyłączenia filtrów, aby zobaczyć pełną listę artykułów.
 
-
 - ID: US-008
 - Tytuł: Wyświetlanie informacji o braku wyników
 - Opis: Jako użytkownik, chcę otrzymać jasny komunikat, gdy moje kryteria filtrowania są tak restrykcyjne, że nie ma żadnych pasujących artykułów.
@@ -128,6 +132,7 @@ Następujące funkcjonalności znajdują się poza zakresem wersji MVP (Minimum 
   2. Kliknięcie w artykuł otwiera jego oryginalny link w nowej karcie przeglądarki (`target="_blank"`).
 
 ## 6. Metryki sukcesu
+
 - MS-001: Adopcja personalizacji
   - Cel: 50% nowo zarejestrowanych użytkowników przynajmniej raz ustawiło swoje preferencje (nastrój lub dodało element do listy blokowania) w ciągu pierwszych 7 dni od rejestracji.
   - Sposób mierzenia: Stosunek liczby użytkowników, którzy mają zapisane niestandardowe preferencje w tabeli `profiles`, do całkowitej liczby użytkowników zarejestrowanych w danym okresie.

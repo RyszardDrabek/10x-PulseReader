@@ -11,10 +11,12 @@
 ## ✅ Co jest Dobre (Akceptuję)
 
 ### 1. **Vitest jako framework testowy (Sekcja 6)**
+
 **Plan:** Vitest dla unit/integration tests  
 **Status:** ✅ **ZGADZAM SIĘ**
 
 **Uzasadnienie:**
+
 - Natywna integracja z Vite (Astro 5 używa Vite)
 - Lepszy niż Jest dla projektów Astro/ESM
 - Szybkie wykonanie, hot reload
@@ -22,6 +24,7 @@
 - Aktualnie utrzymywany (Jest jest przestarzały dla nowych projektów)
 
 **Implementacja:**
+
 ```json
 {
   "devDependencies": {
@@ -33,10 +36,12 @@
 ```
 
 ### 2. **Playwright dla E2E (Sekcja 6)**
+
 **Plan:** Playwright (cross-browser: Chrome, Firefox)  
 **Status:** ✅ **ZGADZAM SIĘ**
 
 **Uzasadnienie:**
+
 - Najlepsze narzędzie E2E w 2025 (wyprzedziło Cypress)
 - Cross-browser (Chrome, Firefox, Safari/WebKit)
 - Szybsze niż Selenium/Cypress
@@ -44,28 +49,34 @@
 - Oficjalnie wspierane przez Microsoft
 
 ### 3. **React Testing Library (Sekcja 6)**
+
 **Plan:** React Testing Library  
 **Status:** ✅ **ZGADZAM SIĘ**
 
 **Uzasadnienie:**
+
 - Standard de facto dla React 19
 - Testowanie zgodne z "user behavior" (nie implementacja)
 - Integracja z Vitest
 
 ### 4. **GitHub Actions dla CI/CD (Sekcja 6)**
+
 **Plan:** GitHub Actions  
 **Status:** ✅ **ZGADZAM SIĘ**
 
 **Uzasadnienie:**
+
 - Darmowe dla public repos, tanie dla private
 - Natywna integracja z GitHub
 - Szerokie wsparcie community
 
 ### 5. **Zod dla walidacji (Sekcja 3)**
+
 **Plan:** Zod dla walidacji w testach  
 **Status:** ✅ **ZGADZAM SIĘ**
 
 **Uzasadnienie:**
+
 - Projekt już używa Zod (brak dodatkowej zależności)
 - Type-safe, doskonałe błędy walidacyjne
 
@@ -74,15 +85,18 @@
 ## ⚠️ Co Warto Zmienić (Rekomendacje)
 
 ### 1. **OWASP ZAP → Snyk/Trivy (Sekcja 6)**
+
 **Plan:** OWASP ZAP dla testów bezpieczeństwa  
 **Status:** ⚠️ **PROPONUJĘ ZMIANĘ**
 
 **Problem:**
+
 - OWASP ZAP jest ciężki, wymaga Java
 - Trudny w automatyzacji CI/CD
 - Overkill dla MVP
 
 **Rekomendacja: Snyk + Trivy**
+
 ```yaml
 # GitHub Actions
 - name: Snyk Security Scan
@@ -93,11 +107,12 @@
 - name: Trivy vulnerability scanner
   uses: aquasecurity/trivy-action@master
   with:
-    scan-type: 'fs'
-    scan-ref: '.'
+    scan-type: "fs"
+    scan-ref: "."
 ```
 
 **Zalety:**
+
 - **Snyk:** Skanowanie zależności npm, integracja z GitHub
 - **Trivy:** Lekki, szybki, wykrywa CVE w dependencies
 - Łatwa automatyzacja (GitHub Actions)
@@ -108,38 +123,42 @@
 ---
 
 ### 2. **Artillery → k6 (Sekcja 6)**
+
 **Plan:** Artillery dla load tests  
 **Status:** ⚠️ **PROPONUJĘ ZMIANĘ**
 
 **Problem:**
+
 - Artillery jest mniej popularny, gorsze wsparcie
 - Konfiguracja YAML jest mniej intuicyjna
 
 **Rekomendacja: k6 (Grafana k6)**
+
 ```javascript
 // load-test.js
-import http from 'k6/http';
-import { check, sleep } from 'k6';
+import http from "k6/http";
+import { check, sleep } from "k6";
 
 export const options = {
   stages: [
-    { duration: '1m', target: 50 },  // ramp-up
-    { duration: '3m', target: 50 },  // steady
-    { duration: '1m', target: 0 },   // ramp-down
+    { duration: "1m", target: 50 }, // ramp-up
+    { duration: "3m", target: 50 }, // steady
+    { duration: "1m", target: 0 }, // ramp-down
   ],
   thresholds: {
-    http_req_duration: ['p(95)<500'], // 95% < 500ms
+    http_req_duration: ["p(95)<500"], // 95% < 500ms
   },
 };
 
 export default function () {
-  const res = http.get('http://localhost:3000/api/articles');
-  check(res, { 'status is 200': (r) => r.status === 200 });
+  const res = http.get("http://localhost:3000/api/articles");
+  check(res, { "status is 200": (r) => r.status === 200 });
   sleep(1);
 }
 ```
 
 **Zalety:**
+
 - Napisany w Go (szybki, lekki)
 - Scripting w JavaScript (łatwy dla zespołu)
 - Lepsze metryki, grafana integracja
@@ -149,27 +168,31 @@ export default function () {
 ---
 
 ### 3. **Percy → Playwright Visual Comparisons (Sekcja 6)**
+
 **Plan:** Percy dla visual diffs  
 **Status:** ⚠️ **PROPONUJĘ ZMIANĘ**
 
 **Problem:**
+
 - Percy jest płatny ($99/miesiąc dla zespołu)
 - Wymaga zewnętrznego serwisu
 
 **Rekomendacja: Playwright Visual Comparisons (built-in)**
+
 ```typescript
 // visual.spec.ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('homepage visual regression', async ({ page }) => {
-  await page.goto('http://localhost:3000');
-  await expect(page).toHaveScreenshot('homepage.png', {
+test("homepage visual regression", async ({ page }) => {
+  await page.goto("http://localhost:3000");
+  await expect(page).toHaveScreenshot("homepage.png", {
     maxDiffPixels: 100, // tolerancja 100px różnicy
   });
 });
 ```
 
 **Zalety:**
+
 - **Darmowe** (wbudowane w Playwright)
 - Automatyczne generowanie baseline
 - Pixel-by-pixel comparison
@@ -180,14 +203,17 @@ test('homepage visual regression', async ({ page }) => {
 ---
 
 ### 4. **Allure → GitHub Actions Native Reporting (Sekcja 6)**
+
 **Plan:** Allure dla agregacji wyników  
 **Status:** ⚠️ **PROPONUJĘ UPROSZCZENIE**
 
 **Problem:**
+
 - Allure wymaga Java, dodatkowej konfiguracji
 - Hosting raportów wymaga osobnego serwera
 
 **Rekomendacja: GitHub Actions + Vitest UI + Playwright HTML Reporter**
+
 ```yaml
 # .github/workflows/test.yml
 - name: Run tests
@@ -210,49 +236,56 @@ test('homepage visual regression', async ({ page }) => {
 ```
 
 **Zalety:**
+
 - Brak Java dependency
 - Natywne HTML raporty (Vitest UI, Playwright)
 - Przechowywanie artifacts w GitHub
 - Integracja z GitHub Checks (✅/❌ w PR)
 
 **Dla lokalnego developmentu:**
+
 - `npm run test:ui` (Vitest UI - interaktywny dashboard)
 - `npx playwright show-report` (HTML report)
 
 ---
 
 ### 5. **Storybook → Historia (Sekcja 6)**
+
 **Plan:** Storybook dla komponentów Shadcn  
 **Status:** ⚠️ **PROPONUJĘ ALTERNATYWĘ**
 
 **Problem:**
+
 - Storybook jest ciężki dla Astro (Vite conflicts)
 - Shadcn/ui nie wymaga Storybook (komponenty są proste)
 
 **Rekomendacja: Historia (Astro-native)**
+
 ```bash
 npm install -D @histoire/plugin-react histoire
 ```
 
 **Historia config:**
+
 ```typescript
 // histoire.config.ts
-import { defineConfig } from 'histoire';
-import { HstReact } from '@histoire/plugin-react';
+import { defineConfig } from "histoire";
+import { HstReact } from "@histoire/plugin-react";
 
 export default defineConfig({
   plugins: [HstReact()],
-  setupFile: './src/histoire.setup.ts',
+  setupFile: "./src/histoire.setup.ts",
   tree: {
     groups: [
-      { id: 'ui', title: 'UI Components' },
-      { id: 'features', title: 'Features' },
+      { id: "ui", title: "UI Components" },
+      { id: "features", title: "Features" },
     ],
   },
 });
 ```
 
 **Zalety:**
+
 - Zaprojektowane dla Vite/Astro (brak konfliktów)
 - Lżejsze niż Storybook (szybszy start)
 - Lepsze TypeScript support
@@ -263,10 +296,12 @@ export default defineConfig({
 ---
 
 ### 6. **MSW v1 → MSW v2 (Sekcja 5)**
+
 **Plan:** MSW dla mock serwery  
 **Status:** ✅ **ZGADZAM SIĘ, ale uwaga na wersję**
 
 **Uwaga:** Upewnij się, że używasz **MSW v2** (wydana 2024):
+
 ```json
 {
   "devDependencies": {
@@ -276,12 +311,13 @@ export default defineConfig({
 ```
 
 **Przykład mock dla RSS:**
+
 ```typescript
 // src/__mocks__/rss.handlers.ts
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse } from "msw";
 
 export const rssHandlers = [
-  http.get('https://feeds.bbci.co.uk/news/rss.xml', () => {
+  http.get("https://feeds.bbci.co.uk/news/rss.xml", () => {
     return HttpResponse.xml(`
       <?xml version="1.0"?>
       <rss version="2.0">
@@ -301,12 +337,14 @@ export const rssHandlers = [
 ---
 
 ### 7. **Dodatkowe Narzędzie: Supabase Test Helpers**
+
 **Plan:** Mock Supabase client  
 **Status:** ⚠️ **BRAKUJE W PLANIE**
 
 **Rekomendacja:** Użyj **Supabase Local Development** + **Supabase Test Helpers**
 
 **Setup:**
+
 ```bash
 # 1. Supabase local
 npx supabase start
@@ -316,23 +354,22 @@ npm install -D @supabase/supabase-js vitest-mock-extended
 ```
 
 **Przykład:**
+
 ```typescript
 // src/__tests__/setup.ts
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-export const supabaseTest = createClient(
-  'http://localhost:54321',
-  'test-anon-key'
-);
+export const supabaseTest = createClient("http://localhost:54321", "test-anon-key");
 
 // Seed data przed testami
 beforeAll(async () => {
-  await supabaseTest.from('app.articles').delete().neq('id', '');
-  await supabaseTest.from('app.articles').insert(testArticles);
+  await supabaseTest.from("app.articles").delete().neq("id", "");
+  await supabaseTest.from("app.articles").insert(testArticles);
 });
 ```
 
 **Zalety:**
+
 - Prawdziwa baza (PostgreSQL), nie mock
 - Izolacja testów (personal test DB)
 - Reset między testami (truncate tables)
@@ -340,12 +377,14 @@ beforeAll(async () => {
 ---
 
 ### 8. **Lighthouse CI → WebPageTest API (Alternatywa)**
+
 **Plan:** Lighthouse CI dla performance  
 **Status:** ✅ **ZGADZAM SIĘ**, ale dodaj alternatywę
 
 **Rekomendacja:** Lighthouse CI (główne) + **WebPageTest API** (dodatkowe)
 
 **Lighthouse CI (GitHub Actions):**
+
 ```yaml
 - name: Lighthouse CI
   uses: treosh/lighthouse-ci-action@v12
@@ -358,6 +397,7 @@ beforeAll(async () => {
 ```
 
 **WebPageTest API (opcjonalne, dla dogłębnej analizy):**
+
 - Testy z różnych lokalizacji geograficznych
 - Prawdziwe urządzenia mobilne
 - Darmowe dla 200 testów/miesiąc
@@ -366,15 +406,15 @@ beforeAll(async () => {
 
 ## 📊 Porównanie Kosztów
 
-| Narzędzie | Plan Oryginalny | Rekomendacja | Koszt (MVP) |
-|-----------|-----------------|--------------|-------------|
-| Unit/Integration | Vitest | ✅ Vitest | Darmowe |
-| E2E | Playwright | ✅ Playwright | Darmowe |
-| Bezpieczeństwo | OWASP ZAP | ⚠️ Snyk + Trivy | Darmowe (open-source) |
-| Load Testing | Artillery | ⚠️ k6 | Darmowe |
-| Visual Regression | Percy | ⚠️ Playwright Snapshots | Darmowe (vs $99/m) |
-| Raportowanie | Allure | ⚠️ GitHub Actions | Darmowe (vs hosting) |
-| Component Testing | Storybook | ⚠️ Historia | Darmowe |
+| Narzędzie         | Plan Oryginalny | Rekomendacja            | Koszt (MVP)           |
+| ----------------- | --------------- | ----------------------- | --------------------- |
+| Unit/Integration  | Vitest          | ✅ Vitest               | Darmowe               |
+| E2E               | Playwright      | ✅ Playwright           | Darmowe               |
+| Bezpieczeństwo    | OWASP ZAP       | ⚠️ Snyk + Trivy         | Darmowe (open-source) |
+| Load Testing      | Artillery       | ⚠️ k6                   | Darmowe               |
+| Visual Regression | Percy           | ⚠️ Playwright Snapshots | Darmowe (vs $99/m)    |
+| Raportowanie      | Allure          | ⚠️ GitHub Actions       | Darmowe (vs hosting)  |
+| Component Testing | Storybook       | ⚠️ Historia             | Darmowe               |
 
 **Oszczędność:** ~$200/miesiąc (Percy + hosting Allure)
 
@@ -422,6 +462,7 @@ beforeAll(async () => {
 ## 🎯 Zaktualizowany Harmonogram (Faza 1-4)
 
 ### Faza 1 (Tydzień 1-2): Setup + Unit Tests
+
 - ✅ Instalacja: Vitest, Happy-DOM, React Testing Library
 - ✅ Konfiguracja: `vitest.config.ts`, setup files
 - ✅ Testy jednostkowe: Auth, ArticleService, Validators
@@ -430,6 +471,7 @@ beforeAll(async () => {
 **Estymacja:** 40 godzin
 
 ### Faza 2 (Tydzień 3-4): Integration + E2E
+
 - ✅ Instalacja: Playwright, MSW v2
 - ✅ Supabase local setup (test DB)
 - ✅ Testy integracyjne: API endpoints, Database
@@ -439,6 +481,7 @@ beforeAll(async () => {
 **Estymacja:** 50 godzin
 
 ### Faza 3 (Tydzień 5): Performance + Security
+
 - ✅ Instalacja: k6, Snyk, Trivy
 - ✅ Load tests: API endpoints (50 concurrent users)
 - ✅ Security scans: Dependencies + SAST
@@ -448,6 +491,7 @@ beforeAll(async () => {
 **Estymacja:** 30 godzin
 
 ### Faza 4 (Tydzień 6): Stabilizacja
+
 - ✅ Code review testów
 - ✅ Dokumentacja: README, contributing
 - ✅ Monitoring: GitHub Insights setup
@@ -462,6 +506,7 @@ beforeAll(async () => {
 ## 📋 Checklist Implementacji
 
 ### Krok 1: Instalacja Dependencies
+
 ```bash
 # Testing core
 npm install -D vitest @vitest/ui happy-dom @testing-library/react @testing-library/user-event
@@ -480,17 +525,20 @@ npm install -D @vitest/coverage-v8
 ```
 
 ### Krok 2: Konfiguracja
+
 - [ ] `vitest.config.ts`
 - [ ] `playwright.config.ts`
 - [ ] `src/__tests__/setup.ts`
 - [ ] `.github/workflows/test.yml`
 
 ### Krok 3: Pierwsze Testy
+
 - [ ] Unit: `ArticleService.test.ts`
 - [ ] Integration: `GET /api/articles.test.ts`
 - [ ] E2E: `auth.spec.ts`
 
 ### Krok 4: CI/CD
+
 - [ ] GitHub Actions workflow
 - [ ] Coverage reporting
 - [ ] PR checks
@@ -500,6 +548,7 @@ npm install -D @vitest/coverage-v8
 ## 🎓 Najlepsze Praktyki (Dodatkowe)
 
 ### 1. Test Isolation
+
 ```typescript
 // ✅ Good: Izolowane testy
 beforeEach(async () => {
@@ -507,17 +556,22 @@ beforeEach(async () => {
 });
 
 // ❌ Bad: Testy zależne od siebie
-test('create article', async () => { /* ... */ });
-test('get article', async () => { /* zakłada, że poprzedni test stworzył article */ });
+test("create article", async () => {
+  /* ... */
+});
+test("get article", async () => {
+  /* zakłada, że poprzedni test stworzył article */
+});
 ```
 
 ### 2. Test Data Builders
+
 ```typescript
 // src/__tests__/fixtures/article.builder.ts
 export const buildArticle = (overrides = {}) => ({
   id: randomUUID(),
-  title: 'Test Article',
-  link: 'https://example.com/test',
+  title: "Test Article",
+  link: "https://example.com/test",
   sourceId: testSourceId,
   publicationDate: new Date().toISOString(),
   ...overrides,
@@ -525,6 +579,7 @@ export const buildArticle = (overrides = {}) => ({
 ```
 
 ### 3. Custom Matchers
+
 ```typescript
 // src/__tests__/matchers.ts
 expect.extend({
@@ -586,15 +641,15 @@ npm test
 
 ## 📈 Metryki Sukcesu (Zaktualizowane)
 
-| Metryka | Target | Tool |
-|---------|--------|------|
-| Unit Coverage | >80% | Vitest |
-| E2E Coverage | >70% | Playwright |
-| Build Time (CI) | <5min | GitHub Actions |
-| Test Execution | <2min | Vitest |
-| Security Issues | 0 high/critical | Snyk + Trivy |
-| Performance (p95) | <500ms | k6 |
-| Visual Regressions | 0 | Playwright |
+| Metryka            | Target          | Tool           |
+| ------------------ | --------------- | -------------- |
+| Unit Coverage      | >80%            | Vitest         |
+| E2E Coverage       | >70%            | Playwright     |
+| Build Time (CI)    | <5min           | GitHub Actions |
+| Test Execution     | <2min           | Vitest         |
+| Security Issues    | 0 high/critical | Snyk + Trivy   |
+| Performance (p95)  | <500ms          | k6             |
+| Visual Regressions | 0               | Playwright     |
 
 ---
 
@@ -613,6 +668,7 @@ npm test
 ## ✅ Podsumowanie Rekomendacji
 
 ### ZAAKCEPTOWANE (6/9):
+
 1. ✅ Vitest (unit/integration)
 2. ✅ Playwright (E2E)
 3. ✅ React Testing Library
@@ -621,15 +677,18 @@ npm test
 6. ✅ Lighthouse CI (performance)
 
 ### ZMIENIONE (3/9):
+
 1. ⚠️ OWASP ZAP → **Snyk + Trivy** (bezpieczeństwo)
 2. ⚠️ Artillery → **k6** (load testing)
 3. ⚠️ Percy → **Playwright Snapshots** (visual regression)
 
 ### UPROSZCZONE (2/9):
+
 1. ⚠️ Allure → **GitHub Actions Native**
 2. ⚠️ Storybook → **Historia** (lub brak)
 
 ### DODANE:
+
 1. ➕ MSW v2 (API mocking)
 2. ➕ Supabase Local + Test Helpers
 3. ➕ Test data builders pattern
@@ -644,4 +703,3 @@ npm test
 4. **Kick-off:** Start Fazy 1
 
 **Data docelowa startu:** Grudzień 2025
-

@@ -11,6 +11,7 @@ This implementation plan covers five REST API endpoints for managing RSS sources
 5. **DELETE /api/rss-sources/:id** - Deletes an RSS source and all associated articles (service role only)
 
 **Key Features:**
+
 - Public read access for all users (including guests)
 - Service role authentication required for write operations (POST, PATCH, DELETE)
 - Pagination support for list endpoint
@@ -20,6 +21,7 @@ This implementation plan covers five REST API endpoints for managing RSS sources
 - Proper error handling with appropriate HTTP status codes
 
 **Primary Use Cases:**
+
 1. Frontend displaying list of available RSS sources
 2. Admin/system processes managing RSS feed sources
 3. RSS fetching cron job verifying source existence
@@ -39,16 +41,17 @@ This implementation plan covers five REST API endpoints for managing RSS sources
 
 **Query Parameters:**
 
-| Parameter | Type | Default | Validation | Description |
-|-----------|------|---------|------------|-------------|
-| `limit` | integer | 50 | Min: 1, Max: 100 | Number of sources per page |
-| `offset` | integer | 0 | Min: 0 | Pagination offset |
+| Parameter | Type    | Default | Validation       | Description                |
+| --------- | ------- | ------- | ---------------- | -------------------------- |
+| `limit`   | integer | 50      | Min: 1, Max: 100 | Number of sources per page |
+| `offset`  | integer | 0       | Min: 0           | Pagination offset          |
 
 **Authentication:** Optional (public access)
 
 **Request Body:** None
 
 **Example Request:**
+
 ```http
 GET /api/rss-sources?limit=20&offset=0
 ```
@@ -63,15 +66,16 @@ GET /api/rss-sources?limit=20&offset=0
 
 **Path Parameters:**
 
-| Parameter | Type | Required | Validation | Description |
-|-----------|------|----------|------------|-------------|
-| `id` | string (UUID) | Yes | Valid UUID format | RSS source ID |
+| Parameter | Type          | Required | Validation        | Description   |
+| --------- | ------------- | -------- | ----------------- | ------------- |
+| `id`      | string (UUID) | Yes      | Valid UUID format | RSS source ID |
 
 **Authentication:** Optional (public access)
 
 **Request Body:** None
 
 **Example Request:**
+
 ```http
 GET /api/rss-sources/550e8400-e29b-41d4-a716-446655440000
 ```
@@ -87,6 +91,7 @@ GET /api/rss-sources/550e8400-e29b-41d4-a716-446655440000
 **Authentication:** Required (service_role JWT token)
 
 **Request Body:**
+
 ```json
 {
   "name": "The Guardian - World",
@@ -96,12 +101,13 @@ GET /api/rss-sources/550e8400-e29b-41d4-a716-446655440000
 
 **Request Body Fields:**
 
-| Field | Type | Required | Validation | Description |
-|-------|------|----------|------------|-------------|
-| `name` | string | Yes | Min: 1, Max: 500 | Human-readable name of the RSS source |
-| `url` | string | Yes | Valid URL format, Max: 2000 | RSS feed URL (must be unique) |
+| Field  | Type   | Required | Validation                  | Description                           |
+| ------ | ------ | -------- | --------------------------- | ------------------------------------- |
+| `name` | string | Yes      | Min: 1, Max: 500            | Human-readable name of the RSS source |
+| `url`  | string | Yes      | Valid URL format, Max: 2000 | RSS feed URL (must be unique)         |
 
 **Example Request:**
+
 ```http
 POST /api/rss-sources
 Authorization: Bearer <service_role_token>
@@ -123,13 +129,14 @@ Content-Type: application/json
 
 **Path Parameters:**
 
-| Parameter | Type | Required | Validation | Description |
-|-----------|------|----------|------------|-------------|
-| `id` | string (UUID) | Yes | Valid UUID format | RSS source ID |
+| Parameter | Type          | Required | Validation        | Description   |
+| --------- | ------------- | -------- | ----------------- | ------------- |
+| `id`      | string (UUID) | Yes      | Valid UUID format | RSS source ID |
 
 **Authentication:** Required (service_role JWT token)
 
 **Request Body:**
+
 ```json
 {
   "name": "The Guardian - World News",
@@ -139,14 +146,15 @@ Content-Type: application/json
 
 **Request Body Fields:**
 
-| Field | Type | Required | Validation | Description |
-|-------|------|----------|------------|-------------|
-| `name` | string | No | Min: 1, Max: 500 | Human-readable name of the RSS source |
-| `url` | string | No | Valid URL format, Max: 2000 | RSS feed URL (must be unique if provided) |
+| Field  | Type   | Required | Validation                  | Description                               |
+| ------ | ------ | -------- | --------------------------- | ----------------------------------------- |
+| `name` | string | No       | Min: 1, Max: 500            | Human-readable name of the RSS source     |
+| `url`  | string | No       | Valid URL format, Max: 2000 | RSS feed URL (must be unique if provided) |
 
 **Note:** All fields are optional for partial updates. At least one field must be provided.
 
 **Example Request:**
+
 ```http
 PATCH /api/rss-sources/550e8400-e29b-41d4-a716-446655440000
 Authorization: Bearer <service_role_token>
@@ -167,15 +175,16 @@ Content-Type: application/json
 
 **Path Parameters:**
 
-| Parameter | Type | Required | Validation | Description |
-|-----------|------|----------|------------|-------------|
-| `id` | string (UUID) | Yes | Valid URL format | RSS source ID |
+| Parameter | Type          | Required | Validation       | Description   |
+| --------- | ------------- | -------- | ---------------- | ------------- |
+| `id`      | string (UUID) | Yes      | Valid URL format | RSS source ID |
 
 **Authentication:** Required (service_role JWT token)
 
 **Request Body:** None
 
 **Example Request:**
+
 ```http
 DELETE /api/rss-sources/550e8400-e29b-41d4-a716-446655440000
 Authorization: Bearer <service_role_token>
@@ -188,6 +197,7 @@ Authorization: Bearer <service_role_token>
 The following types from `src/types.ts` are used in this implementation:
 
 ### Entity Types
+
 ```typescript
 RssSourceEntity {
   id: string;
@@ -199,6 +209,7 @@ RssSourceEntity {
 ```
 
 ### DTO Types
+
 ```typescript
 RssSourceDto = RssSourceEntity
 
@@ -216,6 +227,7 @@ PaginationMetadata {
 ```
 
 ### Command Models
+
 ```typescript
 CreateRssSourceCommand {
   name: string;
@@ -229,6 +241,7 @@ UpdateRssSourceCommand {
 ```
 
 ### Query Parameter Types
+
 ```typescript
 GetRssSourcesQueryParams {
   limit?: number;
@@ -237,6 +250,7 @@ GetRssSourcesQueryParams {
 ```
 
 ### Insert/Update Types
+
 ```typescript
 RssSourceInsert {
   id?: string;
@@ -254,6 +268,7 @@ RssSourceUpdate {
 ```
 
 ### Error Response Types
+
 ```typescript
 ErrorResponse {
   error: string;
@@ -285,6 +300,7 @@ ValidationErrorDetails {
 **Content-Type:** `application/json`
 
 **Response Body:**
+
 ```json
 {
   "data": [
@@ -321,6 +337,7 @@ ValidationErrorDetails {
 **Content-Type:** `application/json`
 
 **Response Body:**
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -340,6 +357,7 @@ ValidationErrorDetails {
 **Content-Type:** `application/json`
 
 **Response Body:**
+
 ```json
 {
   "id": "770e8400-e29b-41d4-a716-446655440002",
@@ -359,6 +377,7 @@ ValidationErrorDetails {
 **Content-Type:** `application/json`
 
 **Response Body:**
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -388,6 +407,7 @@ ValidationErrorDetails {
 **Status Code:** `400 Bad Request`
 
 **Response Body:**
+
 ```json
 {
   "error": "Validation failed",
@@ -406,6 +426,7 @@ ValidationErrorDetails {
 ```
 
 **Common Validation Errors:**
+
 - Missing required fields (POST)
 - Invalid UUID format (path parameters)
 - Invalid URL format
@@ -420,6 +441,7 @@ ValidationErrorDetails {
 **Status Code:** `401 Unauthorized`
 
 **Response Body:**
+
 ```json
 {
   "error": "Service role required for this endpoint",
@@ -435,6 +457,7 @@ ValidationErrorDetails {
 **Status Code:** `404 Not Found`
 
 **Response Body:**
+
 ```json
 {
   "error": "RSS source not found",
@@ -450,6 +473,7 @@ ValidationErrorDetails {
 **Status Code:** `409 Conflict`
 
 **Response Body:**
+
 ```json
 {
   "error": "RSS source with this URL already exists",
@@ -465,6 +489,7 @@ ValidationErrorDetails {
 **Status Code:** `500 Internal Server Error`
 
 **Response Body:**
+
 ```json
 {
   "error": "Internal server error",
@@ -608,6 +633,7 @@ ValidationErrorDetails {
 ### PATCH /api/rss-sources/:id Flow
 
 Similar to POST flow, but:
+
 - Validates source exists first (404 if not found)
 - Performs UPDATE instead of INSERT
 - Checks URL uniqueness only if URL is being updated
@@ -676,11 +702,13 @@ Similar to POST flow, but:
 ### Authentication & Authorization
 
 **Public Read Access:**
+
 - GET endpoints are publicly accessible (no authentication required)
 - RLS policy: `CREATE POLICY "RSS sources are viewable by everyone" ON app.rss_sources FOR SELECT USING (true)`
 - This aligns with the goal of providing RSS source information to all users
 
 **Service Role Write Access:**
+
 - POST, PATCH, DELETE endpoints require service_role authentication
 - Middleware extracts user from `Authorization: Bearer <token>` header
 - Route handler checks: `user.role === 'service_role'`
@@ -688,6 +716,7 @@ Similar to POST flow, but:
 - Regular users and guests MUST NOT have access to write operations
 
 **RLS Policies in Effect:**
+
 ```sql
 -- RSS Sources: Public read access
 ALTER TABLE app.rss_sources ENABLE ROW LEVEL SECURITY;
@@ -729,11 +758,13 @@ USING (auth.jwt()->>'role' = 'service_role');
 ### Data Exposure & Privacy
 
 **What is Exposed:**
+
 - RSS sources are public data (predefined list)
 - Source names and URLs are visible to all users
 - No sensitive user data in RSS sources
 
 **What is Protected:**
+
 - Write operations require service role (admin/system processes only)
 - URL uniqueness prevents duplicate sources
 - Cascade deletion ensures data integrity
@@ -741,6 +772,7 @@ USING (auth.jwt()->>'role' = 'service_role');
 ### Rate Limiting & Abuse Prevention
 
 **MVP Approach:**
+
 - No explicit rate limiting implemented in MVP
 - Abuse mitigation through:
   - Max limit of 100 sources per request (prevents excessive data transfer)
@@ -748,6 +780,7 @@ USING (auth.jwt()->>'role' = 'service_role');
   - Astro request timeout (platform-dependent)
 
 **Future Enhancements:**
+
 - Implement rate limiting middleware (e.g., 100 requests per minute per IP for GET)
 - Add request throttling for service role operations (e.g., 50 requests per minute per service)
 - Monitor for abuse patterns (excessive pagination, repeated queries)
@@ -756,12 +789,14 @@ USING (auth.jwt()->>'role' = 'service_role');
 ### URL Validation Security
 
 **URL Validation:**
+
 - Validate URL format using Zod URL validator
 - Maximum length enforced (2000 characters)
 - No protocol whitelist (accepts http://, https://, feed://, etc.)
 - No domain validation (allows any domain)
 
 **Potential Abuse:**
+
 - Malicious URLs could be stored (but only by service role, which is trusted)
 - Client applications should validate URLs before fetching RSS feeds
 - Consider adding URL validation in RSS fetching cron job
@@ -772,26 +807,26 @@ USING (auth.jwt()->>'role' = 'service_role');
 
 ### Error Scenarios & Response Codes
 
-| Error Scenario | Status Code | Error Code | Description |
-|----------------|-------------|------------|-------------|
-| Invalid `limit` value | 400 | VALIDATION_ERROR | Limit must be integer between 1 and 100 |
-| Invalid `offset` value | 400 | VALIDATION_ERROR | Offset must be non-negative integer |
-| Invalid `id` UUID format | 400 | VALIDATION_ERROR | Must be valid UUID format |
-| Missing `name` (POST) | 400 | VALIDATION_ERROR | Name is required |
-| Missing `url` (POST) | 400 | VALIDATION_ERROR | URL is required |
-| Invalid URL format | 400 | VALIDATION_ERROR | Must be valid URL format |
-| Name too long (> 500) | 400 | VALIDATION_ERROR | Name exceeds maximum length |
-| URL too long (> 2000) | 400 | VALIDATION_ERROR | URL exceeds maximum length |
-| No fields provided (PATCH) | 400 | VALIDATION_ERROR | At least one field must be provided |
-| Not authenticated | 401 | AUTHENTICATION_REQUIRED | Valid token required |
-| Not service role | 401 | FORBIDDEN | Service role required for this endpoint |
-| Source not found (GET by ID) | 404 | NOT_FOUND | RSS source does not exist |
-| Source not found (PATCH) | 404 | NOT_FOUND | RSS source does not exist |
-| Source not found (DELETE) | 404 | NOT_FOUND | RSS source does not exist |
-| URL already exists (POST) | 409 | DUPLICATE_URL | RSS source with this URL already exists |
-| URL already exists (PATCH) | 409 | DUPLICATE_URL | RSS source with this URL already exists |
-| Database connection error | 500 | DATABASE_ERROR | Database unavailable or connection failed |
-| Unexpected error | 500 | INTERNAL_ERROR | Unhandled exception occurred |
+| Error Scenario               | Status Code | Error Code              | Description                               |
+| ---------------------------- | ----------- | ----------------------- | ----------------------------------------- |
+| Invalid `limit` value        | 400         | VALIDATION_ERROR        | Limit must be integer between 1 and 100   |
+| Invalid `offset` value       | 400         | VALIDATION_ERROR        | Offset must be non-negative integer       |
+| Invalid `id` UUID format     | 400         | VALIDATION_ERROR        | Must be valid UUID format                 |
+| Missing `name` (POST)        | 400         | VALIDATION_ERROR        | Name is required                          |
+| Missing `url` (POST)         | 400         | VALIDATION_ERROR        | URL is required                           |
+| Invalid URL format           | 400         | VALIDATION_ERROR        | Must be valid URL format                  |
+| Name too long (> 500)        | 400         | VALIDATION_ERROR        | Name exceeds maximum length               |
+| URL too long (> 2000)        | 400         | VALIDATION_ERROR        | URL exceeds maximum length                |
+| No fields provided (PATCH)   | 400         | VALIDATION_ERROR        | At least one field must be provided       |
+| Not authenticated            | 401         | AUTHENTICATION_REQUIRED | Valid token required                      |
+| Not service role             | 401         | FORBIDDEN               | Service role required for this endpoint   |
+| Source not found (GET by ID) | 404         | NOT_FOUND               | RSS source does not exist                 |
+| Source not found (PATCH)     | 404         | NOT_FOUND               | RSS source does not exist                 |
+| Source not found (DELETE)    | 404         | NOT_FOUND               | RSS source does not exist                 |
+| URL already exists (POST)    | 409         | DUPLICATE_URL           | RSS source with this URL already exists   |
+| URL already exists (PATCH)   | 409         | DUPLICATE_URL           | RSS source with this URL already exists   |
+| Database connection error    | 500         | DATABASE_ERROR          | Database unavailable or connection failed |
+| Unexpected error             | 500         | INTERNAL_ERROR          | Unhandled exception occurred              |
 
 ### Error Response Format
 
@@ -818,13 +853,13 @@ try {
     return new Response(
       JSON.stringify({
         error: "Validation failed",
-        details: error.errors.map(e => ({
-          field: e.path.join('.'),
-          message: e.message
+        details: error.errors.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
         })),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
+      { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 }
@@ -838,20 +873,20 @@ if (!user) {
     JSON.stringify({
       error: "Authentication required",
       code: "AUTHENTICATION_REQUIRED",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
-    { status: 401, headers: { 'Content-Type': 'application/json' } }
+    { status: 401, headers: { "Content-Type": "application/json" } }
   );
 }
 
-if (user.role !== 'service_role') {
+if (user.role !== "service_role") {
   return new Response(
     JSON.stringify({
       error: "Service role required for this endpoint",
       code: "FORBIDDEN",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
-    { status: 401, headers: { 'Content-Type': 'application/json' } }
+    { status: 401, headers: { "Content-Type": "application/json" } }
   );
 }
 ```
@@ -865,9 +900,9 @@ if (!source) {
     JSON.stringify({
       error: "RSS source not found",
       code: "NOT_FOUND",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
-    { status: 404, headers: { 'Content-Type': 'application/json' } }
+    { status: 404, headers: { "Content-Type": "application/json" } }
   );
 }
 ```
@@ -879,14 +914,14 @@ try {
   const source = await rssSourceService.createRssSource(command);
   // ... success handling
 } catch (error) {
-  if (error instanceof Error && error.message === 'DUPLICATE_URL') {
+  if (error instanceof Error && error.message === "DUPLICATE_URL") {
     return new Response(
       JSON.stringify({
         error: "RSS source with this URL already exists",
         code: "DUPLICATE_URL",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
-      { status: 409, headers: { 'Content-Type': 'application/json' } }
+      { status: 409, headers: { "Content-Type": "application/json" } }
     );
   }
   throw error;
@@ -902,16 +937,16 @@ try {
 } catch (error) {
   logger.error("Failed to fetch RSS sources", error, {
     endpoint: "GET /api/rss-sources",
-    params
+    params,
   });
-  
+
   return new Response(
     JSON.stringify({
       error: "Internal server error",
       code: "INTERNAL_ERROR",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
-    { status: 500, headers: { 'Content-Type': 'application/json' } }
+    { status: 500, headers: { "Content-Type": "application/json" } }
   );
 }
 ```
@@ -919,30 +954,33 @@ try {
 ### Logging Strategy
 
 **Success Logging:**
+
 ```typescript
 logger.info("RSS sources fetched successfully", {
   endpoint: "GET /api/rss-sources",
   resultCount: result.data.length,
   totalCount: result.pagination.total,
-  userId: user?.id || "anonymous"
+  userId: user?.id || "anonymous",
 });
 ```
 
 **Error Logging:**
+
 ```typescript
 logger.error("Failed to create RSS source", error, {
   endpoint: "POST /api/rss-sources",
   command,
   userId: user?.id,
-  errorCode: error instanceof Error ? error.message : "UNKNOWN"
+  errorCode: error instanceof Error ? error.message : "UNKNOWN",
 });
 ```
 
 **Debug Logging (Development Only):**
+
 ```typescript
 logger.debug("Query constructed", {
   endpoint: "GET /api/rss-sources",
-  query: queryDetails
+  query: queryDetails,
 });
 ```
 
@@ -953,11 +991,13 @@ logger.debug("Query constructed", {
 ### Database Query Optimization
 
 **Indexes Used:**
+
 - No explicit indexes needed for RSS sources table (small dataset expected)
 - Primary key index on `id` (automatic)
 - Unique index on `url` (automatic from UNIQUE constraint)
 
 **Query Performance:**
+
 - Base query (no filters): ~30ms for 50 sources
 - With pagination: ~35ms (minimal overhead)
 - Single source lookup by ID: ~20ms (primary key lookup)
@@ -982,6 +1022,7 @@ logger.debug("Query constructed", {
 ### Caching Strategy
 
 **MVP: No Caching**
+
 - Simple implementation
 - Fresh data for every request
 - Acceptable for initial traffic levels
@@ -989,9 +1030,11 @@ logger.debug("Query constructed", {
 **Future Enhancements:**
 
 1. **HTTP Caching Headers:**
+
    ```typescript
-   Response.headers.set('Cache-Control', 'public, max-age=300');
+   Response.headers.set("Cache-Control", "public, max-age=300");
    ```
+
    - Cache sources for 5 minutes (reasonable freshness)
    - Reduces server load for repeated requests
 
@@ -1008,11 +1051,13 @@ logger.debug("Query constructed", {
 ### Database Connection Pooling
 
 **Supabase Handling:**
+
 - Supabase uses PgBouncer for connection pooling
 - Default: 15 connections per client
 - Pooling is transparent to application
 
 **Astro Considerations:**
+
 - Each request creates new Supabase client in middleware
 - Clients are lightweight (reuse connection pool)
 - No need to implement custom pooling
@@ -1020,6 +1065,7 @@ logger.debug("Query constructed", {
 ### Performance Monitoring
 
 **Metrics to Track:**
+
 1. Response time (p50, p95, p99)
 2. Database query time
 3. Sources per request (average)
@@ -1027,6 +1073,7 @@ logger.debug("Query constructed", {
 5. Cache hit rate (when caching implemented)
 
 **Performance Targets:**
+
 - p95 latency: < 200ms (GET endpoints)
 - p95 latency: < 300ms (POST/PATCH/DELETE endpoints)
 - Database query time: < 50ms
@@ -1043,42 +1090,44 @@ logger.debug("Query constructed", {
 Create Zod schemas for validating RSS source requests.
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Validation schema for POST /api/rss-sources request body.
  */
 export const CreateRssSourceCommandSchema = z.object({
   name: z
-    .string({ required_error: 'Name is required' })
-    .min(1, { message: 'Name cannot be empty' })
-    .max(500, { message: 'Name must not exceed 500 characters' }),
-  
+    .string({ required_error: "Name is required" })
+    .min(1, { message: "Name cannot be empty" })
+    .max(500, { message: "Name must not exceed 500 characters" }),
+
   url: z
-    .string({ required_error: 'URL is required' })
-    .url({ message: 'Invalid URL format' })
-    .max(2000, { message: 'URL must not exceed 2000 characters' })
+    .string({ required_error: "URL is required" })
+    .url({ message: "Invalid URL format" })
+    .max(2000, { message: "URL must not exceed 2000 characters" }),
 });
 
 /**
  * Validation schema for PATCH /api/rss-sources/:id request body.
  * All fields are optional, but at least one must be provided.
  */
-export const UpdateRssSourceCommandSchema = z.object({
-  name: z
-    .string()
-    .min(1, { message: 'Name cannot be empty' })
-    .max(500, { message: 'Name must not exceed 500 characters' })
-    .optional(),
-  
-  url: z
-    .string()
-    .url({ message: 'Invalid URL format' })
-    .max(2000, { message: 'URL must not exceed 2000 characters' })
-    .optional()
-}).refine(data => data.name !== undefined || data.url !== undefined, {
-  message: 'At least one field (name or url) must be provided'
-});
+export const UpdateRssSourceCommandSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, { message: "Name cannot be empty" })
+      .max(500, { message: "Name must not exceed 500 characters" })
+      .optional(),
+
+    url: z
+      .string()
+      .url({ message: "Invalid URL format" })
+      .max(2000, { message: "URL must not exceed 2000 characters" })
+      .optional(),
+  })
+  .refine((data) => data.name !== undefined || data.url !== undefined, {
+    message: "At least one field (name or url) must be provided",
+  });
 
 /**
  * Validation schema for GET /api/rss-sources query parameters.
@@ -1087,31 +1136,28 @@ export const GetRssSourcesQueryParamsSchema = z.object({
   limit: z
     .string()
     .optional()
-    .default('50')
-    .transform(val => parseInt(val, 10))
+    .default("50")
+    .transform((val) => parseInt(val, 10))
     .pipe(
-      z.number()
-        .int({ message: 'Limit must be an integer' })
-        .min(1, { message: 'Limit must be at least 1' })
-        .max(100, { message: 'Limit must not exceed 100' })
+      z
+        .number()
+        .int({ message: "Limit must be an integer" })
+        .min(1, { message: "Limit must be at least 1" })
+        .max(100, { message: "Limit must not exceed 100" })
     ),
-  
+
   offset: z
     .string()
     .optional()
-    .default('0')
-    .transform(val => parseInt(val, 10))
-    .pipe(
-      z.number()
-        .int({ message: 'Offset must be an integer' })
-        .min(0, { message: 'Offset must be non-negative' })
-    )
+    .default("0")
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().int({ message: "Offset must be an integer" }).min(0, { message: "Offset must be non-negative" })),
 });
 
 /**
  * Validation schema for UUID path parameters.
  */
-export const UuidParamSchema = z.string().uuid({ message: 'Invalid UUID format' });
+export const UuidParamSchema = z.string().uuid({ message: "Invalid UUID format" });
 
 /**
  * TypeScript types inferred from validation schemas.
@@ -1122,6 +1168,7 @@ export type GetRssSourcesQueryParamsValidated = z.infer<typeof GetRssSourcesQuer
 ```
 
 **Tasks:**
+
 - Create file with Zod schemas
 - Handle string-to-number coercion for limit and offset
 - Provide default values in schema
@@ -1137,32 +1184,32 @@ export type GetRssSourcesQueryParamsValidated = z.infer<typeof GetRssSourcesQuer
 Create a new service class for RSS source operations.
 
 ```typescript
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@/db/database.types';
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/db/database.types";
 import type {
   RssSourceEntity,
   RssSourceDto,
   RssSourceListResponse,
   CreateRssSourceCommand,
   UpdateRssSourceCommand,
-  GetRssSourcesQueryParams
-} from '@/types';
+  GetRssSourcesQueryParams,
+} from "@/types";
 
 export class RssSourceService {
   constructor(private supabase: SupabaseClient<Database>) {}
 
   /**
    * Fetches a paginated list of RSS sources.
-   * 
+   *
    * @param params - Query parameters for pagination
    * @returns RssSourceListResponse with sources and pagination metadata
    */
   async getRssSources(params: GetRssSourcesQueryParams): Promise<RssSourceListResponse> {
     const query = this.supabase
-      .schema('app')
-      .from('rss_sources')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
+      .schema("app")
+      .from("rss_sources")
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false })
       .range(params.offset, params.offset + params.limit - 1);
 
     const { data, count, error } = await query;
@@ -1171,7 +1218,7 @@ export class RssSourceService {
       throw error;
     }
 
-    const sources = (data || []).map(source => this.mapToDto(source));
+    const sources = (data || []).map((source) => this.mapToDto(source));
 
     return {
       data: sources,
@@ -1179,27 +1226,22 @@ export class RssSourceService {
         limit: params.limit,
         offset: params.offset,
         total: count || 0,
-        hasMore: params.offset + params.limit < (count || 0)
-      }
+        hasMore: params.offset + params.limit < (count || 0),
+      },
     };
   }
 
   /**
    * Fetches a single RSS source by ID.
-   * 
+   *
    * @param id - UUID of the RSS source
    * @returns RssSourceDto if found, null otherwise
    */
   async getRssSourceById(id: string): Promise<RssSourceDto | null> {
-    const { data, error } = await this.supabase
-      .schema('app')
-      .from('rss_sources')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const { data, error } = await this.supabase.schema("app").from("rss_sources").select("*").eq("id", id).single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
+      if (error.code === "PGRST116") {
         // No rows returned
         return null;
       }
@@ -1211,7 +1253,7 @@ export class RssSourceService {
 
   /**
    * Creates a new RSS source.
-   * 
+   *
    * @param command - Create command with name and url
    * @returns Created RssSourceDto
    * @throws Error with message 'DUPLICATE_URL' if URL already exists
@@ -1220,23 +1262,23 @@ export class RssSourceService {
     // Check if URL already exists
     const existing = await this.findByUrl(command.url);
     if (existing) {
-      throw new Error('DUPLICATE_URL');
+      throw new Error("DUPLICATE_URL");
     }
 
     const { data, error } = await this.supabase
-      .schema('app')
-      .from('rss_sources')
+      .schema("app")
+      .from("rss_sources")
       .insert({
         name: command.name,
-        url: command.url
+        url: command.url,
       })
       .select()
       .single();
 
     if (error) {
       // Handle unique constraint violation
-      if (error.code === '23505') {
-        throw new Error('DUPLICATE_URL');
+      if (error.code === "23505") {
+        throw new Error("DUPLICATE_URL");
       }
       throw error;
     }
@@ -1246,7 +1288,7 @@ export class RssSourceService {
 
   /**
    * Updates an existing RSS source.
-   * 
+   *
    * @param id - UUID of the RSS source to update
    * @param command - Update command with optional name and url
    * @returns Updated RssSourceDto
@@ -1257,14 +1299,14 @@ export class RssSourceService {
     // Verify source exists
     const existing = await this.getRssSourceById(id);
     if (!existing) {
-      throw new Error('NOT_FOUND');
+      throw new Error("NOT_FOUND");
     }
 
     // Check URL uniqueness if URL is being updated
     if (command.url && command.url !== existing.url) {
       const urlExists = await this.findByUrl(command.url);
       if (urlExists) {
-        throw new Error('DUPLICATE_URL');
+        throw new Error("DUPLICATE_URL");
       }
     }
 
@@ -1277,17 +1319,17 @@ export class RssSourceService {
     }
 
     const { data, error } = await this.supabase
-      .schema('app')
-      .from('rss_sources')
+      .schema("app")
+      .from("rss_sources")
       .update(updateData)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
     if (error) {
       // Handle unique constraint violation
-      if (error.code === '23505') {
-        throw new Error('DUPLICATE_URL');
+      if (error.code === "23505") {
+        throw new Error("DUPLICATE_URL");
       }
       throw error;
     }
@@ -1297,7 +1339,7 @@ export class RssSourceService {
 
   /**
    * Deletes an RSS source and all associated articles (CASCADE).
-   * 
+   *
    * @param id - UUID of the RSS source to delete
    * @throws Error with message 'NOT_FOUND' if source does not exist
    */
@@ -1305,14 +1347,10 @@ export class RssSourceService {
     // Verify source exists
     const existing = await this.getRssSourceById(id);
     if (!existing) {
-      throw new Error('NOT_FOUND');
+      throw new Error("NOT_FOUND");
     }
 
-    const { error } = await this.supabase
-      .schema('app')
-      .from('rss_sources')
-      .delete()
-      .eq('id', id);
+    const { error } = await this.supabase.schema("app").from("rss_sources").delete().eq("id", id);
 
     if (error) {
       throw error;
@@ -1321,20 +1359,15 @@ export class RssSourceService {
 
   /**
    * Finds an RSS source by URL.
-   * 
+   *
    * @param url - URL to search for
    * @returns RssSourceDto if found, null otherwise
    */
   private async findByUrl(url: string): Promise<RssSourceDto | null> {
-    const { data, error } = await this.supabase
-      .schema('app')
-      .from('rss_sources')
-      .select('*')
-      .eq('url', url)
-      .single();
+    const { data, error } = await this.supabase.schema("app").from("rss_sources").select("*").eq("url", url).single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
+      if (error.code === "PGRST116") {
         // No rows returned
         return null;
       }
@@ -1353,13 +1386,14 @@ export class RssSourceService {
       name: row.name,
       url: row.url,
       createdAt: row.created_at,
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
     };
   }
 }
 ```
 
 **Tasks:**
+
 - Create service class with all CRUD methods
 - Implement pagination logic
 - Handle unique constraint violations
@@ -1376,14 +1410,11 @@ export class RssSourceService {
 Create route handlers for GET and POST endpoints.
 
 ```typescript
-import type { APIRoute } from 'astro';
-import { ZodError } from 'zod';
-import { RssSourceService } from '@/lib/services/rss-source.service';
-import {
-  CreateRssSourceCommandSchema,
-  GetRssSourcesQueryParamsSchema
-} from '@/lib/validation/rss-source.schema';
-import { logger } from '@/lib/logger';
+import type { APIRoute } from "astro";
+import { ZodError } from "zod";
+import { RssSourceService } from "@/lib/services/rss-source.service";
+import { CreateRssSourceCommandSchema, GetRssSourcesQueryParamsSchema } from "@/lib/validation/rss-source.schema";
+import { logger } from "@/lib/logger";
 
 export const prerender = false;
 
@@ -1392,7 +1423,7 @@ export const prerender = false;
  * Retrieves a paginated list of RSS sources.
  *
  * Authentication: Optional (public access)
- * 
+ *
  * @returns 200 OK with RssSourceListResponse on success
  * @returns 400 Bad Request for validation errors
  * @returns 500 Internal Server Error for unexpected errors
@@ -1404,8 +1435,8 @@ export const GET: APIRoute = async (context) => {
     // Extract query parameters from URL
     const url = new URL(context.request.url);
     const queryParams = {
-      limit: url.searchParams.get('limit') || undefined,
-      offset: url.searchParams.get('offset') || undefined
+      limit: url.searchParams.get("limit") || undefined,
+      offset: url.searchParams.get("offset") || undefined,
     };
 
     // Validate query parameters
@@ -1416,21 +1447,21 @@ export const GET: APIRoute = async (context) => {
       if (error instanceof ZodError) {
         logger.warn("Query parameter validation failed", {
           endpoint: "GET /api/rss-sources",
-          errors: error.errors
+          errors: error.errors,
         });
 
         return new Response(
           JSON.stringify({
             error: "Validation failed",
-            details: error.errors.map(e => ({
-              field: e.path.join('.'),
-              message: e.message
+            details: error.errors.map((e) => ({
+              field: e.path.join("."),
+              message: e.message,
             })),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 400,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -1445,33 +1476,29 @@ export const GET: APIRoute = async (context) => {
     logger.info("RSS sources fetched successfully", {
       endpoint: "GET /api/rss-sources",
       resultCount: result.data.length,
-      totalCount: result.pagination.total
+      totalCount: result.pagination.total,
     });
 
     // Return success response
-    return new Response(
-      JSON.stringify(result),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" }
-      }
-    );
-
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     // Generic error handling
     logger.error("Failed to fetch RSS sources", error, {
-      endpoint: "GET /api/rss-sources"
+      endpoint: "GET /api/rss-sources",
     });
 
     return new Response(
       JSON.stringify({
         error: "Internal server error",
         code: "INTERNAL_ERROR",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
@@ -1482,7 +1509,7 @@ export const GET: APIRoute = async (context) => {
  * Creates a new RSS source (service role only).
  *
  * Authentication: Required (service_role JWT token)
- * 
+ *
  * @returns 201 Created with RssSourceDto on success
  * @returns 400 Bad Request for validation errors
  * @returns 401 Unauthorized if not authenticated or not service role
@@ -1496,38 +1523,38 @@ export const POST: APIRoute = async (context) => {
   // Check authentication
   if (!user) {
     logger.warn("POST /api/rss-sources called without authentication", {
-      endpoint: "POST /api/rss-sources"
+      endpoint: "POST /api/rss-sources",
     });
 
     return new Response(
       JSON.stringify({
         error: "Authentication required",
         code: "AUTHENTICATION_REQUIRED",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 401,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
 
   // Check authorization (service role only)
-  if (user.role !== 'service_role') {
+  if (user.role !== "service_role") {
     logger.warn("POST /api/rss-sources called without service role", {
       endpoint: "POST /api/rss-sources",
-      userId: (user as { id?: string }).id
+      userId: (user as { id?: string }).id,
     });
 
     return new Response(
       JSON.stringify({
         error: "Service role required for this endpoint",
         code: "FORBIDDEN",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 401,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
@@ -1541,18 +1568,18 @@ export const POST: APIRoute = async (context) => {
       if (error instanceof SyntaxError) {
         logger.warn("Invalid JSON in request body", {
           endpoint: "POST /api/rss-sources",
-          error: error.message
+          error: error.message,
         });
 
         return new Response(
           JSON.stringify({
             error: "Invalid JSON in request body",
             code: "INVALID_JSON",
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 400,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -1567,21 +1594,21 @@ export const POST: APIRoute = async (context) => {
       if (error instanceof ZodError) {
         logger.warn("Request body validation failed", {
           endpoint: "POST /api/rss-sources",
-          errors: error.errors
+          errors: error.errors,
         });
 
         return new Response(
           JSON.stringify({
             error: "Validation failed",
-            details: error.errors.map(e => ({
-              field: e.path.join('.'),
-              message: e.message
+            details: error.errors.map((e) => ({
+              field: e.path.join("."),
+              message: e.message,
             })),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 400,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -1596,37 +1623,33 @@ export const POST: APIRoute = async (context) => {
     logger.info("RSS source created successfully", {
       endpoint: "POST /api/rss-sources",
       sourceId: source.id,
-      userId: (user as { id?: string }).id
+      userId: (user as { id?: string }).id,
     });
 
     // Return success response
-    return new Response(
-      JSON.stringify(source),
-      {
-        status: 201,
-        headers: { "Content-Type": "application/json" }
-      }
-    );
-
+    return new Response(JSON.stringify(source), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     // Handle specific business logic errors
     if (error instanceof Error) {
       // Duplicate URL error
-      if (error.message === 'DUPLICATE_URL') {
+      if (error.message === "DUPLICATE_URL") {
         logger.warn("RSS source creation failed: duplicate URL", {
           endpoint: "POST /api/rss-sources",
-          userId: (user as { id?: string }).id
+          userId: (user as { id?: string }).id,
         });
 
         return new Response(
           JSON.stringify({
             error: "RSS source with this URL already exists",
             code: "DUPLICATE_URL",
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 409,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -1635,18 +1658,18 @@ export const POST: APIRoute = async (context) => {
     // Generic error handling
     logger.error("Failed to create RSS source", error, {
       endpoint: "POST /api/rss-sources",
-      userId: (user as { id?: string }).id
+      userId: (user as { id?: string }).id,
     });
 
     return new Response(
       JSON.stringify({
         error: "Internal server error",
         code: "INTERNAL_ERROR",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
@@ -1658,14 +1681,11 @@ export const POST: APIRoute = async (context) => {
 Create route handlers for GET by ID, PATCH, and DELETE endpoints.
 
 ```typescript
-import type { APIRoute } from 'astro';
-import { ZodError } from 'zod';
-import { RssSourceService } from '@/lib/services/rss-source.service';
-import {
-  UpdateRssSourceCommandSchema,
-  UuidParamSchema
-} from '@/lib/validation/rss-source.schema';
-import { logger } from '@/lib/logger';
+import type { APIRoute } from "astro";
+import { ZodError } from "zod";
+import { RssSourceService } from "@/lib/services/rss-source.service";
+import { UpdateRssSourceCommandSchema, UuidParamSchema } from "@/lib/validation/rss-source.schema";
+import { logger } from "@/lib/logger";
 
 export const prerender = false;
 
@@ -1674,7 +1694,7 @@ export const prerender = false;
  * Retrieves a single RSS source by ID.
  *
  * Authentication: Optional (public access)
- * 
+ *
  * @returns 200 OK with RssSourceDto on success
  * @returns 400 Bad Request for invalid UUID format
  * @returns 404 Not Found if RSS source does not exist
@@ -1693,21 +1713,21 @@ export const GET: APIRoute = async (context) => {
       if (error instanceof ZodError) {
         logger.warn("Invalid UUID format in path parameter", {
           endpoint: "GET /api/rss-sources/:id",
-          id
+          id,
         });
 
         return new Response(
           JSON.stringify({
             error: "Validation failed",
-            details: error.errors.map(e => ({
-              field: 'id',
-              message: e.message
+            details: error.errors.map((e) => ({
+              field: "id",
+              message: e.message,
             })),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 400,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -1723,11 +1743,11 @@ export const GET: APIRoute = async (context) => {
         JSON.stringify({
           error: "RSS source not found",
           code: "NOT_FOUND",
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         }),
         {
           status: 404,
-          headers: { "Content-Type": "application/json" }
+          headers: { "Content-Type": "application/json" },
         }
       );
     }
@@ -1735,34 +1755,30 @@ export const GET: APIRoute = async (context) => {
     // Log success
     logger.info("RSS source fetched successfully", {
       endpoint: "GET /api/rss-sources/:id",
-      sourceId: source.id
+      sourceId: source.id,
     });
 
     // Return success response
-    return new Response(
-      JSON.stringify(source),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" }
-      }
-    );
-
+    return new Response(JSON.stringify(source), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     // Generic error handling
     logger.error("Failed to fetch RSS source", error, {
       endpoint: "GET /api/rss-sources/:id",
-      id
+      id,
     });
 
     return new Response(
       JSON.stringify({
         error: "Internal server error",
         code: "INTERNAL_ERROR",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
@@ -1773,7 +1789,7 @@ export const GET: APIRoute = async (context) => {
  * Updates an existing RSS source (service role only).
  *
  * Authentication: Required (service_role JWT token)
- * 
+ *
  * @returns 200 OK with updated RssSourceDto on success
  * @returns 400 Bad Request for validation errors
  * @returns 401 Unauthorized if not authenticated or not service role
@@ -1790,39 +1806,39 @@ export const PATCH: APIRoute = async (context) => {
   if (!user) {
     logger.warn("PATCH /api/rss-sources/:id called without authentication", {
       endpoint: "PATCH /api/rss-sources/:id",
-      id
+      id,
     });
 
     return new Response(
       JSON.stringify({
         error: "Authentication required",
         code: "AUTHENTICATION_REQUIRED",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 401,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
 
   // Check authorization (service role only)
-  if (user.role !== 'service_role') {
+  if (user.role !== "service_role") {
     logger.warn("PATCH /api/rss-sources/:id called without service role", {
       endpoint: "PATCH /api/rss-sources/:id",
       id,
-      userId: (user as { id?: string }).id
+      userId: (user as { id?: string }).id,
     });
 
     return new Response(
       JSON.stringify({
         error: "Service role required for this endpoint",
         code: "FORBIDDEN",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 401,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
@@ -1837,15 +1853,15 @@ export const PATCH: APIRoute = async (context) => {
         return new Response(
           JSON.stringify({
             error: "Validation failed",
-            details: error.errors.map(e => ({
-              field: 'id',
-              message: e.message
+            details: error.errors.map((e) => ({
+              field: "id",
+              message: e.message,
             })),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 400,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -1862,11 +1878,11 @@ export const PATCH: APIRoute = async (context) => {
           JSON.stringify({
             error: "Invalid JSON in request body",
             code: "INVALID_JSON",
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 400,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -1882,15 +1898,15 @@ export const PATCH: APIRoute = async (context) => {
         return new Response(
           JSON.stringify({
             error: "Validation failed",
-            details: error.errors.map(e => ({
-              field: e.path.join('.'),
-              message: e.message
+            details: error.errors.map((e) => ({
+              field: e.path.join("."),
+              message: e.message,
             })),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 400,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -1905,47 +1921,43 @@ export const PATCH: APIRoute = async (context) => {
     logger.info("RSS source updated successfully", {
       endpoint: "PATCH /api/rss-sources/:id",
       sourceId: source.id,
-      userId: (user as { id?: string }).id
+      userId: (user as { id?: string }).id,
     });
 
     // Return success response
-    return new Response(
-      JSON.stringify(source),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" }
-      }
-    );
-
+    return new Response(JSON.stringify(source), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     // Handle specific business logic errors
     if (error instanceof Error) {
       // Not found error
-      if (error.message === 'NOT_FOUND') {
+      if (error.message === "NOT_FOUND") {
         return new Response(
           JSON.stringify({
             error: "RSS source not found",
             code: "NOT_FOUND",
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 404,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
 
       // Duplicate URL error
-      if (error.message === 'DUPLICATE_URL') {
+      if (error.message === "DUPLICATE_URL") {
         return new Response(
           JSON.stringify({
             error: "RSS source with this URL already exists",
             code: "DUPLICATE_URL",
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 409,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -1955,18 +1967,18 @@ export const PATCH: APIRoute = async (context) => {
     logger.error("Failed to update RSS source", error, {
       endpoint: "PATCH /api/rss-sources/:id",
       id,
-      userId: (user as { id?: string }).id
+      userId: (user as { id?: string }).id,
     });
 
     return new Response(
       JSON.stringify({
         error: "Internal server error",
         code: "INTERNAL_ERROR",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
@@ -1977,7 +1989,7 @@ export const PATCH: APIRoute = async (context) => {
  * Deletes an RSS source and all associated articles (service role only).
  *
  * Authentication: Required (service_role JWT token)
- * 
+ *
  * @returns 204 No Content on success
  * @returns 400 Bad Request for invalid UUID format
  * @returns 401 Unauthorized if not authenticated or not service role
@@ -1993,39 +2005,39 @@ export const DELETE: APIRoute = async (context) => {
   if (!user) {
     logger.warn("DELETE /api/rss-sources/:id called without authentication", {
       endpoint: "DELETE /api/rss-sources/:id",
-      id
+      id,
     });
 
     return new Response(
       JSON.stringify({
         error: "Authentication required",
         code: "AUTHENTICATION_REQUIRED",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 401,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
 
   // Check authorization (service role only)
-  if (user.role !== 'service_role') {
+  if (user.role !== "service_role") {
     logger.warn("DELETE /api/rss-sources/:id called without service role", {
       endpoint: "DELETE /api/rss-sources/:id",
       id,
-      userId: (user as { id?: string }).id
+      userId: (user as { id?: string }).id,
     });
 
     return new Response(
       JSON.stringify({
         error: "Service role required for this endpoint",
         code: "FORBIDDEN",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 401,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
@@ -2040,15 +2052,15 @@ export const DELETE: APIRoute = async (context) => {
         return new Response(
           JSON.stringify({
             error: "Validation failed",
-            details: error.errors.map(e => ({
-              field: 'id',
-              message: e.message
+            details: error.errors.map((e) => ({
+              field: "id",
+              message: e.message,
             })),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 400,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -2063,28 +2075,27 @@ export const DELETE: APIRoute = async (context) => {
     logger.info("RSS source deleted successfully", {
       endpoint: "DELETE /api/rss-sources/:id",
       sourceId: validatedId,
-      userId: (user as { id?: string }).id
+      userId: (user as { id?: string }).id,
     });
 
     // Return success response (204 No Content)
     return new Response(null, {
-      status: 204
+      status: 204,
     });
-
   } catch (error) {
     // Handle specific business logic errors
     if (error instanceof Error) {
       // Not found error
-      if (error.message === 'NOT_FOUND') {
+      if (error.message === "NOT_FOUND") {
         return new Response(
           JSON.stringify({
             error: "RSS source not found",
             code: "NOT_FOUND",
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 404,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -2094,18 +2105,18 @@ export const DELETE: APIRoute = async (context) => {
     logger.error("Failed to delete RSS source", error, {
       endpoint: "DELETE /api/rss-sources/:id",
       id,
-      userId: (user as { id?: string }).id
+      userId: (user as { id?: string }).id,
     });
 
     return new Response(
       JSON.stringify({
         error: "Internal server error",
         code: "INTERNAL_ERROR",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
@@ -2113,6 +2124,7 @@ export const DELETE: APIRoute = async (context) => {
 ```
 
 **Tasks:**
+
 - Create route handler files
 - Implement GET handler for list endpoint
 - Implement GET handler for single source endpoint
@@ -2142,6 +2154,7 @@ Create integration tests for GET and POST endpoints.
 Create integration tests for GET by ID, PATCH, and DELETE endpoints.
 
 **Tasks:**
+
 - Create test files
 - Write unit tests for service methods
 - Write integration tests for API endpoints
@@ -2158,21 +2171,25 @@ Perform manual testing with various scenarios:
 **Test Cases:**
 
 1. **GET /api/rss-sources (basic):**
+
    ```bash
    curl "http://localhost:3000/api/rss-sources?limit=10&offset=0"
    ```
 
 2. **GET /api/rss-sources/:id (success):**
+
    ```bash
    curl "http://localhost:3000/api/rss-sources/<uuid>"
    ```
 
 3. **GET /api/rss-sources/:id (not found):**
+
    ```bash
    curl "http://localhost:3000/api/rss-sources/00000000-0000-0000-0000-000000000000"
    ```
 
 4. **POST /api/rss-sources (success):**
+
    ```bash
    curl -X POST "http://localhost:3000/api/rss-sources" \
      -H "Authorization: Bearer <service_role_token>" \
@@ -2181,6 +2198,7 @@ Perform manual testing with various scenarios:
    ```
 
 5. **POST /api/rss-sources (duplicate URL):**
+
    ```bash
    curl -X POST "http://localhost:3000/api/rss-sources" \
      -H "Authorization: Bearer <service_role_token>" \
@@ -2189,6 +2207,7 @@ Perform manual testing with various scenarios:
    ```
 
 6. **PATCH /api/rss-sources/:id (success):**
+
    ```bash
    curl -X PATCH "http://localhost:3000/api/rss-sources/<uuid>" \
      -H "Authorization: Bearer <service_role_token>" \
@@ -2203,6 +2222,7 @@ Perform manual testing with various scenarios:
    ```
 
 **Tasks:**
+
 - Execute all test cases
 - Verify response structures
 - Verify status codes
@@ -2225,18 +2245,19 @@ This implementation plan provides a comprehensive guide for implementing the RSS
 ✅ **Error Handling:** Detailed error responses with appropriate status codes  
 ✅ **Security:** RLS policies, input validation, authentication checks  
 ✅ **Performance:** Optimized database queries  
-✅ **Logging:** Structured logging for monitoring and debugging  
+✅ **Logging:** Structured logging for monitoring and debugging
 
 **Estimated Implementation Time:** 6-8 hours (including testing and documentation)
 
 **Dependencies:**
+
 - Existing middleware (no changes needed)
 - Database schema (already implemented)
 - Type definitions (already implemented)
 
 **Follow-Up Tasks:**
+
 - Implement frontend integration
 - Add caching layer (future enhancement)
 - Add URL validation in RSS fetching cron job
 - Monitor RSS source usage metrics
-

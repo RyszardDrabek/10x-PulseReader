@@ -7,6 +7,7 @@ The user interface for PulseReader is designed as a responsive web application l
 ## 2. View List
 
 ### Homepage (/)
+
 - **View Path**: `/`
 - **Main Purpose**: To provide the primary content feed where users browse articles, either unfiltered for guests or personalized based on mood and blocklist for authenticated users, supporting infinite scrolling and article interaction.
 - **Key Information to Display**: List of article cards including title, description, publication date, sentiment indicator, source name, and topics; active filter summary (e.g., mood status, block count); loading skeletons during fetches; no-results message if filters yield empty results.
@@ -14,6 +15,7 @@ The user interface for PulseReader is designed as a responsive web application l
 - **UX, Accessibility, and Security Considerations**: Smooth infinite scroll with virtualized rendering for performance; ARIA live regions for dynamic content updates and screen reader announcements; keyboard navigation for article selection (Enter to open); client-side caching to reduce API calls; sanitize displayed content to prevent XSS.
 
 ### Register (/register)
+
 - **View Path**: `/register`
 - **Main Purpose**: To enable new users to create an account via email and password, initiating the email verification process.
 - **Key Information to Display**: Signup form fields (email, password); real-time validation feedback (e.g., email format, password strength); success message post-submission directing to email check; link to login page.
@@ -21,6 +23,7 @@ The user interface for PulseReader is designed as a responsive web application l
 - **UX, Accessibility, and Security Considerations**: Progressive disclosure of errors during typing; loading state on submission; labeled form fields with ARIA-describedby for errors; client-side validation complemented by server-side; password masking with toggle option; redirect to homepage if already authenticated.
 
 ### Login (/login)
+
 - **View Path**: `/login`
 - **Main Purpose**: To authenticate existing users and redirect them to the personalized homepage.
 - **Key Information to Display**: Login form fields (email, password); error messages for invalid credentials or unverified email; link to register page and forgot password (placeholder for future).
@@ -28,6 +31,7 @@ The user interface for PulseReader is designed as a responsive web application l
 - **UX, Accessibility, and Security Considerations**: Auto-focus on email field; session persistence post-login; ARIA alerts for errors; block unverified users with specific messaging; secure credential handling without local storage of passwords; redirect to homepage on success.
 
 ### Verify Email (/verify-email)
+
 - **View Path**: `/verify-email`
 - **Main Purpose**: To guide users through email confirmation after registration, providing resend options and status updates.
 - **Key Information to Display**: Instructional message (e.g., "Check your inbox for verification link"); resend verification button; progress indicator or poll for confirmation; redirect prompt to login.
@@ -35,6 +39,7 @@ The user interface for PulseReader is designed as a responsive web application l
 - **UX, Accessibility, and Security Considerations**: Clear, reassuring copy with email preview; accessible button labels; secure handling of verification tokens via Supabase; fallback to manual login redirect; ARIA live for status changes post-resend.
 
 ### Settings (/settings)
+
 - **View Path**: `/settings`
 - **Main Purpose**: To allow authenticated users to configure mood preferences and manage the blocklist, with immediate reflection in the article feed.
 - **Key Information to Display**: Mood selection interface (e.g., clickable emoticon buttons for positive/neutral/negative); blocklist input field and editable list of items; current filter summary (e.g., "3 items blocked"); toggle for applying personalization; save confirmation.
@@ -42,6 +47,7 @@ The user interface for PulseReader is designed as a responsive web application l
 - **UX, Accessibility, and Security Considerations**: Optimistic updates with rollback on failure; real-time preview of filter impact (e.g., "X articles affected"); high-contrast icons and ARIA labels for mood choices; keyboard-accessible list management (e.g., focusable delete buttons); input sanitization for blocklist to prevent injection; rate limiting on saves via debouncing.
 
 ### Not Found (404)
+
 - **View Path**: `/*` (catch-all)
 - **Main Purpose**: To handle invalid routes gracefully, guiding users back to valid content.
 - **Key Information to Display**: Friendly error message (e.g., "Page not found"); suggestion to return home; search bar placeholder (future).
@@ -53,7 +59,6 @@ The user interface for PulseReader is designed as a responsive web application l
 The user journeys are designed to be linear and intuitive, with authentication as a gateway to personalization while allowing guest access to core functionality.
 
 - **Guest Browsing (US-001)**: User lands on Homepage → Views unfiltered article feed with infinite scroll → Interacts with cards (click to open external source) → Sees teaser prompts in nav for registration → Clicks "Register" to navigate to /register.
-  
 - **Registration and Onboarding (US-002, US-005)**: From Homepage or direct → Navigates to /register → Submits form → Redirects to /verify-email → User verifies email externally → Returns to /login → Logs in → Redirects to Homepage (now personalized with default/null mood) → Optional onboarding modal prompts to /settings for initial mood setup → Sets mood → Feed updates immediately.
 
 - **Authenticated Browsing and Personalization (US-003, US-007, US-009)**: Login success → Homepage with applied filters (mood/blocklist) → Browses infinite feed, sees filter banner → Clicks article to open in new tab → Navigates to /settings via nav → Adjusts mood or blocklist → Saves (optimistic update) → Returns to Homepage for refetched personalized results → Toggles filters off for unfiltered view.
@@ -70,7 +75,7 @@ Journeys incorporate immediate feedback loops (e.g., refetch on settings change)
 
 The layout follows a standard web app structure: a fixed top navigation bar, main content area, and optional footer. Navigation is state-aware, adapting to authentication status for simplicity and security.
 
-- **Global Layout**: 
+- **Global Layout**:
   - **Header (Top Nav)**: Logo linking to /; conditional menu – Guest: "Login" and "Register" buttons (right-aligned); Authenticated: "Settings" link and user avatar dropdown (with "Logout" option). Responsive: Hamburger menu on mobile for collapse.
   - **Main Content**: View-specific, centered on mobile, full-width on desktop; responsive grid for article lists (1-col mobile, 2-col tablet+).
   - **Footer**: Static links (About, Privacy – placeholders); copyright.
@@ -89,7 +94,6 @@ This structure ensures low cognitive load, with 2-3 clicks max for common tasks,
 ## 5. Key Components
 
 - **ArticleCard**: Reusable card for Homepage feed; displays title (clickable), description excerpt, metadata badges (sentiment color-coded, source/topics as chips); accessible with role="article" and ARIA-label for open action.
-  
 - **AuthForm**: Generic form for login/register; includes email/password inputs, validation hooks, submit handler integrating Supabase Auth; supports error display and loading states.
 
 - **MoodSelector**: Interactive emoticon buttons (positive/neutral/negative) for Settings; selected state with visual feedback; ARIA-pressed for accessibility; triggers PATCH to /api/profile.

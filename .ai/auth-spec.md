@@ -1,9 +1,11 @@
 # Authentication System Architecture Specification for PulseReader
 
 ## 1. Overview
+
 This specification outlines the architecture for implementing user registration (US-002), login (US-003), logout (US-004), and password recovery functionality in PulseReader. It leverages Supabase Auth for secure authentication, integrated with Astro's server-side rendering (SSR) capabilities, React for interactive components, and ensures compatibility with existing guest and personalized feed behaviors. The design maintains the project's structure, using TypeScript for type safety, and adheres to the tech stack (Astro 5, React 19, Tailwind 4, Shadcn/ui, Supabase).
 
 Key principles:
+
 - Separation of concerns: Astro pages handle routing and SSR, React components manage interactive UI (e.g., forms), Supabase SDK manages auth state.
 - Security: All auth operations use Supabase's built-in protections (e.g., email verification, password hashing).
 - User Experience: Seamless transitions between auth/non-auth modes, with clear error messaging and validation.
@@ -14,6 +16,7 @@ Password recovery is included as an extension, using Supabase's reset password f
 ## 2. User Interface Architecture
 
 ### 2.1 Frontend Changes
+
 The UI will introduce dedicated auth pages while extending existing layouts and components for auth-aware rendering. Non-auth mode (guest) remains unchanged for the main feed (/). Auth mode integrates session checks for personalized content.
 
 - **New Pages (Astro-based, SSR-enabled)**:
@@ -37,6 +40,7 @@ The UI will introduce dedicated auth pages while extending existing layouts and 
   - `VerificationMessage.tsx`: Static component for verify-email page, with resend button linking to Supabase resend API.
 
 ### 2.2 Separation of Responsibilities
+
 - **Astro Pages**: Handle routing, SSR for initial auth checks (e.g., getServerSession from Supabase), and layout rendering. Integrate with middleware (`/src/middleware/index.ts`) for session validation on protected routes. Pages fetch user profile from Supabase on load for auth users.
 - **React Components**: Manage client-side interactivity (form validation, submissions via Supabase client SDK). Use React hooks (e.g., useSupabaseClient) for auth calls. No direct SSR; hydrated on client for dynamic updates (e.g., real-time session changes).
 - **Integration**:
@@ -45,6 +49,7 @@ The UI will introduce dedicated auth pages while extending existing layouts and 
   - State Management: Supabase auth state synced via browser session; no additional store needed for MVP.
 
 ### 2.3 Validation Cases and Error Messages
+
 - **Client-Side Validation (React Forms, using Zod or native)**:
   - Email: Required, valid format (regex). Error: "Proszę podać prawidłowy adres e-mail."
   - Password (register/login): Required, min 8 chars, includes uppercase/lowercase/number. Error: "Hasło musi mieć co najmniej 8 znaków, zawierać wielkie i małe litery oraz liczbę."
@@ -59,6 +64,7 @@ The UI will introduce dedicated auth pages while extending existing layouts and 
   - All errors displayed via toast notifications (Shadcn Toaster) or inline form messages.
 
 ### 2.4 Key Scenarios Handling
+
 - **Guest to Auth Transition**: Login/register redirects to `/` with session; feed re-renders personalized. For registration, initial redirect is to `/verify-email` showing the confirmation message, then to `/` after verification.
 - **Auth to Guest**: Logout clears session, redirects to `/` unfiltered.
 - **Email Verification**: Post-register, user can't login until verified. Supabase email link auto-logs in on click.
@@ -69,6 +75,7 @@ The UI will introduce dedicated auth pages while extending existing layouts and 
 ## 3. Backend Logic
 
 ### 3.1 API Endpoints and Data Models
+
 - **Supabase Integration**: Primary backend via Supabase (no custom Node.js server). Use Supabase JS client for all ops.
 - **Data Models (Extend `/src/types.ts`)**:
   - `User` (from Supabase Auth): id, email, confirmed_at (for verification).
@@ -83,17 +90,20 @@ The UI will introduce dedicated auth pages while extending existing layouts and 
   - All endpoints use CORS, rate limiting via Supabase policies. Auth required for profile ops (RLS enabled).
 
 ### 3.2 Input Data Validation
+
 - **Supabase Built-in**: Handles email/password format, hashing (Argon2), uniqueness.
 - **Custom (Astro API)**: Use Zod schemas for inputs (e.g., z.object({email: z.string().email()})). Validate before Supabase calls; return 400 on failure with {error: message}.
 - **Profile Sync**: On register/login, upsert Profile if missing (e.g., default mood: 'neutral').
 
 ### 3.3 Exception Handling
+
 - **Supabase Errors**: Catch AuthError; map to user-friendly messages (e.g., 'EmailNotConfirmedError' → verification prompt).
 - **API Layer**: Try-catch wrappers; log errors to console/Supabase logs (no custom logging for MVP). Return HTTP 4xx/5xx with JSON {error: string}.
 - **Graceful Degradation**: If Supabase down, fallback to guest mode; cache sessions locally.
 - **Security**: Never expose internal errors; sanitize inputs to prevent injection.
 
 ### 3.4 SSR Updates
+
 - **Astro Config (`astro.config.mjs`)**: Ensure SSR mode enabled (output: 'server'). Integrate Supabase server client in pages.
 - **Page-Level SSR**: In auth pages, use `getServerSession` (Astro helper + Supabase) to pre-fetch session. For `/index.astro`, SSR fetch articles + apply filters if auth (query Supabase with RLS).
 - **Middleware (`/src/middleware/index.ts`)**: Check session on all routes; redirect unauth from protected (e.g., /settings). Use cookies for session propagation.
@@ -101,6 +111,7 @@ The UI will introduce dedicated auth pages while extending existing layouts and 
 ## 4. Authentication System
 
 ### 4.1 Supabase Auth Integration with Astro
+
 - **Setup (`/src/db/supabase.ts`)**: Create server/client instances. Server: Use service role key for admin ops. Client: Anon/public key for frontend.
 - **Registration (US-002)**:
   - Client: `supabase.auth.signUp({email, password, options: {emailRedirectTo: `${origin}/verify-email`}})` → Sends verification email.

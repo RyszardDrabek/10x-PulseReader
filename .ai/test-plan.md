@@ -8,6 +8,7 @@
 Plan testów dla projektu PulseReader, inteligentnego agregatora wiadomości, ma na celu zapewnienie wysokiej jakości oprogramowania, które spełnia wymagania funkcjonalne i niefunkcjonalne. Projekt opiera się na agregacji treści z RSS, zarządzaniu użytkownikami, analizie AI oraz personalizacji feedu, co wymaga kompleksowego podejścia do weryfikacji.
 
 **Cele testowania:**
+
 - Weryfikacja poprawności implementacji kluczowych funkcjonalności, takich jak autentykacja, pobieranie i filtrowanie artykułów oraz integracja z AI.
 - Zapewnienie bezpieczeństwa, wydajności i użyteczności aplikacji w środowisku webowym.
 - Identyfikacja i minimalizacja defektów przed wdrożeniem, z naciskiem na integracje zewnętrzne (Supabase, OpenRouter.ai).
@@ -21,6 +22,7 @@ Testy będą prowadzone iteracyjnie, równolegle z rozwojem, aby wspierać proce
 Zakres obejmuje wszystkie warstwy aplikacji: frontend (Astro pages i React components), backend (API endpoints i usługi), bazę danych (Supabase) oraz integracje zewnętrzne (RSS, AI).
 
 **W zakresie:**
+
 - Funkcjonalności użytkownika: rejestracja, logowanie, wylogowanie, zarządzanie profilem (nastrój, blocklist).
 - Agregacja treści: pobieranie z RSS, analiza AI (sentyment, tematy), filtrowanie i paginacja artykułów.
 - Interfejs: infinite scroll, responsywność, obsługa błędów UI.
@@ -29,6 +31,7 @@ Zakres obejmuje wszystkie warstwy aplikacji: frontend (Astro pages i React compo
 - Wydajność: ładowanie feedu, zapytania do bazy.
 
 **Poza zakresem (dla MVP):**
+
 - Testy obciążeniowe na dużą skalę (ponad 1000 użytkowników jednocześnie).
 - Testy mobilne natywne (tylko web responsywny).
 - Testy dostępności dla specjalistycznych czytników ekranu (podstawowa weryfikacja ARIA).
@@ -48,6 +51,7 @@ Testy będą zautomatyzowane w 90% przypadków, z manualnymi spot-checks dla UX.
 ## 4. Scenariusze Testowe dla Kluczowych Funkcjonalności
 
 ### Autentykacja i Zarządzanie Użytkownikami
+
 - SC-001: Rejestracja nowego użytkownika z poprawnymi danymi → sukces, email weryfikacyjny.
 - SC-002: Logowanie z niepoprawnymi credentials → błąd 400, brak dostępu do chronionych rout.
 - SC-003: Wylogowanie → czyszczenie sesji, redirect do login.
@@ -55,6 +59,7 @@ Testy będą zautomatyzowane w 90% przypadków, z manualnymi spot-checks dla UX.
 - SC-005: Aktualizacja profilu (nastrój, blocklist) → persistencja w Supabase, zastosowanie w filtrach.
 
 ### Agregacja i Filtrowanie Artykułów
+
 - SC-006: Pobieranie artykułów z RSS (cron job) → nowe wpisy w DB, unikalność po linku.
 - SC-007: Analiza AI artykułu → przypisanie sentymentu/tematów, obsługa błędów API OpenRouter.
 - SC-008: Filtrowanie feedu po nastroju (positive) → tylko artykuły positive/neutral, infinite scroll.
@@ -62,12 +67,14 @@ Testy będą zautomatyzowane w 90% przypadków, z manualnymi spot-checks dla UX.
 - SC-010: Paginacja API /articles?limit=20&offset=20 → poprawne dane, hasMore flag.
 
 ### Interfejs Użytkownika
+
 - SC-011: Wyświetlenie homepage dla gościa → niepersonalizowany feed, brak błędów.
 - SC-012: Infinite scroll w ArticleList → ładowanie kolejnych partii bez duplikatów.
 - SC-013: Responsywność na mobile → menu, karty artykułów dostosowane (Tailwind breakpoints).
 - SC-014: Obsługa pustego feedu → przyjazny komunikat, sugestie filtrów.
 
 ### Integracje Zewnętrzne
+
 - SC-015: Mock RSS fetch → symulacja błędów (404, timeout) → graceful degradation.
 - SC-016: AI call do OpenRouter → walidacja JSON response, fallback dla błędów.
 
@@ -85,6 +92,7 @@ Każdy scenariusz obejmuje przypadki pozytywne, negatywne i edge (np. puste dane
 ## 6. Narzędzia do Testowania
 
 ### 6.1 Testy Jednostkowe i Integracyjne
+
 - **Framework:** Vitest 2.x (natywna integracja z Vite/Astro, szybszy niż Jest)
 - **Environment:** happy-dom (lżejszy niż jsdom)
 - **React Testing:** @testing-library/react + @testing-library/user-event
@@ -93,43 +101,50 @@ Każdy scenariusz obejmuje przypadki pozytywne, negatywne i edge (np. puste dane
 - **Database:** Supabase Local Development (prawdziwa PostgreSQL w testach)
 
 ### 6.2 Testy E2E
+
 - **Framework:** Playwright 1.x (cross-browser: Chromium, Firefox, WebKit)
 - **Features:** Trace viewer, auto-waiting, screenshots/video on failure
 - **Mobile:** Pixel 5, iPhone 13 emulation
 - **Reporters:** HTML, JSON, GitHub Actions
 
 ### 6.3 Wydajność
+
 - **Performance:** Lighthouse CI z budżetami (FCP <2s, LCP <2.5s, TTI <3.5s)
 - **Load Testing:** k6 (Grafana) - scripting w JavaScript, metryki dla 50+ concurrent users
 - **Monitoring:** p95 latency <500ms, p99 <1000ms
 
 ### 6.4 Bezpieczeństwo
+
 - **Dependencies:** Snyk (skanowanie npm packages, integracja z GitHub)
 - **Vulnerabilities:** Trivy (lekki scanner CVE, darmowy dla open-source)
 - **Built-in:** npm audit (zero konfiguracji)
 - **Target:** 0 high/critical vulnerabilities przed mergem
 
 ### 6.5 UI i Visual Regression
+
 - **Component Testing:** React Testing Library (behavior-driven)
 - **Component Library:** Historia (Astro-native, lżejsza niż Storybook)
 - **Visual Regression:** Playwright Visual Comparisons (wbudowane, pixel-by-pixel)
 - **Baseline:** Snapshots w repo, diff checking w CI
 
 ### 6.6 API Mocking
+
 - **Framework:** MSW v2 (Mock Service Worker)
 - **Mocks:** RSS feeds, OpenRouter.ai, zewnętrzne API
 - **Środowiska:** Node (testy) i browser (development)
 
 ### 6.7 CI/CD i Raportowanie
+
 - **Pipeline:** GitHub Actions (free dla public repos)
 - **Artifacts:** Test results, coverage reports, Playwright traces
-- **Raporty:** 
+- **Raporty:**
   - Vitest UI (interaktywny dashboard lokalnie)
   - Playwright HTML Report (hosted w GitHub artifacts)
   - GitHub Checks (✅/❌ status w PR)
 - **Notifications:** GitHub native (brak zewnętrznych serwisów)
 
 ### 6.8 Test Data i Utilities
+
 - **Fixtures:** Test Data Builders pattern
 - **Faker:** @faker-js/faker dla generowania danych
 - **Helpers:** Custom render z providers (QueryClient, Theme)
@@ -143,7 +158,9 @@ Każdy scenariusz obejmuje przypadki pozytywne, negatywne i edge (np. puste dane
 Testy iteracyjne w ramach sprintów (2-tygodniowe):
 
 ### Faza 1: Setup i Testy Jednostkowe (Tydzień 1-2)
+
 **Czas: 40 godzin**
+
 - ✅ Instalacja i konfiguracja: Vitest, happy-dom, React Testing Library, MSW v2
 - ✅ Setup plików: `vitest.config.ts`, `src/__tests__/setup.ts`, mock handlers
 - ✅ Supabase Local Development: konfiguracja test DB, seed scripts
@@ -155,7 +172,9 @@ Testy iteracyjne w ramach sprintów (2-tygodniowe):
 - **Target:** 70% code coverage, wszystkie service testy przechodzą
 
 ### Faza 2: Testy Integracyjne i E2E (Tydzień 3-4)
+
 **Czas: 50 godzin**
+
 - ✅ Playwright setup: instalacja, konfiguracja cross-browser
 - ✅ Testy integracyjne:
   - API endpoints (`GET/POST /api/articles`, `/api/auth/*`)
@@ -169,7 +188,9 @@ Testy iteracyjne w ramach sprintów (2-tygodniowe):
 - **Target:** 80% unit coverage, 60% E2E coverage, 0 krytycznych bugów
 
 ### Faza 3: Performance, Security, Visual (Tydzień 5)
+
 **Czas: 30 godzin**
+
 - ✅ Load testing (k6):
   - Baseline: 10 concurrent users
   - Target: 50 concurrent users, <500ms p95
@@ -188,7 +209,9 @@ Testy iteracyjne w ramach sprintów (2-tygodniowe):
 - **Target:** <5% failed requests, 0 high/critical CVEs, LCP <2.5s
 
 ### Faza 4: CI/CD i Stabilizacja (Tydzień 6)
+
 **Czas: 20 godzin**
+
 - ✅ GitHub Actions workflow:
   - Unit tests na każdym PR
   - E2E tests na push do main/develop
@@ -205,6 +228,7 @@ Testy iteracyjne w ramach sprintów (2-tygodniowe):
 - **Target:** Pełna automatyzacja, 0 flaky tests
 
 ### Ciągłe (Post-MVP)
+
 - **Na każdym PR:** Unit + integration tests, linting, type-checking
 - **Na merge do main:** Pełna suita E2E, security scan
 - **Weekly:** Load testing, visual regression full suite
@@ -217,6 +241,7 @@ Testy iteracyjne w ramach sprintów (2-tygodniowe):
 ## 8. Kryteria Akceptacji Testów
 
 ### 8.1 Funkcjonalne
+
 - ✅ **100% krytycznych scenariuszy** przechodzi bez błędów:
   - Rejestracja + weryfikacja email
   - Logowanie + sesja + wylogowanie
@@ -226,6 +251,7 @@ Testy iteracyjne w ramach sprintów (2-tygodniowe):
 - ✅ **0 flaky tests** (max 1% retry rate)
 
 ### 8.2 Pokrycie Kodu
+
 - ✅ **Unit/Integration:** >80% line coverage, >75% branch coverage
   - Services: >85%
   - API endpoints: >80%
@@ -237,6 +263,7 @@ Testy iteracyjne w ramach sprintów (2-tygodniowe):
 - ✅ **Narzędzie:** Vitest coverage (v8 provider), raporty w Codecov
 
 ### 8.3 Wydajność
+
 - ✅ **Homepage (Lighthouse CI):**
   - First Contentful Paint (FCP): <2s
   - Largest Contentful Paint (LCP): <2.5s
@@ -250,6 +277,7 @@ Testy iteracyjne w ramach sprintów (2-tygodniowe):
 - ✅ **Database queries:** <100ms dla pojedynczych SELECT, <200ms dla JOIN
 
 ### 8.4 Bezpieczeństwo
+
 - ✅ **Vulnerabilities (Snyk + Trivy):**
   - 0 critical (CVSS 9.0-10.0)
   - 0 high (CVSS 7.0-8.9)
@@ -262,6 +290,7 @@ Testy iteracyjne w ramach sprintów (2-tygodniowe):
   - XSS: DOMPurify dla wszystkich user inputs
 
 ### 8.5 UI i Visual Regression
+
 - ✅ **Component tests:** 100% dla UI library (Shadcn components)
 - ✅ **Visual regression (Playwright):**
   - 0 pixel diff dla unchanged pages
@@ -277,6 +306,7 @@ Testy iteracyjne w ramach sprintów (2-tygodniowe):
   - Color contrast ratio >4.5:1
 
 ### 8.6 CI/CD
+
 - ✅ **GitHub Actions:**
   - Build time: <5min
   - Test execution: <3min (unit+integration), <8min (E2E)
@@ -289,12 +319,14 @@ Testy iteracyjne w ramach sprintów (2-tygodniowe):
 - ✅ **Artifacts:** Test reports, coverage, traces dostępne przez 30 dni
 
 ### 8.7 Dokumentacja Testów
+
 - ✅ **README:** Instrukcje uruchomienia testów (local + CI)
 - ✅ **Contributing:** Guidelines pisania testów
 - ✅ **Test files:** Docstrings wyjaśniające co testują
 - ✅ **Troubleshooting:** Common issues i solutions
 
 ### 8.8 Blocker Criteria (Zatrzymują Merge/Deploy)
+
 - ❌ Jakiekolwiek failing critical tests
 - ❌ Coverage drop >5%
 - ❌ High/critical security vulnerabilities
@@ -317,43 +349,54 @@ Współpraca via GitHub issues (etykiety: bug, test-needed).
 ## 10. Procedury Raportowania Błędów i Metryki
 
 ### 10.1 Rejestracja Defektów
+
 **Narzędzie:** GitHub Issues z dedykowanym template
 
 **Bug Report Template:**
+
 ```markdown
 ## Bug Description
+
 [Opis problemu w 1-2 zdaniach]
 
 ## Steps to Reproduce
-1. 
-2. 
-3. 
+
+1.
+2.
+3.
 
 ## Expected Behavior
+
 [Co powinno się stać]
 
 ## Actual Behavior
+
 [Co się stało]
 
 ## Environment
-- Browser/Device: 
-- OS: 
-- Version: 
+
+- Browser/Device:
+- OS:
+- Version:
 
 ## Screenshots/Logs
+
 [Wklej screenshots lub logi]
 
 ## Test Case
+
 - [ ] Unit test reproducing issue
 - [ ] E2E test added
 
 ## Priority
+
 - [ ] P1 - Critical (blocker, production down)
 - [ ] P2 - High (major feature broken)
 - [ ] P3 - Medium (workaround exists)
 - [ ] P4 - Low (minor issue, cosmetic)
 
 ## Severity
+
 - [ ] Critical - Data loss, security breach
 - [ ] High - Feature completely broken
 - [ ] Medium - Feature partially broken
@@ -371,6 +414,7 @@ Współpraca via GitHub issues (etykiety: bug, test-needed).
 | P4 - Low | <1 week | Backlog | When convenient |
 
 **Labels:**
+
 - `bug` - Defekt w istniejącej funkcjonalności
 - `regression` - Wcześniej działało, teraz nie działa
 - `security` - Zagrożenie bezpieczeństwa
@@ -381,6 +425,7 @@ Współpraca via GitHub issues (etykiety: bug, test-needed).
 ### 10.3 Śledzenie i Workflow
 
 **GitHub Projects Board:**
+
 ```
 Columns:
 1. 🆕 New (nowe issues)
@@ -392,6 +437,7 @@ Columns:
 ```
 
 **Workflow:**
+
 1. **Bug spotted** → Create GitHub Issue (auto-assign to QA Lead)
 2. **Triage** → QA Lead verifies, adds labels, assigns developer
 3. **Fix** → Developer creates branch, fixes, adds test
@@ -402,6 +448,7 @@ Columns:
 ### 10.4 Automatyczne Raporty
 
 **GitHub Actions Artifacts:**
+
 - **Test Results:** JSON z Vitest (test-results.json)
 - **Coverage Reports:** HTML + LCOV dla Codecov
 - **Playwright Reports:** HTML z traces, screenshots, videos
@@ -409,11 +456,13 @@ Columns:
 - **Security Scans:** Snyk/Trivy SARIF files
 
 **Codecov Dashboard:**
+
 - Coverage trends (per PR, per branch)
 - Diff coverage (nowy kod vs istniejący)
 - File-level coverage (które pliki mają niski %)
 
 **GitHub Insights:**
+
 - Pull Request metrics (time to merge, review time)
 - Issue metrics (open/closed ratio, resolution time)
 - Code frequency (additions/deletions)
@@ -421,6 +470,7 @@ Columns:
 ### 10.5 Eskalacja Krytycznych Błędów
 
 **P1 Critical Bugs:**
+
 1. **Detection:** CI pipeline fail LUB production monitoring alert
 2. **Notification:** GitHub Issue auto-tagged `P1-critical` + `security` (if applicable)
 3. **Response:** Dev Lead notified immediately
@@ -430,6 +480,7 @@ Columns:
 7. **Post-mortem:** Root cause analysis, preventive measures
 
 **Communication Channels:**
+
 - GitHub Issues (primary)
 - GitHub Discussions (dla pytań)
 - PR comments (dla code-specific issues)
@@ -443,7 +494,7 @@ Columns:
 name: Weekly Metrics
 on:
   schedule:
-    - cron: '0 9 * * 1'  # Every Monday 9am
+    - cron: "0 9 * * 1" # Every Monday 9am
 
 jobs:
   collect-metrics:
@@ -458,6 +509,7 @@ jobs:
 ```
 
 **Dashboard KPIs:**
+
 - **Test Stability:** % testów passing (target: >99%)
 - **Coverage Trend:** Line coverage over time (target: >80%)
 - **Bug Resolution Time:** Avg time to close (target: <48h dla P2)
@@ -468,6 +520,7 @@ jobs:
 ### 10.7 Retrospektywy i Continuous Improvement
 
 **Monthly Test Review Meeting:**
+
 - Review top 10 longest-running tests (optimization opportunities)
 - Analyze flaky tests (fix or remove)
 - Coverage gaps (untested modules)
@@ -475,12 +528,14 @@ jobs:
 - Tool updates (Vitest, Playwright versions)
 
 **Quarterly:**
+
 - Full test suite audit
 - Performance baseline update
 - Security scan policy review
 - CI/CD pipeline optimization
 
 **Raporty dostępne:**
+
 - GitHub Actions artifacts (30 dni retention)
 - Codecov dashboards (unlimited history)
 - GitHub Insights (built-in, free)
@@ -496,13 +551,13 @@ jobs:
 
 **Zastąpione Narzędzia:**
 
-| Oryginalny Plan | Nowa Rekomendacja | Uzasadnienie Zmiany |
-|----------------|-------------------|---------------------|
-| **OWASP ZAP** | **Snyk + Trivy + npm audit** | • OWASP ZAP wymaga Java, trudny w CI/CD<br>• Snyk: dedykowany dla npm, lepsze wsparcie<br>• Trivy: lekki, szybki, darmowy dla OS<br>• Łatwiejsza automatyzacja |
-| **Artillery** | **k6 (Grafana Labs)** | • k6 szybszy (Go vs Node.js)<br>• Scripting w JavaScript (znajome dla zespołu)<br>• Lepsze metryki i dokumentacja<br>• Aktywna społeczność |
-| **Percy** | **Playwright Visual Comparisons** | • Percy: $99/miesiąc ($1,188/rok)<br>• Playwright: wbudowane, darmowe<br>• Pixel-by-pixel comparison<br>• Snapshots w repo (brak external service) |
-| **Allure** | **GitHub Actions Native + Vitest UI + Playwright HTML** | • Allure wymaga Java + hosting<br>• Natywne raporty: zero setup<br>• GitHub artifacts: darmowe<br>• Integracja z PR checks |
-| **Storybook** | **Historia** | • Storybook: konflikty z Astro/Vite<br>• Historia: zaprojektowana dla Vite<br>• Lżejsza, szybszy start<br>• Lepsze TypeScript support |
+| Oryginalny Plan | Nowa Rekomendacja                                       | Uzasadnienie Zmiany                                                                                                                                            |
+| --------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **OWASP ZAP**   | **Snyk + Trivy + npm audit**                            | • OWASP ZAP wymaga Java, trudny w CI/CD<br>• Snyk: dedykowany dla npm, lepsze wsparcie<br>• Trivy: lekki, szybki, darmowy dla OS<br>• Łatwiejsza automatyzacja |
+| **Artillery**   | **k6 (Grafana Labs)**                                   | • k6 szybszy (Go vs Node.js)<br>• Scripting w JavaScript (znajome dla zespołu)<br>• Lepsze metryki i dokumentacja<br>• Aktywna społeczność                     |
+| **Percy**       | **Playwright Visual Comparisons**                       | • Percy: $99/miesiąc ($1,188/rok)<br>• Playwright: wbudowane, darmowe<br>• Pixel-by-pixel comparison<br>• Snapshots w repo (brak external service)             |
+| **Allure**      | **GitHub Actions Native + Vitest UI + Playwright HTML** | • Allure wymaga Java + hosting<br>• Natywne raporty: zero setup<br>• GitHub artifacts: darmowe<br>• Integracja z PR checks                                     |
+| **Storybook**   | **Historia**                                            | • Storybook: konflikty z Astro/Vite<br>• Historia: zaprojektowana dla Vite<br>• Lżejsza, szybszy start<br>• Lepsze TypeScript support                          |
 
 **Dodane Narzędzia:**
 

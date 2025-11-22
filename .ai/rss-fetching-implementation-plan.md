@@ -19,11 +19,13 @@ This plan implements automatic RSS feed fetching every 15 minutes, parsing artic
 **File**: `supabase/migrations/YYYYMMDDHHMMSS_add_rss_source_management_fields.sql`
 
 Add fields to `app.rss_sources` table:
+
 - `is_active` (boolean, default `true`) - Enable/disable RSS source
 - `last_fetched_at` (timestamptz, nullable) - Track last successful fetch
 - `last_fetch_error` (text, nullable) - Store error message on failure
 
 **Migration SQL**:
+
 ```sql
 -- Add management fields to rss_sources table
 ALTER TABLE app.rss_sources
@@ -32,8 +34,8 @@ ADD COLUMN IF NOT EXISTS last_fetched_at timestamptz,
 ADD COLUMN IF NOT EXISTS last_fetch_error text;
 
 -- Add index for filtering active sources
-CREATE INDEX IF NOT EXISTS idx_rss_sources_is_active 
-ON app.rss_sources(is_active) 
+CREATE INDEX IF NOT EXISTS idx_rss_sources_is_active
+ON app.rss_sources(is_active)
 WHERE is_active = true;
 
 -- Add comments
@@ -47,6 +49,7 @@ COMMENT ON COLUMN app.rss_sources.last_fetch_error IS 'Error message from last f
 **File**: `package.json`
 
 Add dependency:
+
 ```json
 {
   "dependencies": {
@@ -63,6 +66,7 @@ Add dependency:
 **File**: `src/lib/services/rss-fetch.service.ts`
 
 Service responsibilities:
+
 - Fetch RSS feeds from URLs
 - Parse RSS XML using `rss-parser`
 - Extract article data (title, description, link, publicationDate)
@@ -70,6 +74,7 @@ Service responsibilities:
 - Return structured data
 
 **Key Features**:
+
 - Timeout handling (30 seconds per feed)
 - Error logging
 - RSS feed validation
@@ -80,6 +85,7 @@ Service responsibilities:
 **File**: `src/lib/services/rss-source.service.ts`
 
 Service responsibilities:
+
 - Fetch active RSS sources from database
 - Update `last_fetched_at` on success
 - Update `last_fetch_error` on failure
@@ -90,6 +96,7 @@ Service responsibilities:
 **File**: `src/pages/api/cron/fetch-rss.ts`
 
 Endpoint responsibilities:
+
 - Authenticate using service role (via Authorization header)
 - Fetch all active RSS sources from database
 - Process each source sequentially:
@@ -101,10 +108,12 @@ Endpoint responsibilities:
 - Return summary of processing results
 
 **Authentication**:
+
 - Requires `Authorization: Bearer <SERVICE_ROLE_KEY>` header
 - Validates service role in middleware
 
 **Response Format**:
+
 ```json
 {
   "success": true,
@@ -127,6 +136,7 @@ Endpoint responsibilities:
 **File**: `src/lib/validation/rss-source.schema.ts`
 
 Add URL validation:
+
 - Validate RSS URL format
 - Optionally: Test URL accessibility (can be async check)
 
@@ -135,18 +145,20 @@ Add URL validation:
 **File**: `.github/workflows/rss-fetch.yml`
 
 Workflow responsibilities:
+
 - Run every 15 minutes (`*/15 * * * *`)
 - Call `/api/cron/fetch-rss` endpoint
 - Use service role key from secrets
 - Handle failures gracefully
 
 **Configuration**:
+
 ```yaml
 name: RSS Feed Fetcher
 on:
   schedule:
-    - cron: '*/15 * * * *'  # Every 15 minutes UTC
-  workflow_dispatch:  # Allow manual trigger
+    - cron: "*/15 * * * *" # Every 15 minutes UTC
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
   fetch-rss:
@@ -170,6 +182,7 @@ Ensure `/api/cron/*` endpoints are accessible with service role authentication.
 **File**: `src/lib/services/rss-fetch.service.ts`
 
 Log:
+
 - RSS fetch start/end
 - Number of articles found per feed
 - Errors (with feed URL and error message)
@@ -180,6 +193,7 @@ Log:
 **File**: `src/db/database.types.ts`
 
 Regenerate types after migration:
+
 ```bash
 npx supabase gen types typescript --linked > src/db/database.types.ts
 ```
@@ -237,17 +251,20 @@ supabase/
 ### Unit Tests
 
 **File**: `src/lib/services/rss-fetch.service.test.ts`
+
 - Test RSS parsing with sample feeds
 - Test error handling (timeout, invalid XML, network errors)
 - Test date parsing edge cases
 
 **File**: `src/lib/services/rss-source.service.test.ts`
+
 - Test fetching active sources
 - Test updating fetch status
 
 ### Integration Tests
 
 **File**: `src/pages/api/cron/fetch-rss.test.ts`
+
 - Test endpoint authentication
 - Test processing multiple feeds
 - Test error handling and skipping
@@ -256,6 +273,7 @@ supabase/
 ### E2E Tests (Optional)
 
 **File**: `e2e/rss-fetching.spec.ts`
+
 - Test actual RSS fetching with real feeds (limited)
 - Verify articles appear in database
 - Test error scenarios
@@ -263,11 +281,13 @@ supabase/
 ## Environment Variables
 
 **Required**:
+
 - `SUPABASE_URL` - Already configured
 - `SUPABASE_SERVICE_ROLE_KEY` - Already configured
 - `APP_URL` - Application URL for cron endpoint (new, for GitHub Actions)
 
 **GitHub Secrets**:
+
 - `SUPABASE_SERVICE_ROLE_KEY` - Service role key for authentication
 - `APP_URL` - Production application URL (e.g., `https://your-app.pages.dev`)
 
@@ -304,6 +324,7 @@ If pg_cron is preferred over GitHub Actions:
 
 1. Enable `pg_net` extension in Supabase
 2. Create PostgreSQL function that calls Astro endpoint:
+
 ```sql
 CREATE OR REPLACE FUNCTION app.fetch_rss_feeds()
 RETURNS void
@@ -329,6 +350,7 @@ $$;
 ```
 
 3. Schedule pg_cron job:
+
 ```sql
 SELECT cron.schedule(
   'fetch-rss-feeds',
@@ -338,4 +360,3 @@ SELECT cron.schedule(
 ```
 
 **Note**: Requires `pg_net` extension and service role key stored in PostgreSQL settings.
-

@@ -5,6 +5,7 @@
 The `/api/profile` endpoint provides full CRUD operations for managing authenticated user profiles and preferences. This endpoint enables users to configure their content filtering preferences (mood and blocklist) that are used to personalize their article feed experience.
 
 **Key Features:**
+
 - Full CRUD operations (GET, POST, PATCH, DELETE)
 - Authentication required for all operations
 - User can only access their own profile (enforced by RLS)
@@ -13,6 +14,7 @@ The `/api/profile` endpoint provides full CRUD operations for managing authentic
 - Auto-creation capability for seamless user onboarding
 
 **Primary Use Cases:**
+
 1. User viewing their profile settings after registration
 2. User updating preferences (mood or blocklist)
 3. User creating initial profile after account creation
@@ -26,16 +28,17 @@ The `/api/profile` endpoint provides full CRUD operations for managing authentic
 
 ### HTTP Methods
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| `GET` | `/api/profile` | Retrieve authenticated user's profile |
-| `POST` | `/api/profile` | Create new profile for authenticated user |
-| `PATCH` | `/api/profile` | Update authenticated user's profile preferences |
-| `DELETE` | `/api/profile` | Delete authenticated user's profile |
+| Method   | Endpoint       | Purpose                                         |
+| -------- | -------------- | ----------------------------------------------- |
+| `GET`    | `/api/profile` | Retrieve authenticated user's profile           |
+| `POST`   | `/api/profile` | Create new profile for authenticated user       |
+| `PATCH`  | `/api/profile` | Update authenticated user's profile preferences |
+| `DELETE` | `/api/profile` | Delete authenticated user's profile             |
 
 ### URL Structure
 
 All endpoints use the same base path:
+
 ```
 /api/profile
 ```
@@ -51,11 +54,13 @@ All endpoints use the same base path:
 ### Request Parameters
 
 #### GET /api/profile
+
 - **Path Parameters:** None
 - **Query Parameters:** None
 - **Request Body:** None
 
 #### POST /api/profile
+
 - **Path Parameters:** None
 - **Query Parameters:** None
 - **Request Body:** Required
@@ -67,6 +72,7 @@ All endpoints use the same base path:
   ```
 
 #### PATCH /api/profile
+
 - **Path Parameters:** None
 - **Query Parameters:** None
 - **Request Body:** Required (partial update)
@@ -79,6 +85,7 @@ All endpoints use the same base path:
   Both fields are optional for partial updates.
 
 #### DELETE /api/profile
+
 - **Path Parameters:** None
 - **Query Parameters:** None
 - **Request Body:** None
@@ -86,12 +93,14 @@ All endpoints use the same base path:
 ### Example Requests
 
 **GET Request:**
+
 ```http
 GET /api/profile
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **POST Request:**
+
 ```http
 POST /api/profile
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -104,6 +113,7 @@ Content-Type: application/json
 ```
 
 **PATCH Request:**
+
 ```http
 PATCH /api/profile
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -116,6 +126,7 @@ Content-Type: application/json
 ```
 
 **DELETE Request:**
+
 ```http
 DELETE /api/profile
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -145,7 +156,7 @@ UserMood = "positive" | "neutral" | "negative"
 ### DTO Types
 
 ```typescript
-ProfileDto = ProfileEntity  // Direct mapping
+ProfileDto = ProfileEntity; // Direct mapping
 ```
 
 ### Command Models
@@ -186,8 +197,8 @@ ProfileUpdate {
 Zod schemas will be created in `src/lib/validation/profile.schema.ts`:
 
 ```typescript
-CreateProfileCommandSchema
-UpdateProfileCommandSchema
+CreateProfileCommandSchema;
+UpdateProfileCommandSchema;
 ```
 
 ---
@@ -203,16 +214,13 @@ UpdateProfileCommandSchema
 **Content-Type:** `application/json`
 
 **Response Body:**
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "userId": "660e8400-e29b-41d4-a716-446655440001",
   "mood": "positive",
-  "blocklist": [
-    "covid",
-    "election",
-    "tabloid.com"
-  ],
+  "blocklist": ["covid", "election", "tabloid.com"],
   "createdAt": "2025-11-10T08:00:00Z",
   "updatedAt": "2025-11-15T09:00:00Z"
 }
@@ -221,6 +229,7 @@ UpdateProfileCommandSchema
 #### Error Responses
 
 **401 Unauthorized:**
+
 ```json
 {
   "error": "Authentication required",
@@ -230,6 +239,7 @@ UpdateProfileCommandSchema
 ```
 
 **404 Not Found:**
+
 ```json
 {
   "error": "Profile not found",
@@ -249,6 +259,7 @@ UpdateProfileCommandSchema
 **Content-Type:** `application/json`
 
 **Response Body:**
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -263,6 +274,7 @@ UpdateProfileCommandSchema
 #### Error Responses
 
 **400 Bad Request - Validation Error:**
+
 ```json
 {
   "error": "Validation failed",
@@ -277,6 +289,7 @@ UpdateProfileCommandSchema
 ```
 
 **401 Unauthorized:**
+
 ```json
 {
   "error": "Authentication required",
@@ -286,6 +299,7 @@ UpdateProfileCommandSchema
 ```
 
 **409 Conflict:**
+
 ```json
 {
   "error": "Profile already exists for this user",
@@ -303,16 +317,13 @@ UpdateProfileCommandSchema
 **Content-Type:** `application/json`
 
 **Response Body:**
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "userId": "660e8400-e29b-41d4-a716-446655440001",
   "mood": "positive",
-  "blocklist": [
-    "covid",
-    "election",
-    "tabloid.com"
-  ],
+  "blocklist": ["covid", "election", "tabloid.com"],
   "updatedAt": "2025-11-15T10:30:00Z"
 }
 ```
@@ -322,6 +333,7 @@ UpdateProfileCommandSchema
 #### Error Responses
 
 **400 Bad Request - Invalid Mood:**
+
 ```json
 {
   "error": "Invalid mood value. Must be one of: positive, neutral, negative, or null",
@@ -331,6 +343,7 @@ UpdateProfileCommandSchema
 ```
 
 **400 Bad Request - Validation Error:**
+
 ```json
 {
   "error": "Validation failed",
@@ -345,6 +358,7 @@ UpdateProfileCommandSchema
 ```
 
 **401 Unauthorized:**
+
 ```json
 {
   "error": "Authentication required",
@@ -354,6 +368,7 @@ UpdateProfileCommandSchema
 ```
 
 **404 Not Found:**
+
 ```json
 {
   "error": "Profile not found",
@@ -373,6 +388,7 @@ UpdateProfileCommandSchema
 #### Error Responses
 
 **401 Unauthorized:**
+
 ```json
 {
   "error": "Authentication required",
@@ -382,6 +398,7 @@ UpdateProfileCommandSchema
 ```
 
 **404 Not Found:**
+
 ```json
 {
   "error": "Profile not found",
@@ -544,10 +561,13 @@ UpdateProfileCommandSchema
    ```typescript
    const user = context.locals.user;
    if (!user || !user.id) {
-     return new Response(JSON.stringify({
-       error: "Authentication required",
-       code: "AUTHENTICATION_REQUIRED"
-     }), { status: 401 });
+     return new Response(
+       JSON.stringify({
+         error: "Authentication required",
+         code: "AUTHENTICATION_REQUIRED",
+       }),
+       { status: 401 }
+     );
    }
    ```
 
@@ -604,14 +624,14 @@ UpdateProfileCommandSchema
 
 ### Security Threats and Mitigations
 
-| Threat | Mitigation |
-|--------|------------|
-| Unauthorized access to other users' profiles | RLS policies enforce user isolation |
-| SQL injection attacks | Use Supabase query builder (parameterized queries) |
-| Invalid input causing database errors | Zod validation before database operations |
-| Token tampering | Supabase validates JWT signature and expiration |
-| Missing authentication | Middleware validates token before route handler |
-| User ID manipulation | Extract userId from authenticated context, never from request body |
+| Threat                                       | Mitigation                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| Unauthorized access to other users' profiles | RLS policies enforce user isolation                                |
+| SQL injection attacks                        | Use Supabase query builder (parameterized queries)                 |
+| Invalid input causing database errors        | Zod validation before database operations                          |
+| Token tampering                              | Supabase validates JWT signature and expiration                    |
+| Missing authentication                       | Middleware validates token before route handler                    |
+| User ID manipulation                         | Extract userId from authenticated context, never from request body |
 
 ---
 
@@ -623,10 +643,10 @@ All error responses follow this structure:
 
 ```typescript
 interface ErrorResponse {
-  error: string;           // Human-readable error message
-  code?: string;           // Machine-readable error code (optional)
-  details?: ValidationErrorDetails[] | Record<string, unknown>;  // Additional error details
-  timestamp?: string;      // ISO 8601 timestamp
+  error: string; // Human-readable error message
+  code?: string; // Machine-readable error code (optional)
+  details?: ValidationErrorDetails[] | Record<string, unknown>; // Additional error details
+  timestamp?: string; // ISO 8601 timestamp
 }
 
 interface ValidationErrorDetails {
@@ -639,46 +659,46 @@ interface ValidationErrorDetails {
 
 #### GET /api/profile
 
-| Error Scenario | Status Code | Error Code | Response Message |
-|----------------|-------------|------------|------------------|
-| Missing authentication token | 401 | AUTHENTICATION_REQUIRED | Authentication required |
-| Invalid/expired token | 401 | AUTHENTICATION_REQUIRED | Authentication required |
-| Profile not found | 404 | PROFILE_NOT_FOUND | Profile not found |
-| Database connection error | 500 | DATABASE_ERROR | Internal server error |
-| Unexpected error | 500 | INTERNAL_ERROR | An unexpected error occurred |
+| Error Scenario               | Status Code | Error Code              | Response Message             |
+| ---------------------------- | ----------- | ----------------------- | ---------------------------- |
+| Missing authentication token | 401         | AUTHENTICATION_REQUIRED | Authentication required      |
+| Invalid/expired token        | 401         | AUTHENTICATION_REQUIRED | Authentication required      |
+| Profile not found            | 404         | PROFILE_NOT_FOUND       | Profile not found            |
+| Database connection error    | 500         | DATABASE_ERROR          | Internal server error        |
+| Unexpected error             | 500         | INTERNAL_ERROR          | An unexpected error occurred |
 
 #### POST /api/profile
 
-| Error Scenario | Status Code | Error Code | Response Message |
-|----------------|-------------|------------|------------------|
-| Missing authentication token | 401 | AUTHENTICATION_REQUIRED | Authentication required |
-| Invalid JSON in request body | 400 | INVALID_JSON | Invalid JSON in request body |
-| Invalid mood value | 400 | VALIDATION_ERROR | Invalid mood value. Must be one of: positive, neutral, negative, or null |
-| Invalid blocklist format | 400 | VALIDATION_ERROR | Blocklist must be an array of strings |
-| Profile already exists | 409 | PROFILE_EXISTS | Profile already exists for this user |
-| Database connection error | 500 | DATABASE_ERROR | Internal server error |
-| Unexpected error | 500 | INTERNAL_ERROR | An unexpected error occurred |
+| Error Scenario               | Status Code | Error Code              | Response Message                                                         |
+| ---------------------------- | ----------- | ----------------------- | ------------------------------------------------------------------------ |
+| Missing authentication token | 401         | AUTHENTICATION_REQUIRED | Authentication required                                                  |
+| Invalid JSON in request body | 400         | INVALID_JSON            | Invalid JSON in request body                                             |
+| Invalid mood value           | 400         | VALIDATION_ERROR        | Invalid mood value. Must be one of: positive, neutral, negative, or null |
+| Invalid blocklist format     | 400         | VALIDATION_ERROR        | Blocklist must be an array of strings                                    |
+| Profile already exists       | 409         | PROFILE_EXISTS          | Profile already exists for this user                                     |
+| Database connection error    | 500         | DATABASE_ERROR          | Internal server error                                                    |
+| Unexpected error             | 500         | INTERNAL_ERROR          | An unexpected error occurred                                             |
 
 #### PATCH /api/profile
 
-| Error Scenario | Status Code | Error Code | Response Message |
-|----------------|-------------|------------|------------------|
-| Missing authentication token | 401 | AUTHENTICATION_REQUIRED | Authentication required |
-| Invalid JSON in request body | 400 | INVALID_JSON | Invalid JSON in request body |
-| Invalid mood value | 400 | VALIDATION_ERROR | Invalid mood value. Must be one of: positive, neutral, negative, or null |
-| Invalid blocklist format | 400 | VALIDATION_ERROR | Blocklist must be an array of strings |
-| Profile not found | 404 | PROFILE_NOT_FOUND | Profile not found |
-| Database connection error | 500 | DATABASE_ERROR | Internal server error |
-| Unexpected error | 500 | INTERNAL_ERROR | An unexpected error occurred |
+| Error Scenario               | Status Code | Error Code              | Response Message                                                         |
+| ---------------------------- | ----------- | ----------------------- | ------------------------------------------------------------------------ |
+| Missing authentication token | 401         | AUTHENTICATION_REQUIRED | Authentication required                                                  |
+| Invalid JSON in request body | 400         | INVALID_JSON            | Invalid JSON in request body                                             |
+| Invalid mood value           | 400         | VALIDATION_ERROR        | Invalid mood value. Must be one of: positive, neutral, negative, or null |
+| Invalid blocklist format     | 400         | VALIDATION_ERROR        | Blocklist must be an array of strings                                    |
+| Profile not found            | 404         | PROFILE_NOT_FOUND       | Profile not found                                                        |
+| Database connection error    | 500         | DATABASE_ERROR          | Internal server error                                                    |
+| Unexpected error             | 500         | INTERNAL_ERROR          | An unexpected error occurred                                             |
 
 #### DELETE /api/profile
 
-| Error Scenario | Status Code | Error Code | Response Message |
-|----------------|-------------|------------|------------------|
-| Missing authentication token | 401 | AUTHENTICATION_REQUIRED | Authentication required |
-| Profile not found | 404 | PROFILE_NOT_FOUND | Profile not found |
-| Database connection error | 500 | DATABASE_ERROR | Internal server error |
-| Unexpected error | 500 | INTERNAL_ERROR | An unexpected error occurred |
+| Error Scenario               | Status Code | Error Code              | Response Message             |
+| ---------------------------- | ----------- | ----------------------- | ---------------------------- |
+| Missing authentication token | 401         | AUTHENTICATION_REQUIRED | Authentication required      |
+| Profile not found            | 404         | PROFILE_NOT_FOUND       | Profile not found            |
+| Database connection error    | 500         | DATABASE_ERROR          | Internal server error        |
+| Unexpected error             | 500         | INTERNAL_ERROR          | An unexpected error occurred |
 
 ### Error Handling Implementation
 
@@ -691,7 +711,7 @@ if (!user || !user.id) {
     JSON.stringify({
       error: "Authentication required",
       code: "AUTHENTICATION_REQUIRED",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
     { status: 401, headers: { "Content-Type": "application/json" } }
   );
@@ -708,11 +728,11 @@ try {
     return new Response(
       JSON.stringify({
         error: "Validation failed",
-        details: error.errors.map(e => ({
-          field: e.path.join('.'),
-          message: e.message
+        details: error.errors.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
         })),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
@@ -730,7 +750,7 @@ if (existingProfile) {
     JSON.stringify({
       error: "Profile already exists for this user",
       code: "PROFILE_EXISTS",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
     { status: 409, headers: { "Content-Type": "application/json" } }
   );
@@ -742,7 +762,7 @@ if (!profile) {
     JSON.stringify({
       error: "Profile not found",
       code: "PROFILE_NOT_FOUND",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
     { status: 404, headers: { "Content-Type": "application/json" } }
   );
@@ -757,7 +777,7 @@ try {
 } catch (error) {
   logger.error("Database error creating profile", {
     userId,
-    error: error instanceof Error ? error.message : String(error)
+    error: error instanceof Error ? error.message : String(error),
   });
 
   // Check for specific database errors
@@ -768,7 +788,7 @@ try {
         JSON.stringify({
           error: "Profile already exists for this user",
           code: "PROFILE_EXISTS",
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         }),
         { status: 409, headers: { "Content-Type": "application/json" } }
       );
@@ -780,7 +800,7 @@ try {
     JSON.stringify({
       error: "Internal server error",
       code: "DATABASE_ERROR",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
     { status: 500, headers: { "Content-Type": "application/json" } }
   );
@@ -890,6 +910,7 @@ All errors should be logged with appropriate severity levels:
 4. Export schemas for use in route handler
 
 **Validation Rules:**
+
 - `mood`: Optional, must be one of "positive", "neutral", "negative", or null
 - `blocklist`: Optional array, each item must be non-empty string, max 200 characters per item, max 100 items total
 
@@ -912,12 +933,12 @@ All errors should be logged with appropriate severity levels:
 class ProfileService {
   constructor(private supabase: SupabaseClient<Database>) {}
 
-  async getProfile(userId: string): Promise<ProfileEntity | null>
-  async createProfile(userId: string, command: CreateProfileCommand): Promise<ProfileEntity>
-  async updateProfile(userId: string, command: UpdateProfileCommand): Promise<ProfileEntity>
-  async deleteProfile(userId: string): Promise<void>
-  private async profileExists(userId: string): Promise<boolean>
-  private mapDbToEntity(row: Database["app"]["Tables"]["profiles"]["Row"]): ProfileEntity
+  async getProfile(userId: string): Promise<ProfileEntity | null>;
+  async createProfile(userId: string, command: CreateProfileCommand): Promise<ProfileEntity>;
+  async updateProfile(userId: string, command: UpdateProfileCommand): Promise<ProfileEntity>;
+  async deleteProfile(userId: string): Promise<void>;
+  private async profileExists(userId: string): Promise<boolean>;
+  private mapDbToEntity(row: Database["app"]["Tables"]["profiles"]["Row"]): ProfileEntity;
 }
 ```
 
@@ -939,10 +960,18 @@ class ProfileService {
 ```typescript
 export const prerender = false;
 
-export const GET: APIRoute = async (context) => { /* ... */ }
-export const POST: APIRoute = async (context) => { /* ... */ }
-export const PATCH: APIRoute = async (context) => { /* ... */ }
-export const DELETE: APIRoute = async (context) => { /* ... */ }
+export const GET: APIRoute = async (context) => {
+  /* ... */
+};
+export const POST: APIRoute = async (context) => {
+  /* ... */
+};
+export const PATCH: APIRoute = async (context) => {
+  /* ... */
+};
+export const DELETE: APIRoute = async (context) => {
+  /* ... */
+};
 ```
 
 ### Step 4: Implement GET Handler
@@ -1097,7 +1126,7 @@ This implementation plan provides comprehensive guidance for implementing the `/
 - **Maintainability:** Clear separation of concerns, consistent patterns, comprehensive logging
 
 The implementation should be straightforward following the existing ArticleService and article endpoint patterns, with the main differences being:
+
 - Simpler data model (no joins or complex relationships)
 - User-scoped operations (all operations filtered by authenticated user)
 - Simpler validation (mood enum and blocklist array)
-

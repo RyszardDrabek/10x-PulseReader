@@ -22,10 +22,10 @@ Authorization: Bearer <user_jwt_token>
 
 All fields are optional. Only provided fields will be updated.
 
-| Field | Type | Required | Description | Constraints |
-|-------|------|----------|-------------|-------------|
-| `mood` | enum \| null | No | User's preferred mood filter | One of: "positive", "neutral", "negative", or null |
-| `blocklist` | array of strings | No | List of keywords and URL fragments to filter out | Max 100 items, each item max 200 characters |
+| Field       | Type             | Required | Description                                      | Constraints                                        |
+| ----------- | ---------------- | -------- | ------------------------------------------------ | -------------------------------------------------- |
+| `mood`      | enum \| null     | No       | User's preferred mood filter                     | One of: "positive", "neutral", "negative", or null |
+| `blocklist` | array of strings | No       | List of keywords and URL fragments to filter out | Max 100 items, each item max 200 characters        |
 
 **Note:** `userId` is automatically derived from the authenticated user's token and should NOT be included in the request body.
 
@@ -87,11 +87,7 @@ Returns the updated profile entity with all fields (not just updated ones).
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "userId": "660e8400-e29b-41d4-a716-446655440001",
   "mood": "positive",
-  "blocklist": [
-    "covid",
-    "election",
-    "tabloid.com"
-  ],
+  "blocklist": ["covid", "election", "tabloid.com"],
   "createdAt": "2025-11-10T08:00:00Z",
   "updatedAt": "2025-11-15T10:30:00Z"
 }
@@ -123,6 +119,7 @@ Returned when the request body fails validation.
 ```
 
 **Common validation errors:**
+
 - Invalid mood value (not in enum)
 - Blocklist item exceeds 200 characters
 - Blocklist contains more than 100 items
@@ -205,26 +202,26 @@ Returned when the authenticated user doesn't have a profile. Call POST /api/prof
 async function updateProfile(
   token: string,
   updates: {
-    mood?: 'positive' | 'neutral' | 'negative' | null;
+    mood?: "positive" | "neutral" | "negative" | null;
     blocklist?: string[];
   }
 ) {
-  const response = await fetch('https://your-domain.com/api/profile', {
-    method: 'PATCH',
+  const response = await fetch("https://your-domain.com/api/profile", {
+    method: "PATCH",
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(updates),
   });
 
   if (response.status === 200) {
     const profile = await response.json();
-    console.log('Profile updated:', profile.id);
+    console.log("Profile updated:", profile.id);
     return profile;
   } else if (response.status === 404) {
-    console.log('Profile not found, create one first');
-    throw new Error('Profile not found');
+    console.log("Profile not found, create one first");
+    throw new Error("Profile not found");
   } else {
     const error = await response.json();
     throw new Error(error.error);
@@ -235,36 +232,33 @@ async function updateProfile(
 ### React Example - Settings Form
 
 ```typescript
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 function useUpdateProfile() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async (updates: {
-      mood?: 'positive' | 'neutral' | 'negative' | null;
-      blocklist?: string[];
-    }) => {
-      const response = await fetch('/api/profile', {
-        method: 'PATCH',
+    mutationFn: async (updates: { mood?: "positive" | "neutral" | "negative" | null; blocklist?: string[] }) => {
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
         headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(updates),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error);
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
       // Invalidate profile query to refetch updated data
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 }
@@ -273,8 +267,8 @@ function useUpdateProfile() {
 function SettingsForm() {
   const updateProfile = useUpdateProfile();
   const { data: profile } = useProfile();
-  
-  const handleMoodChange = async (mood: 'positive' | 'neutral' | 'negative' | null) => {
+
+  const handleMoodChange = async (mood: "positive" | "neutral" | "negative" | null) => {
     try {
       await updateProfile.mutateAsync({ mood });
       // Show success toast
@@ -282,7 +276,7 @@ function SettingsForm() {
       // Show error toast
     }
   };
-  
+
   const handleBlocklistUpdate = async (blocklist: string[]) => {
     try {
       await updateProfile.mutateAsync({ blocklist });
@@ -291,7 +285,7 @@ function SettingsForm() {
       // Show error toast
     }
   };
-  
+
   // ... form JSX
 }
 ```
@@ -327,4 +321,3 @@ await updateProfile({ mood: null, blocklist: [] });
 - [GET /api/profile](./GET-profile.md) - Retrieve profile
 - [POST /api/profile](./POST-profile.md) - Create profile
 - [DELETE /api/profile](./DELETE-profile.md) - Delete profile
-

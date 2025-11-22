@@ -5,21 +5,23 @@
 This REST API plan is designed for PulseReader, an intelligent news aggregator that provides personalized content filtering based on user mood, topics, and blocklists. The API follows RESTful conventions and is built on Astro with Supabase as the backend service.
 
 ### Base URL
+
 ```
 /api
 ```
 
 ### API Version
+
 Version 1.0 (no versioning in URL for MVP)
 
 ## 2. Resources
 
-| Resource | Database Table | Description |
-|----------|---------------|-------------|
-| Articles | `app.articles` | News articles fetched from RSS sources with AI-generated sentiment and topics |
-| Profile | `app.profiles` | User preferences including mood and blocklist (1-to-1 with authenticated user) |
-| RSS Sources | `app.rss_sources` | Predefined RSS feed sources |
-| Topics | `app.topics` | AI-generated topics for article categorization |
+| Resource    | Database Table    | Description                                                                    |
+| ----------- | ----------------- | ------------------------------------------------------------------------------ |
+| Articles    | `app.articles`    | News articles fetched from RSS sources with AI-generated sentiment and topics  |
+| Profile     | `app.profiles`    | User preferences including mood and blocklist (1-to-1 with authenticated user) |
+| RSS Sources | `app.rss_sources` | Predefined RSS feed sources                                                    |
+| Topics      | `app.topics`      | AI-generated topics for article categorization                                 |
 
 ## 3. Endpoints
 
@@ -32,6 +34,7 @@ Retrieves a paginated list of articles with optional filtering.
 **Authentication:** Optional (guests can view, authenticated users get personalized filtering)
 
 **Query Parameters:**
+
 - `limit` (integer, default: 20, max: 100): Number of articles per page
 - `offset` (integer, default: 0): Pagination offset
 - `sentiment` (string, optional): Filter by sentiment ('positive', 'neutral', 'negative')
@@ -44,6 +47,7 @@ Retrieves a paginated list of articles with optional filtering.
 **Request Payload:** None
 
 **Response Payload (200 OK):**
+
 ```json
 {
   "data": [
@@ -87,6 +91,7 @@ Retrieves a paginated list of articles with optional filtering.
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid query parameters
   ```json
   {
@@ -107,9 +112,11 @@ Retrieves a single article by ID.
 **Authentication:** Optional
 
 **Path Parameters:**
+
 - `id` (UUID, required): Article ID
 
 **Response Payload (200 OK):**
+
 ```json
 {
   "id": "uuid",
@@ -135,6 +142,7 @@ Retrieves a single article by ID.
 ```
 
 **Error Responses:**
+
 - `404 Not Found`: Article does not exist
   ```json
   {
@@ -149,6 +157,7 @@ Creates a new article (used by RSS fetching cron job).
 **Authentication:** Required (service_role)
 
 **Request Payload:**
+
 ```json
 {
   "sourceId": "uuid",
@@ -162,6 +171,7 @@ Creates a new article (used by RSS fetching cron job).
 ```
 
 **Response Payload (201 Created):**
+
 ```json
 {
   "id": "uuid",
@@ -177,14 +187,12 @@ Creates a new article (used by RSS fetching cron job).
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Validation error
   ```json
   {
     "error": "Validation failed",
-    "details": [
-      "title is required",
-      "link must be a valid URL"
-    ]
+    "details": ["title is required", "link must be a valid URL"]
   }
   ```
 - `401 Unauthorized`: Not authenticated as service_role
@@ -202,9 +210,11 @@ Updates an article (used to add AI analysis results).
 **Authentication:** Required (service_role)
 
 **Path Parameters:**
+
 - `id` (UUID, required): Article ID
 
 **Request Payload:**
+
 ```json
 {
   "sentiment": "neutral",
@@ -213,6 +223,7 @@ Updates an article (used to add AI analysis results).
 ```
 
 **Response Payload (200 OK):**
+
 ```json
 {
   "id": "uuid",
@@ -222,6 +233,7 @@ Updates an article (used to add AI analysis results).
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid sentiment value
 - `401 Unauthorized`: Not authenticated as service_role
 - `404 Not Found`: Article does not exist
@@ -233,11 +245,13 @@ Deletes an article (primarily used by retention policy cron job).
 **Authentication:** Required (service_role)
 
 **Path Parameters:**
+
 - `id` (UUID, required): Article ID
 
 **Response Payload (204 No Content)**
 
 **Error Responses:**
+
 - `401 Unauthorized`: Not authenticated as service_role
 - `404 Not Found`: Article does not exist
 
@@ -250,22 +264,20 @@ Retrieves the authenticated user's profile and preferences.
 **Authentication:** Required
 
 **Response Payload (200 OK):**
+
 ```json
 {
   "id": "uuid",
   "userId": "uuid",
   "mood": "positive",
-  "blocklist": [
-    "covid",
-    "election",
-    "tabloid.com"
-  ],
+  "blocklist": ["covid", "election", "tabloid.com"],
   "createdAt": "2025-11-10T08:00:00Z",
   "updatedAt": "2025-11-15T09:00:00Z"
 }
 ```
 
 **Error Responses:**
+
 - `401 Unauthorized`: Not authenticated
   ```json
   {
@@ -286,6 +298,7 @@ Creates a profile for the authenticated user (automatically called after registr
 **Authentication:** Required
 
 **Request Payload:**
+
 ```json
 {
   "mood": "neutral",
@@ -294,6 +307,7 @@ Creates a profile for the authenticated user (automatically called after registr
 ```
 
 **Response Payload (201 Created):**
+
 ```json
 {
   "id": "uuid",
@@ -306,6 +320,7 @@ Creates a profile for the authenticated user (automatically called after registr
 ```
 
 **Error Responses:**
+
 - `401 Unauthorized`: Not authenticated
 - `409 Conflict`: Profile already exists
   ```json
@@ -321,33 +336,28 @@ Updates the authenticated user's profile preferences.
 **Authentication:** Required
 
 **Request Payload:**
+
 ```json
 {
   "mood": "positive",
-  "blocklist": [
-    "covid",
-    "election",
-    "tabloid.com"
-  ]
+  "blocklist": ["covid", "election", "tabloid.com"]
 }
 ```
 
 **Response Payload (200 OK):**
+
 ```json
 {
   "id": "uuid",
   "userId": "uuid",
   "mood": "positive",
-  "blocklist": [
-    "covid",
-    "election",
-    "tabloid.com"
-  ],
+  "blocklist": ["covid", "election", "tabloid.com"],
   "updatedAt": "2025-11-15T10:30:00Z"
 }
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid mood value
   ```json
   {
@@ -365,6 +375,7 @@ Deletes the authenticated user's profile.
 **Response Payload (204 No Content)**
 
 **Error Responses:**
+
 - `401 Unauthorized`: Not authenticated
 - `404 Not Found`: Profile does not exist
 
@@ -377,10 +388,12 @@ Retrieves all RSS sources.
 **Authentication:** Optional
 
 **Query Parameters:**
+
 - `limit` (integer, default: 50, max: 100): Number of sources per page
 - `offset` (integer, default: 0): Pagination offset
 
 **Response Payload (200 OK):**
+
 ```json
 {
   "data": [
@@ -408,9 +421,11 @@ Retrieves a single RSS source by ID.
 **Authentication:** Optional
 
 **Path Parameters:**
+
 - `id` (UUID, required): RSS source ID
 
 **Response Payload (200 OK):**
+
 ```json
 {
   "id": "uuid",
@@ -422,6 +437,7 @@ Retrieves a single RSS source by ID.
 ```
 
 **Error Responses:**
+
 - `404 Not Found`: RSS source does not exist
 
 #### POST /api/rss-sources (Service Role Only)
@@ -431,6 +447,7 @@ Creates a new RSS source.
 **Authentication:** Required (service_role)
 
 **Request Payload:**
+
 ```json
 {
   "name": "The Guardian - World",
@@ -439,6 +456,7 @@ Creates a new RSS source.
 ```
 
 **Response Payload (201 Created):**
+
 ```json
 {
   "id": "uuid",
@@ -450,6 +468,7 @@ Creates a new RSS source.
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Validation error
 - `401 Unauthorized`: Not authenticated as service_role
 - `409 Conflict`: RSS source with this URL already exists
@@ -466,9 +485,11 @@ Updates an RSS source.
 **Authentication:** Required (service_role)
 
 **Path Parameters:**
+
 - `id` (UUID, required): RSS source ID
 
 **Request Payload:**
+
 ```json
 {
   "name": "The Guardian - World News",
@@ -477,6 +498,7 @@ Updates an RSS source.
 ```
 
 **Response Payload (200 OK):**
+
 ```json
 {
   "id": "uuid",
@@ -487,6 +509,7 @@ Updates an RSS source.
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Validation error
 - `401 Unauthorized`: Not authenticated as service_role
 - `404 Not Found`: RSS source does not exist
@@ -498,11 +521,13 @@ Deletes an RSS source and all associated articles (CASCADE).
 **Authentication:** Required (service_role)
 
 **Path Parameters:**
+
 - `id` (UUID, required): RSS source ID
 
 **Response Payload (204 No Content)**
 
 **Error Responses:**
+
 - `401 Unauthorized`: Not authenticated as service_role
 - `404 Not Found`: RSS source does not exist
 
@@ -515,11 +540,13 @@ Retrieves all topics with optional filtering.
 **Authentication:** Optional
 
 **Query Parameters:**
+
 - `limit` (integer, default: 100, max: 500): Number of topics per page
 - `offset` (integer, default: 0): Pagination offset
 - `search` (string, optional): Case-insensitive search by topic name
 
 **Response Payload (200 OK):**
+
 ```json
 {
   "data": [
@@ -552,9 +579,11 @@ Retrieves a single topic by ID.
 **Authentication:** Optional
 
 **Path Parameters:**
+
 - `id` (UUID, required): Topic ID
 
 **Response Payload (200 OK):**
+
 ```json
 {
   "id": "uuid",
@@ -565,6 +594,7 @@ Retrieves a single topic by ID.
 ```
 
 **Error Responses:**
+
 - `404 Not Found`: Topic does not exist
 
 #### POST /api/topics (Service Role Only)
@@ -574,6 +604,7 @@ Creates a new topic or returns existing one if name already exists (case-insensi
 **Authentication:** Required (service_role)
 
 **Request Payload:**
+
 ```json
 {
   "name": "climate change"
@@ -581,6 +612,7 @@ Creates a new topic or returns existing one if name already exists (case-insensi
 ```
 
 **Response Payload (201 Created or 200 OK if exists):**
+
 ```json
 {
   "id": "uuid",
@@ -591,6 +623,7 @@ Creates a new topic or returns existing one if name already exists (case-insensi
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Name is required or invalid
   ```json
   {
@@ -606,11 +639,13 @@ Deletes a topic (CASCADE removes article_topics associations).
 **Authentication:** Required (service_role)
 
 **Path Parameters:**
+
 - `id` (UUID, required): Topic ID
 
 **Response Payload (204 No Content)**
 
 **Error Responses:**
+
 - `401 Unauthorized`: Not authenticated as service_role
 - `404 Not Found`: Topic does not exist
 
@@ -629,6 +664,7 @@ PulseReader uses **Supabase Auth** for user authentication. The API expects JWT 
 5. API checks user permissions based on token claims
 
 #### Token Format:
+
 ```
 Authorization: Bearer <supabase_jwt_token>
 ```
@@ -636,16 +672,19 @@ Authorization: Bearer <supabase_jwt_token>
 ### 4.2 Authorization Levels
 
 #### Guest (No Authentication)
+
 - Read-only access to articles (GET /api/articles)
 - Read-only access to RSS sources (GET /api/rss-sources)
 - Read-only access to topics (GET /api/topics)
 
 #### Authenticated User
+
 - All guest permissions
 - Full access to own profile (GET/POST/PATCH/DELETE /api/profile)
 - Personalized article filtering (GET /api/articles?applyPersonalization=true)
 
 #### Service Role (Backend Jobs)
+
 - Full CRUD access to all resources
 - Used by:
   - RSS fetching cron job
@@ -665,6 +704,7 @@ All database operations respect Supabase RLS policies:
 ### 4.4 Token Validation
 
 API middleware validates tokens by:
+
 1. Extracting token from Authorization header
 2. Verifying token signature using Supabase client
 3. Checking token expiration
@@ -676,6 +716,7 @@ API middleware validates tokens by:
 ### 5.1 Validation Rules by Resource
 
 #### Articles
+
 - `title`: Required, string, max 1000 characters
 - `link`: Required, valid URL, unique across all articles
 - `publicationDate`: Required, valid ISO 8601 datetime
@@ -685,15 +726,18 @@ API middleware validates tokens by:
 - `topicIds`: Optional, array of valid UUIDs
 
 #### Profile
+
 - `mood`: Optional (nullable), must be one of: 'positive', 'neutral', 'negative'
 - `blocklist`: Optional, array of strings, each max 500 characters, max 1000 items
 - Auto-creation: If profile doesn't exist for user, automatically create with defaults
 
 #### RSS Sources
+
 - `name`: Required, string, max 200 characters
 - `url`: Required, valid URL, unique across all sources
 
 #### Topics
+
 - `name`: Required, string, max 100 characters, case-insensitive unique (enforced by DB index)
 
 ### 5.2 Business Logic Implementation
@@ -780,10 +824,12 @@ When `applyPersonalization=true` is set:
 ### 5.4 Rate Limiting
 
 **MVP Implementation:**
+
 - No rate limiting for MVP
 - Supabase connection pooling handles basic load management
 
 **Future Considerations:**
+
 - Implement rate limiting per user/IP
 - Suggested limits:
   - Anonymous users: 100 requests/hour
@@ -797,10 +843,12 @@ When `applyPersonalization=true` is set:
 All list endpoints support offset-based pagination:
 
 **Request Parameters:**
+
 - `limit`: Number of items per page (default varies by resource)
 - `offset`: Number of items to skip
 
 **Response Format:**
+
 ```json
 {
   "data": [...],
@@ -818,10 +866,12 @@ All list endpoints support offset-based pagination:
 List endpoints support sorting via query parameters:
 
 **Request Parameters:**
+
 - `sortBy`: Field name to sort by
 - `sortOrder`: 'asc' or 'desc'
 
 **Default Sorting:**
+
 - Articles: `publication_date DESC`
 - RSS Sources: `name ASC`
 - Topics: `name ASC`
@@ -874,6 +924,7 @@ src/pages/api/
 ### 7.2 Middleware
 
 Astro middleware (`src/middleware/index.ts`) handles:
+
 - JWT token validation
 - User context extraction
 - RLS context setting for Supabase client
@@ -883,6 +934,7 @@ Astro middleware (`src/middleware/index.ts`) handles:
 ### 7.3 Supabase Client Configuration
 
 Two client types:
+
 1. **Anonymous Client**: For public read operations
 2. **Authenticated Client**: Uses user's JWT token for RLS enforcement
 3. **Service Role Client**: Uses service_role key for backend jobs
@@ -890,6 +942,7 @@ Two client types:
 ### 7.4 Type Safety
 
 All API endpoints use shared types from `src/types.ts`:
+
 - Request DTOs
 - Response DTOs
 - Entity types matching database schema from `src/db/database.types.ts`
@@ -912,6 +965,7 @@ The following features are documented for future consideration:
 ### 8.2 API Versioning Strategy
 
 When breaking changes are needed:
+
 - Introduce versioned endpoints: `/api/v2/articles`
 - Maintain v1 for deprecation period (6 months)
 - Document migration path in API changelog
@@ -921,6 +975,7 @@ When breaking changes are needed:
 ### 9.1 Test Coverage
 
 Each endpoint should have tests for:
+
 - Happy path (successful operation)
 - Authentication/authorization failures
 - Validation errors
@@ -931,6 +986,7 @@ Each endpoint should have tests for:
 ### 9.2 Test Data
 
 Use separate test database with:
+
 - Sample RSS sources
 - Sample articles with various sentiments
 - Test users with different preference configurations
@@ -939,6 +995,7 @@ Use separate test database with:
 ### 9.3 Integration Testing
 
 Test complete user flows:
+
 - Guest browsing articles
 - User registration → profile creation → preference setting → filtered browsing
 - Service role article ingestion → AI analysis → user viewing
@@ -948,6 +1005,7 @@ Test complete user flows:
 ### 10.1 OpenAPI Specification
 
 Generate OpenAPI 3.0 spec for:
+
 - Interactive API documentation (Swagger UI)
 - Client SDK generation
 - API testing tools
@@ -977,6 +1035,7 @@ curl -X PATCH \
 ### 11.1 Logging
 
 Log the following for each request:
+
 - Timestamp
 - HTTP method and path
 - User ID (if authenticated)
@@ -987,6 +1046,7 @@ Log the following for each request:
 ### 11.2 Metrics
 
 Track:
+
 - Request rate per endpoint
 - Response time percentiles (p50, p95, p99)
 - Error rate by status code
@@ -996,8 +1056,8 @@ Track:
 ### 11.3 Alerts
 
 Set up alerts for:
+
 - Error rate > 5%
 - Response time p95 > 2 seconds
 - Authentication failures spike
 - Database connection issues
-

@@ -5,6 +5,7 @@
 The `GET /api/articles` endpoint retrieves a paginated list of news articles with optional filtering, sorting, and personalization capabilities. This endpoint serves as the primary data source for the article feed in the PulseReader application.
 
 **Key Features:**
+
 - Public access (no authentication required for basic listing)
 - Optional personalization for authenticated users (mood-based filtering and blocklist application)
 - Flexible filtering by sentiment, topic, and RSS source
@@ -12,6 +13,7 @@ The `GET /api/articles` endpoint retrieves a paginated list of news articles wit
 - Returns articles with nested source and topics for complete data representation
 
 **Primary Use Cases:**
+
 1. Guest users browsing recent articles
 2. Authenticated users viewing personalized article feeds
 3. Frontend components fetching filtered article lists by topic or sentiment
@@ -24,9 +26,11 @@ The `GET /api/articles` endpoint retrieves a paginated list of news articles wit
 ## 2. Request Details
 
 ### HTTP Method
+
 `GET`
 
 ### URL Structure
+
 ```
 GET /api/articles
 ```
@@ -35,49 +39,56 @@ GET /api/articles
 
 All query parameters are optional with sensible defaults:
 
-| Parameter | Type | Default | Validation | Description |
-|-----------|------|---------|------------|-------------|
-| `limit` | integer | 20 | Min: 1, Max: 100 | Number of articles per page |
-| `offset` | integer | 0 | Min: 0 | Pagination offset for cursor-based pagination |
-| `sentiment` | string | - | Enum: 'positive', 'neutral', 'negative' | Filter articles by sentiment |
-| `topicId` | string (UUID) | - | Valid UUID format | Filter articles by topic ID |
-| `sourceId` | string (UUID) | - | Valid UUID format | Filter articles by RSS source ID |
-| `applyPersonalization` | boolean | false | Boolean | Apply authenticated user's mood and blocklist preferences |
-| `sortBy` | string | 'publication_date' | Enum: 'publication_date', 'created_at' | Field to sort by |
-| `sortOrder` | string | 'desc' | Enum: 'asc', 'desc' | Sort order direction |
+| Parameter              | Type          | Default            | Validation                              | Description                                               |
+| ---------------------- | ------------- | ------------------ | --------------------------------------- | --------------------------------------------------------- |
+| `limit`                | integer       | 20                 | Min: 1, Max: 100                        | Number of articles per page                               |
+| `offset`               | integer       | 0                  | Min: 0                                  | Pagination offset for cursor-based pagination             |
+| `sentiment`            | string        | -                  | Enum: 'positive', 'neutral', 'negative' | Filter articles by sentiment                              |
+| `topicId`              | string (UUID) | -                  | Valid UUID format                       | Filter articles by topic ID                               |
+| `sourceId`             | string (UUID) | -                  | Valid UUID format                       | Filter articles by RSS source ID                          |
+| `applyPersonalization` | boolean       | false              | Boolean                                 | Apply authenticated user's mood and blocklist preferences |
+| `sortBy`               | string        | 'publication_date' | Enum: 'publication_date', 'created_at'  | Field to sort by                                          |
+| `sortOrder`            | string        | 'desc'             | Enum: 'asc', 'desc'                     | Sort order direction                                      |
 
 ### Authentication
+
 - **Optional:** The endpoint is publicly accessible
 - **Authentication Header:** `Authorization: Bearer <token>` (optional)
 - **Personalization Requirement:** If `applyPersonalization=true`, user must be authenticated (401 if not)
 
 ### Request Body
+
 None (GET request)
 
 ### Example Requests
 
 **Basic request (guest user):**
+
 ```http
 GET /api/articles?limit=20&offset=0
 ```
 
 **Filtered by sentiment:**
+
 ```http
 GET /api/articles?sentiment=positive&limit=20
 ```
 
 **Filtered by topic:**
+
 ```http
 GET /api/articles?topicId=550e8400-e29b-41d4-a716-446655440000&limit=20
 ```
 
 **Personalized for authenticated user:**
+
 ```http
 GET /api/articles?applyPersonalization=true&limit=20
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **Complex query with multiple filters:**
+
 ```http
 GET /api/articles?sentiment=positive&sourceId=550e8400-e29b-41d4-a716-446655440000&sortBy=publication_date&sortOrder=desc&limit=50&offset=0
 ```
@@ -89,6 +100,7 @@ GET /api/articles?sentiment=positive&sourceId=550e8400-e29b-41d4-a716-4466554400
 The following types from `src/types.ts` are used in this implementation:
 
 ### Query Parameters Type
+
 ```typescript
 GetArticlesQueryParams {
   limit?: number;
@@ -103,6 +115,7 @@ GetArticlesQueryParams {
 ```
 
 ### Response DTOs
+
 ```typescript
 ArticleDto {
   id: string;
@@ -149,6 +162,7 @@ ArticleFiltersApplied {
 ```
 
 ### Error Response Types
+
 ```typescript
 ErrorResponse {
   error: string;
@@ -170,6 +184,7 @@ ValidationErrorDetails {
 ```
 
 ### Entity Types (Internal Use)
+
 ```typescript
 ArticleEntity {
   id: string;
@@ -204,6 +219,7 @@ ProfileEntity {
 **Content-Type:** `application/json`
 
 **Response Body:**
+
 ```json
 {
   "data": [
@@ -268,6 +284,7 @@ ProfileEntity {
 **Status Code:** `400 Bad Request`
 
 **Response Body:**
+
 ```json
 {
   "error": "Validation failed",
@@ -286,6 +303,7 @@ ProfileEntity {
 ```
 
 **Common Validation Errors:**
+
 - Invalid `limit` (not an integer, < 1, > 100)
 - Invalid `offset` (not an integer, < 0)
 - Invalid `sentiment` (not in enum: positive, neutral, negative)
@@ -301,6 +319,7 @@ ProfileEntity {
 **Status Code:** `401 Unauthorized`
 
 **Response Body:**
+
 ```json
 {
   "error": "Authentication required for personalized filtering",
@@ -316,6 +335,7 @@ ProfileEntity {
 **Status Code:** `500 Internal Server Error`
 
 **Response Body:**
+
 ```json
 {
   "error": "Internal server error",
@@ -406,11 +426,9 @@ ProfileEntity {
 ### Detailed Query Construction
 
 #### Base Query (No Filters)
+
 ```typescript
-const query = supabase
-  .schema('app')
-  .from('articles')
-  .select(`
+const query = supabase.schema("app").from("articles").select(`
     *,
     source:rss_sources(id, name, url),
     topics:article_topics(topic:topics(id, name))
@@ -418,34 +436,32 @@ const query = supabase
 ```
 
 #### With Sentiment Filter
+
 ```typescript
-query = query.eq('sentiment', sentiment);
+query = query.eq("sentiment", sentiment);
 ```
 
 #### With Topic Filter
+
 ```typescript
-query = query.in('id', 
-  supabase
-    .schema('app')
-    .from('article_topics')
-    .select('article_id')
-    .eq('topic_id', topicId)
-);
+query = query.in("id", supabase.schema("app").from("article_topics").select("article_id").eq("topic_id", topicId));
 ```
 
 #### With Source Filter
+
 ```typescript
-query = query.eq('source_id', sourceId);
+query = query.eq("source_id", sourceId);
 ```
 
 #### With Personalization (Mood-Based Filtering)
+
 ```typescript
 // Fetch user profile
 const profile = await getProfileByUserId(userId);
 
 // If user has mood preference, filter by matching sentiment
 if (profile.mood) {
-  query = query.eq('sentiment', profile.mood);
+  query = query.eq("sentiment", profile.mood);
 }
 
 // Apply blocklist (filter out articles with blocklisted keywords or URLs)
@@ -456,13 +472,13 @@ if (profile.blocklist.length > 0) {
 ```
 
 #### Apply Sorting and Pagination
+
 ```typescript
-query = query
-  .order(sortBy, { ascending: sortOrder === 'asc' })
-  .range(offset, offset + limit - 1);
+query = query.order(sortBy, { ascending: sortOrder === "asc" }).range(offset, offset + limit - 1);
 ```
 
 #### Execute with Count
+
 ```typescript
 const { data, count, error } = await query;
 ```
@@ -470,6 +486,7 @@ const { data, count, error } = await query;
 ### Personalization Filtering Details
 
 **Blocklist Matching Logic:**
+
 1. Fetch articles from database (with sentiment filter if mood is set)
 2. For each article, check if title, description, or link contains any blocklist term
 3. Filter out matching articles
@@ -485,17 +502,20 @@ const { data, count, error } = await query;
 ### Authentication & Authorization
 
 **Public Access Policy:**
+
 - Articles are publicly readable (no authentication required for basic listing)
 - RLS policy: `CREATE POLICY "Articles are viewable by everyone" ON app.articles FOR SELECT USING (true)`
 - This aligns with the goal of providing news to all users
 
 **Personalization Access Control:**
+
 - `applyPersonalization=true` requires valid authentication token
 - Middleware extracts user from `Authorization: Bearer <token>` header
 - If personalization requested but no valid user → 401 Unauthorized
 - User can only access their own profile (RLS enforced on app.profiles)
 
 **RLS Policies in Effect:**
+
 ```sql
 -- Articles: Public read access
 ALTER TABLE app.articles ENABLE ROW LEVEL SECURITY;
@@ -549,16 +569,19 @@ All query parameters are validated before processing:
 ### Data Exposure & Privacy
 
 **What is Exposed:**
+
 - Articles are public data (from RSS feeds)
 - RSS sources are public (predefined list)
 - Topics are public (AI-generated categorization)
 
 **What is Protected:**
+
 - User profiles are private (RLS enforced)
 - User blocklists are never exposed in API responses
 - `filtersApplied.blockedItemsCount` is provided, but not the actual blocked articles
 
 **Personalization Privacy:**
+
 - When personalization is applied, only the requesting user's preferences are used
 - Other users cannot see what was filtered for a specific user
 - No cross-user data leakage
@@ -566,6 +589,7 @@ All query parameters are validated before processing:
 ### Rate Limiting & Abuse Prevention
 
 **MVP Approach:**
+
 - No explicit rate limiting implemented in MVP
 - Abuse mitigation through:
   - Max limit of 100 articles per request (prevents excessive data transfer)
@@ -573,6 +597,7 @@ All query parameters are validated before processing:
   - Astro request timeout (platform-dependent)
 
 **Future Enhancements:**
+
 - Implement rate limiting middleware (e.g., 100 requests per minute per IP)
 - Add request throttling for authenticated users (e.g., 300 requests per minute per user)
 - Monitor for abuse patterns (excessive pagination, repeated queries)
@@ -581,12 +606,14 @@ All query parameters are validated before processing:
 ### Blocklist Security
 
 **Blocklist Handling:**
+
 - Blocklist terms are case-insensitive (converted to lowercase for matching)
 - Partial string matching (substring match in title, description, link)
 - No regex or special character interpretation (prevents ReDoS attacks)
 - Maximum blocklist size enforced at profile level (e.g., 1000 terms)
 
 **Potential Abuse:**
+
 - User could add many generic terms to blocklist (e.g., "the", "and")
 - Result: Most articles filtered out, but only affects that user
 - Not a security issue, just poor user experience for that user
@@ -597,19 +624,19 @@ All query parameters are validated before processing:
 
 ### Error Scenarios & Response Codes
 
-| Error Scenario | Status Code | Error Code | Description |
-|----------------|-------------|------------|-------------|
-| Invalid `limit` value | 400 | VALIDATION_ERROR | Limit must be integer between 1 and 100 |
-| Invalid `offset` value | 400 | VALIDATION_ERROR | Offset must be non-negative integer |
-| Invalid `sentiment` enum | 400 | VALIDATION_ERROR | Must be 'positive', 'neutral', or 'negative' |
-| Invalid `topicId` UUID | 400 | VALIDATION_ERROR | Must be valid UUID format |
-| Invalid `sourceId` UUID | 400 | VALIDATION_ERROR | Must be valid UUID format |
-| Invalid `sortBy` enum | 400 | VALIDATION_ERROR | Must be 'publication_date' or 'created_at' |
-| Invalid `sortOrder` enum | 400 | VALIDATION_ERROR | Must be 'asc' or 'desc' |
-| Personalization without auth | 401 | AUTHENTICATION_REQUIRED | Valid token required for personalization |
-| Database connection error | 500 | DATABASE_ERROR | Database unavailable or connection failed |
-| Profile fetch error (personalization) | 500 | PROFILE_FETCH_ERROR | Failed to fetch user profile for personalization |
-| Unexpected error | 500 | INTERNAL_ERROR | Unhandled exception occurred |
+| Error Scenario                        | Status Code | Error Code              | Description                                      |
+| ------------------------------------- | ----------- | ----------------------- | ------------------------------------------------ |
+| Invalid `limit` value                 | 400         | VALIDATION_ERROR        | Limit must be integer between 1 and 100          |
+| Invalid `offset` value                | 400         | VALIDATION_ERROR        | Offset must be non-negative integer              |
+| Invalid `sentiment` enum              | 400         | VALIDATION_ERROR        | Must be 'positive', 'neutral', or 'negative'     |
+| Invalid `topicId` UUID                | 400         | VALIDATION_ERROR        | Must be valid UUID format                        |
+| Invalid `sourceId` UUID               | 400         | VALIDATION_ERROR        | Must be valid UUID format                        |
+| Invalid `sortBy` enum                 | 400         | VALIDATION_ERROR        | Must be 'publication_date' or 'created_at'       |
+| Invalid `sortOrder` enum              | 400         | VALIDATION_ERROR        | Must be 'asc' or 'desc'                          |
+| Personalization without auth          | 401         | AUTHENTICATION_REQUIRED | Valid token required for personalization         |
+| Database connection error             | 500         | DATABASE_ERROR          | Database unavailable or connection failed        |
+| Profile fetch error (personalization) | 500         | PROFILE_FETCH_ERROR     | Failed to fetch user profile for personalization |
+| Unexpected error                      | 500         | INTERNAL_ERROR          | Unhandled exception occurred                     |
 
 ### Error Response Format
 
@@ -636,13 +663,13 @@ try {
     return new Response(
       JSON.stringify({
         error: "Validation failed",
-        details: error.errors.map(e => ({
-          field: e.path.join('.'),
-          message: e.message
+        details: error.errors.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
         })),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
+      { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 }
@@ -656,9 +683,9 @@ if (params.applyPersonalization && !context.locals.user) {
     JSON.stringify({
       error: "Authentication required for personalized filtering",
       code: "AUTHENTICATION_REQUIRED",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
-    { status: 401, headers: { 'Content-Type': 'application/json' } }
+    { status: 401, headers: { "Content-Type": "application/json" } }
   );
 }
 ```
@@ -672,16 +699,16 @@ try {
 } catch (error) {
   logger.error("Failed to fetch articles", error, {
     endpoint: "GET /api/articles",
-    params
+    params,
   });
-  
+
   return new Response(
     JSON.stringify({
       error: "Internal server error",
       code: "INTERNAL_ERROR",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
-    { status: 500, headers: { 'Content-Type': 'application/json' } }
+    { status: 500, headers: { "Content-Type": "application/json" } }
   );
 }
 ```
@@ -693,20 +720,20 @@ try {
 if (applyPersonalization && userId) {
   const profile = await this.getProfile(userId);
   if (!profile) {
-    throw new Error('PROFILE_NOT_FOUND');
+    throw new Error("PROFILE_NOT_FOUND");
   }
 }
 
 // In API route handler
-if (error instanceof Error && error.message === 'PROFILE_NOT_FOUND') {
+if (error instanceof Error && error.message === "PROFILE_NOT_FOUND") {
   logger.error("User profile not found", error, { userId: context.locals.user.id });
   return new Response(
     JSON.stringify({
       error: "User profile not found. Please complete your profile setup.",
       code: "PROFILE_NOT_FOUND",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }),
-    { status: 500, headers: { 'Content-Type': 'application/json' } }
+    { status: 500, headers: { "Content-Type": "application/json" } }
   );
 }
 ```
@@ -714,32 +741,35 @@ if (error instanceof Error && error.message === 'PROFILE_NOT_FOUND') {
 ### Logging Strategy
 
 **Success Logging:**
+
 ```typescript
 logger.info("Articles fetched successfully", {
   endpoint: "GET /api/articles",
   resultCount: result.data.length,
   totalCount: result.pagination.total,
   filtersApplied: result.filtersApplied,
-  userId: context.locals.user?.id || "anonymous"
+  userId: context.locals.user?.id || "anonymous",
 });
 ```
 
 **Error Logging:**
+
 ```typescript
 logger.error("Failed to fetch articles", error, {
   endpoint: "GET /api/articles",
   params,
   userId: context.locals.user?.id || "anonymous",
-  errorCode: error instanceof Error ? error.message : "UNKNOWN"
+  errorCode: error instanceof Error ? error.message : "UNKNOWN",
 });
 ```
 
 **Debug Logging (Development Only):**
+
 ```typescript
 logger.debug("Query constructed", {
   endpoint: "GET /api/articles",
   query: queryDetails,
-  personalization: params.applyPersonalization
+  personalization: params.applyPersonalization,
 });
 ```
 
@@ -750,6 +780,7 @@ logger.debug("Query constructed", {
 ### Database Query Optimization
 
 **Indexes Used:**
+
 - `idx_articles_publication_date` (DESC) - Fast sorting by publication date
 - `idx_articles_sentiment` (partial index) - Fast filtering by sentiment
 - `idx_articles_source_id` - Fast filtering by source
@@ -757,6 +788,7 @@ logger.debug("Query constructed", {
 - `idx_article_topics_topic_id` - Fast filtering by topic
 
 **Query Performance:**
+
 - Base query (no filters): ~50ms for 20 articles
 - With sentiment filter: ~60ms (uses partial index)
 - With topic filter: ~80ms (JOIN + subquery)
@@ -795,6 +827,7 @@ logger.debug("Query constructed", {
 5. If after filtering < `requestedLimit`, fetch next batch recursively (max 3 iterations)
 
 **Example:**
+
 ```typescript
 // User requests 20 articles, has 50 blocklist terms
 // 1. Fetch 40 articles from DB
@@ -810,6 +843,7 @@ logger.debug("Query constructed", {
 ### Caching Strategy
 
 **MVP: No Caching**
+
 - Simple implementation
 - Fresh data for every request
 - Acceptable for initial traffic levels
@@ -817,9 +851,11 @@ logger.debug("Query constructed", {
 **Future Enhancements:**
 
 1. **HTTP Caching Headers:**
+
    ```typescript
-   Response.headers.set('Cache-Control', 'public, max-age=60');
+   Response.headers.set("Cache-Control", "public, max-age=60");
    ```
+
    - Cache articles for 60 seconds (reasonable freshness)
    - Reduces server load for repeated requests
 
@@ -842,11 +878,13 @@ logger.debug("Query constructed", {
 ### Database Connection Pooling
 
 **Supabase Handling:**
+
 - Supabase uses PgBouncer for connection pooling
 - Default: 15 connections per client
 - Pooling is transparent to application
 
 **Astro Considerations:**
+
 - Each request creates new Supabase client in middleware
 - Clients are lightweight (reuse connection pool)
 - No need to implement custom pooling
@@ -854,6 +892,7 @@ logger.debug("Query constructed", {
 ### Performance Monitoring
 
 **Metrics to Track:**
+
 1. Response time (p50, p95, p99)
 2. Database query time
 3. Articles per request (average)
@@ -862,6 +901,7 @@ logger.debug("Query constructed", {
 6. Blocked items count (for personalized requests)
 
 **Performance Targets:**
+
 - p95 latency: < 300ms (no personalization)
 - p95 latency: < 500ms (with personalization)
 - Database query time: < 150ms
@@ -878,7 +918,7 @@ logger.debug("Query constructed", {
 Create a Zod schema for validating GET /api/articles query parameters.
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Validation schema for GET /api/articles query parameters.
@@ -888,62 +928,53 @@ export const GetArticlesQueryParamsSchema = z.object({
   limit: z
     .string()
     .optional()
-    .default('20')
-    .transform(val => parseInt(val, 10))
+    .default("20")
+    .transform((val) => parseInt(val, 10))
     .pipe(
-      z.number()
-        .int({ message: 'Limit must be an integer' })
-        .min(1, { message: 'Limit must be at least 1' })
-        .max(100, { message: 'Limit must not exceed 100' })
+      z
+        .number()
+        .int({ message: "Limit must be an integer" })
+        .min(1, { message: "Limit must be at least 1" })
+        .max(100, { message: "Limit must not exceed 100" })
     ),
-  
+
   offset: z
     .string()
     .optional()
-    .default('0')
-    .transform(val => parseInt(val, 10))
-    .pipe(
-      z.number()
-        .int({ message: 'Offset must be an integer' })
-        .min(0, { message: 'Offset must be non-negative' })
-    ),
-  
+    .default("0")
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().int({ message: "Offset must be an integer" }).min(0, { message: "Offset must be non-negative" })),
+
   sentiment: z
-    .enum(['positive', 'neutral', 'negative'], {
-      errorMap: () => ({ message: 'Sentiment must be one of: positive, neutral, negative' })
+    .enum(["positive", "neutral", "negative"], {
+      errorMap: () => ({ message: "Sentiment must be one of: positive, neutral, negative" }),
     })
     .optional(),
-  
-  topicId: z
-    .string()
-    .uuid({ message: 'Invalid UUID format for topicId' })
-    .optional(),
-  
-  sourceId: z
-    .string()
-    .uuid({ message: 'Invalid UUID format for sourceId' })
-    .optional(),
-  
+
+  topicId: z.string().uuid({ message: "Invalid UUID format for topicId" }).optional(),
+
+  sourceId: z.string().uuid({ message: "Invalid UUID format for sourceId" }).optional(),
+
   applyPersonalization: z
     .string()
     .optional()
-    .default('false')
-    .transform(val => val === 'true')
+    .default("false")
+    .transform((val) => val === "true")
     .pipe(z.boolean()),
-  
+
   sortBy: z
-    .enum(['publication_date', 'created_at'], {
-      errorMap: () => ({ message: 'sortBy must be one of: publication_date, created_at' })
+    .enum(["publication_date", "created_at"], {
+      errorMap: () => ({ message: "sortBy must be one of: publication_date, created_at" }),
     })
     .optional()
-    .default('publication_date'),
-  
+    .default("publication_date"),
+
   sortOrder: z
-    .enum(['asc', 'desc'], {
-      errorMap: () => ({ message: 'sortOrder must be one of: asc, desc' })
+    .enum(["asc", "desc"], {
+      errorMap: () => ({ message: "sortOrder must be one of: asc, desc" }),
     })
     .optional()
-    .default('desc')
+    .default("desc"),
 });
 
 /**
@@ -953,6 +984,7 @@ export type GetArticlesQueryParamsValidated = z.infer<typeof GetArticlesQueryPar
 ```
 
 **Tasks:**
+
 - Create file with Zod schema
 - Handle string-to-number coercion for limit and offset (URL query params are strings)
 - Handle string-to-boolean coercion for applyPersonalization
@@ -973,7 +1005,7 @@ Add methods to the existing ArticleService for fetching articles with filters an
 
 /**
  * Fetches a paginated list of articles with optional filters and personalization.
- * 
+ *
  * @param params - Query parameters for filtering, sorting, and pagination
  * @param userId - Optional authenticated user ID for personalization
  * @returns ArticleListResponse with articles, pagination, and filters applied metadata
@@ -1004,7 +1036,7 @@ async getArticles(
     if (!userProfile) {
       throw new Error('PROFILE_NOT_FOUND');
     }
-    
+
     // Apply mood-based sentiment filtering
     if (userProfile.mood) {
       query = query.eq('sentiment', userProfile.mood);
@@ -1017,8 +1049,8 @@ async getArticles(
   query = query.order(sortField, { ascending });
 
   // Calculate fetch limit (over-fetch for blocklist filtering)
-  const fetchLimit = params.applyPersonalization && userProfile?.blocklist.length 
-    ? params.limit * 2 
+  const fetchLimit = params.applyPersonalization && userProfile?.blocklist.length
+    ? params.limit * 2
     : params.limit;
 
   // Apply pagination
@@ -1034,12 +1066,12 @@ async getArticles(
   // Apply blocklist filtering if personalization is enabled
   let blockedCount = 0;
   let filteredData = data || [];
-  
+
   if (params.applyPersonalization && userProfile?.blocklist.length) {
     const beforeFilterCount = filteredData.length;
     filteredData = this.applyBlocklistFilter(filteredData, userProfile.blocklist);
     blockedCount = beforeFilterCount - filteredData.length;
-    
+
     // Trim to requested limit
     filteredData = filteredData.slice(0, params.limit);
   }
@@ -1093,19 +1125,19 @@ private applyFilters(query: any, params: GetArticlesQueryParams): any {
  */
 private applyBlocklistFilter(articles: any[], blocklist: string[]): any[] {
   const lowerBlocklist = blocklist.map(term => term.toLowerCase());
-  
+
   return articles.filter(article => {
     const title = (article.title || '').toLowerCase();
     const description = (article.description || '').toLowerCase();
     const link = (article.link || '').toLowerCase();
-    
+
     // Check if any blocklist term appears in title, description, or link
     for (const term of lowerBlocklist) {
       if (title.includes(term) || description.includes(term) || link.includes(term)) {
         return false; // Article is blocked
       }
     }
-    
+
     return true; // Article passes blocklist filter
   });
 }
@@ -1165,6 +1197,7 @@ private mapArticleToDto(article: any): ArticleDto {
 ```
 
 **Tasks:**
+
 - Extend existing ArticleService class with new methods
 - Implement `getArticles()` main method
 - Implement `applyFilters()` helper
@@ -1189,7 +1222,7 @@ Add the GET handler alongside the existing POST handler.
  * Retrieves a paginated list of articles with optional filtering and personalization.
  *
  * Authentication: Optional (personalization requires authentication)
- * 
+ *
  * @returns 200 OK with ArticleListResponse on success
  * @returns 400 Bad Request for validation errors
  * @returns 401 Unauthorized if personalization requested without authentication
@@ -1203,14 +1236,14 @@ export const GET: APIRoute = async (context) => {
     // Extract query parameters from URL
     const url = new URL(context.request.url);
     const queryParams = {
-      limit: url.searchParams.get('limit') || undefined,
-      offset: url.searchParams.get('offset') || undefined,
-      sentiment: url.searchParams.get('sentiment') || undefined,
-      topicId: url.searchParams.get('topicId') || undefined,
-      sourceId: url.searchParams.get('sourceId') || undefined,
-      applyPersonalization: url.searchParams.get('applyPersonalization') || undefined,
-      sortBy: url.searchParams.get('sortBy') || undefined,
-      sortOrder: url.searchParams.get('sortOrder') || undefined
+      limit: url.searchParams.get("limit") || undefined,
+      offset: url.searchParams.get("offset") || undefined,
+      sentiment: url.searchParams.get("sentiment") || undefined,
+      topicId: url.searchParams.get("topicId") || undefined,
+      sourceId: url.searchParams.get("sourceId") || undefined,
+      applyPersonalization: url.searchParams.get("applyPersonalization") || undefined,
+      sortBy: url.searchParams.get("sortBy") || undefined,
+      sortOrder: url.searchParams.get("sortOrder") || undefined,
     };
 
     // Validate query parameters
@@ -1221,21 +1254,21 @@ export const GET: APIRoute = async (context) => {
       if (error instanceof ZodError) {
         logger.warn("Query parameter validation failed", {
           endpoint: "GET /api/articles",
-          errors: error.errors
+          errors: error.errors,
         });
 
         return new Response(
           JSON.stringify({
             error: "Validation failed",
-            details: error.errors.map(e => ({
-              field: e.path.join('.'),
-              message: e.message
+            details: error.errors.map((e) => ({
+              field: e.path.join("."),
+              message: e.message,
             })),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 400,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -1245,28 +1278,25 @@ export const GET: APIRoute = async (context) => {
     // Check authentication if personalization is requested
     if (validatedParams.applyPersonalization && !user) {
       logger.warn("Personalization requested without authentication", {
-        endpoint: "GET /api/articles"
+        endpoint: "GET /api/articles",
       });
 
       return new Response(
         JSON.stringify({
           error: "Authentication required for personalized filtering",
           code: "AUTHENTICATION_REQUIRED",
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         }),
         {
           status: 401,
-          headers: { "Content-Type": "application/json" }
+          headers: { "Content-Type": "application/json" },
         }
       );
     }
 
     // Fetch articles using ArticleService
     const articleService = new ArticleService(supabase);
-    const result = await articleService.getArticles(
-      validatedParams,
-      user?.id
-    );
+    const result = await articleService.getArticles(validatedParams, user?.id);
 
     // Log success
     logger.info("Articles fetched successfully", {
@@ -1274,37 +1304,33 @@ export const GET: APIRoute = async (context) => {
       resultCount: result.data.length,
       totalCount: result.pagination.total,
       filtersApplied: result.filtersApplied,
-      userId: user?.id || "anonymous"
+      userId: user?.id || "anonymous",
     });
 
     // Return success response
-    return new Response(
-      JSON.stringify(result),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" }
-      }
-    );
-
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     // Handle specific business logic errors
     if (error instanceof Error) {
       // Profile not found error
-      if (error.message === 'PROFILE_NOT_FOUND') {
+      if (error.message === "PROFILE_NOT_FOUND") {
         logger.error("User profile not found", error, {
           endpoint: "GET /api/articles",
-          userId: user?.id
+          userId: user?.id,
         });
 
         return new Response(
           JSON.stringify({
             error: "User profile not found. Please complete your profile setup.",
             code: "PROFILE_NOT_FOUND",
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }),
           {
             status: 500,
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
           }
         );
       }
@@ -1313,18 +1339,18 @@ export const GET: APIRoute = async (context) => {
     // Generic error handling
     logger.error("Failed to fetch articles", error, {
       endpoint: "GET /api/articles",
-      userId: user?.id || "anonymous"
+      userId: user?.id || "anonymous",
     });
 
     return new Response(
       JSON.stringify({
         error: "Internal server error",
         code: "INTERNAL_ERROR",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
@@ -1332,6 +1358,7 @@ export const GET: APIRoute = async (context) => {
 ```
 
 **Tasks:**
+
 - Add GET export to existing `src/pages/api/articles/index.ts`
 - Extract and validate query parameters
 - Check authentication for personalization
@@ -1350,6 +1377,7 @@ export const GET: APIRoute = async (context) => {
 Verify that the `GetArticlesQueryParams` type is correctly defined (it already exists in the file, so just verify).
 
 **Tasks:**
+
 - Verify `GetArticlesQueryParams` type exists in `src/types.ts`
 - Ensure all fields match the query parameter schema
 - No changes needed if types are already correct
@@ -1363,74 +1391,74 @@ Verify that the `GetArticlesQueryParams` type is correctly defined (it already e
 Add tests for the new methods in ArticleService.
 
 ```typescript
-describe('ArticleService.getArticles', () => {
-  test('should fetch articles with default parameters', async () => {
+describe("ArticleService.getArticles", () => {
+  test("should fetch articles with default parameters", async () => {
     // TODO: Implement test
   });
 
-  test('should apply sentiment filter', async () => {
+  test("should apply sentiment filter", async () => {
     // TODO: Implement test
   });
 
-  test('should apply topic filter', async () => {
+  test("should apply topic filter", async () => {
     // TODO: Implement test
   });
 
-  test('should apply source filter', async () => {
+  test("should apply source filter", async () => {
     // TODO: Implement test
   });
 
-  test('should apply sorting (publication_date desc)', async () => {
+  test("should apply sorting (publication_date desc)", async () => {
     // TODO: Implement test
   });
 
-  test('should apply sorting (created_at asc)', async () => {
+  test("should apply sorting (created_at asc)", async () => {
     // TODO: Implement test
   });
 
-  test('should apply pagination correctly', async () => {
+  test("should apply pagination correctly", async () => {
     // TODO: Implement test
   });
 
-  test('should calculate hasMore correctly', async () => {
+  test("should calculate hasMore correctly", async () => {
     // TODO: Implement test
   });
 
-  test('should apply mood-based filtering when personalization enabled', async () => {
+  test("should apply mood-based filtering when personalization enabled", async () => {
     // TODO: Implement test
   });
 
-  test('should apply blocklist filtering when personalization enabled', async () => {
+  test("should apply blocklist filtering when personalization enabled", async () => {
     // TODO: Implement test
   });
 
-  test('should handle empty results', async () => {
+  test("should handle empty results", async () => {
     // TODO: Implement test
   });
 
-  test('should handle database errors', async () => {
+  test("should handle database errors", async () => {
     // TODO: Implement test
   });
 });
 
-describe('ArticleService.applyBlocklistFilter', () => {
-  test('should filter articles with blocklisted terms in title', async () => {
+describe("ArticleService.applyBlocklistFilter", () => {
+  test("should filter articles with blocklisted terms in title", async () => {
     // TODO: Implement test
   });
 
-  test('should filter articles with blocklisted terms in description', async () => {
+  test("should filter articles with blocklisted terms in description", async () => {
     // TODO: Implement test
   });
 
-  test('should filter articles with blocklisted terms in link', async () => {
+  test("should filter articles with blocklisted terms in link", async () => {
     // TODO: Implement test
   });
 
-  test('should be case-insensitive', async () => {
+  test("should be case-insensitive", async () => {
     // TODO: Implement test
   });
 
-  test('should handle empty blocklist', async () => {
+  test("should handle empty blocklist", async () => {
     // TODO: Implement test
   });
 });
@@ -1441,90 +1469,91 @@ describe('ArticleService.applyBlocklistFilter', () => {
 Create integration tests for the GET endpoint.
 
 ```typescript
-describe('GET /api/articles - Success Scenarios', () => {
-  test('should return 200 with default parameters (anonymous user)', async () => {
+describe("GET /api/articles - Success Scenarios", () => {
+  test("should return 200 with default parameters (anonymous user)", async () => {
     // TODO: Implement test
   });
 
-  test('should return articles with nested source and topics', async () => {
+  test("should return articles with nested source and topics", async () => {
     // TODO: Implement test
   });
 
-  test('should return correct pagination metadata', async () => {
+  test("should return correct pagination metadata", async () => {
     // TODO: Implement test
   });
 
-  test('should filter by sentiment', async () => {
+  test("should filter by sentiment", async () => {
     // TODO: Implement test
   });
 
-  test('should filter by topicId', async () => {
+  test("should filter by topicId", async () => {
     // TODO: Implement test
   });
 
-  test('should filter by sourceId', async () => {
+  test("should filter by sourceId", async () => {
     // TODO: Implement test
   });
 
-  test('should sort by publication_date desc (default)', async () => {
+  test("should sort by publication_date desc (default)", async () => {
     // TODO: Implement test
   });
 
-  test('should sort by created_at asc', async () => {
+  test("should sort by created_at asc", async () => {
     // TODO: Implement test
   });
 
-  test('should apply personalization for authenticated user', async () => {
+  test("should apply personalization for authenticated user", async () => {
     // TODO: Implement test
   });
 
-  test('should return filtersApplied metadata', async () => {
-    // TODO: Implement test
-  });
-});
-
-describe('GET /api/articles - Validation Errors', () => {
-  test('should return 400 for invalid limit (< 1)', async () => {
-    // TODO: Implement test
-  });
-
-  test('should return 400 for invalid limit (> 100)', async () => {
-    // TODO: Implement test
-  });
-
-  test('should return 400 for invalid offset (< 0)', async () => {
-    // TODO: Implement test
-  });
-
-  test('should return 400 for invalid sentiment', async () => {
-    // TODO: Implement test
-  });
-
-  test('should return 400 for invalid topicId (not UUID)', async () => {
-    // TODO: Implement test
-  });
-
-  test('should return 400 for invalid sourceId (not UUID)', async () => {
-    // TODO: Implement test
-  });
-
-  test('should return 400 for invalid sortBy', async () => {
-    // TODO: Implement test
-  });
-
-  test('should return 400 for invalid sortOrder', async () => {
+  test("should return filtersApplied metadata", async () => {
     // TODO: Implement test
   });
 });
 
-describe('GET /api/articles - Authentication Errors', () => {
-  test('should return 401 when personalization requested without auth', async () => {
+describe("GET /api/articles - Validation Errors", () => {
+  test("should return 400 for invalid limit (< 1)", async () => {
+    // TODO: Implement test
+  });
+
+  test("should return 400 for invalid limit (> 100)", async () => {
+    // TODO: Implement test
+  });
+
+  test("should return 400 for invalid offset (< 0)", async () => {
+    // TODO: Implement test
+  });
+
+  test("should return 400 for invalid sentiment", async () => {
+    // TODO: Implement test
+  });
+
+  test("should return 400 for invalid topicId (not UUID)", async () => {
+    // TODO: Implement test
+  });
+
+  test("should return 400 for invalid sourceId (not UUID)", async () => {
+    // TODO: Implement test
+  });
+
+  test("should return 400 for invalid sortBy", async () => {
+    // TODO: Implement test
+  });
+
+  test("should return 400 for invalid sortOrder", async () => {
+    // TODO: Implement test
+  });
+});
+
+describe("GET /api/articles - Authentication Errors", () => {
+  test("should return 401 when personalization requested without auth", async () => {
     // TODO: Implement test
   });
 });
 ```
 
 **Tasks:**
+
 - Create test files
 - Write unit tests for service methods
 - Write integration tests for API endpoint
@@ -1541,6 +1570,7 @@ describe('GET /api/articles - Authentication Errors', () => {
 Update the API documentation to reflect the implemented GET endpoint.
 
 **Tasks:**
+
 - Update status from "Planned" to "Implemented"
 - Add examples of successful requests and responses
 - Document all query parameters
@@ -1556,32 +1586,38 @@ Perform manual testing with various scenarios:
 **Test Cases:**
 
 1. **Basic listing (anonymous):**
+
    ```bash
    curl "http://localhost:4321/api/articles?limit=5"
    ```
 
 2. **Filter by sentiment:**
+
    ```bash
    curl "http://localhost:4321/api/articles?sentiment=positive&limit=10"
    ```
 
 3. **Filter by topic:**
+
    ```bash
    curl "http://localhost:4321/api/articles?topicId=<uuid>&limit=10"
    ```
 
 4. **Filter by source:**
+
    ```bash
    curl "http://localhost:4321/api/articles?sourceId=<uuid>&limit=10"
    ```
 
 5. **Personalized listing (authenticated):**
+
    ```bash
    curl "http://localhost:4321/api/articles?applyPersonalization=true&limit=20" \
      -H "Authorization: Bearer <token>"
    ```
 
 6. **Pagination:**
+
    ```bash
    curl "http://localhost:4321/api/articles?limit=20&offset=0"
    curl "http://localhost:4321/api/articles?limit=20&offset=20"
@@ -1589,11 +1625,13 @@ Perform manual testing with various scenarios:
    ```
 
 7. **Sorting:**
+
    ```bash
    curl "http://localhost:4321/api/articles?sortBy=created_at&sortOrder=asc&limit=10"
    ```
 
 8. **Invalid parameters:**
+
    ```bash
    curl "http://localhost:4321/api/articles?limit=200"  # Expect 400
    curl "http://localhost:4321/api/articles?sentiment=invalid"  # Expect 400
@@ -1606,6 +1644,7 @@ Perform manual testing with various scenarios:
    ```
 
 **Tasks:**
+
 - Execute all test cases
 - Verify response structures
 - Verify status codes
@@ -1618,6 +1657,7 @@ Perform manual testing with various scenarios:
 ### Step 8: Performance Testing
 
 **Tasks:**
+
 - Use tools like Apache Bench (ab) or wrk to load test
 - Test with various query combinations
 - Measure database query times
@@ -1626,12 +1666,14 @@ Perform manual testing with various scenarios:
 - Optimize queries if needed
 
 **Example Load Test:**
+
 ```bash
 # 100 concurrent requests, 1000 total requests
 ab -n 1000 -c 100 "http://localhost:4321/api/articles?limit=20"
 ```
 
 **Performance Goals:**
+
 - p95 latency < 300ms (no personalization)
 - p95 latency < 500ms (with personalization)
 - Handle 100+ concurrent requests
@@ -1646,6 +1688,7 @@ ab -n 1000 -c 100 "http://localhost:4321/api/articles?limit=20"
 Create a summary document similar to the POST articles implementation summary.
 
 **Contents:**
+
 - Implementation status
 - Files created/modified
 - Key features implemented
@@ -1655,6 +1698,7 @@ Create a summary document similar to the POST articles implementation summary.
 - Future enhancements
 
 **Tasks:**
+
 - Write implementation summary
 - Document any deviations from plan
 - List any issues encountered
@@ -1676,19 +1720,20 @@ This implementation plan provides a comprehensive guide for implementing the GET
 ✅ **Error Handling:** Detailed error responses with appropriate status codes  
 ✅ **Security:** RLS policies, input validation, authentication checks  
 ✅ **Performance:** Optimized database queries with indexes  
-✅ **Logging:** Structured logging for monitoring and debugging  
+✅ **Logging:** Structured logging for monitoring and debugging
 
 **Estimated Implementation Time:** 8-12 hours (including testing and documentation)
 
 **Dependencies:**
+
 - Existing ArticleService (extend)
 - Existing middleware (no changes needed)
 - Database schema (already implemented)
 - Type definitions (already implemented)
 
 **Follow-Up Tasks:**
+
 - Implement frontend integration
 - Add caching layer (future enhancement)
 - Implement cursor-based pagination (future enhancement)
 - Add analytics tracking (future enhancement)
-

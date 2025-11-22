@@ -12,6 +12,7 @@ This directory contains the OpenAPI 3.0 specification for the PulseReader REST A
 ### Option 1: Swagger UI (Recommended)
 
 1. Install Swagger UI globally or use npx:
+
    ```bash
    npx swagger-ui-serve docs/openapi.yaml
    ```
@@ -107,6 +108,7 @@ npx swagger-cli validate docs/openapi.yaml
 ```
 
 Or use the online validator:
+
 - [Swagger Validator](https://validator.swagger.io/)
 
 ## Versioning
@@ -118,4 +120,3 @@ The API follows semantic versioning. Breaking changes will be introduced in new 
 ## Support
 
 For API support or questions, please refer to the project documentation or create an issue in the repository.
-

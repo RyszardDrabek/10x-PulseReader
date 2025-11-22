@@ -28,6 +28,7 @@ These endpoints provide complete CRUD operations for articles, with different au
 - **URL Structure:** `/api/articles`
 - **Parameters:** None
 - **Request Body:**
+
 ```json
 {
   "sourceId": "uuid",
@@ -39,6 +40,7 @@ These endpoints provide complete CRUD operations for articles, with different au
   "topicIds": ["uuid1", "uuid2"]
 }
 ```
+
 - **Authentication:** Required (service_role)
 
 ### PATCH /api/articles/:id
@@ -48,12 +50,14 @@ These endpoints provide complete CRUD operations for articles, with different au
 - **Parameters:**
   - **Required:** `id` (UUID, path parameter) - Article ID
 - **Request Body:**
+
 ```json
 {
   "sentiment": "neutral",
   "topicIds": ["uuid1", "uuid2"]
 }
 ```
+
 - **Authentication:** Required (service_role)
 
 ### DELETE /api/articles/:id
@@ -72,6 +76,7 @@ These endpoints provide complete CRUD operations for articles, with different au
 From `src/types.ts`:
 
 - **ArticleDto**: Response DTO for GET endpoints
+
   ```typescript
   {
     id: string;
@@ -88,6 +93,7 @@ From `src/types.ts`:
   ```
 
 - **ArticleSourceDto**: Nested source information
+
   ```typescript
   {
     id: string;
@@ -107,6 +113,7 @@ From `src/types.ts`:
 ### Command Models
 
 - **CreateArticleCommand**: For POST /api/articles
+
   ```typescript
   {
     sourceId: string;
@@ -144,6 +151,7 @@ From `src/types.ts`:
 ### GET /api/articles/:id
 
 **Success Response (200 OK):**
+
 ```json
 {
   "id": "uuid",
@@ -169,6 +177,7 @@ From `src/types.ts`:
 ```
 
 **Error Responses:**
+
 - `404 Not Found`: Article does not exist
   ```json
   {
@@ -181,6 +190,7 @@ From `src/types.ts`:
 ### POST /api/articles
 
 **Success Response (201 Created):**
+
 ```json
 {
   "id": "uuid",
@@ -196,6 +206,7 @@ From `src/types.ts`:
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Validation error
   ```json
   {
@@ -226,6 +237,7 @@ From `src/types.ts`:
 ### PATCH /api/articles/:id
 
 **Success Response (200 OK):**
+
 ```json
 {
   "id": "uuid",
@@ -235,6 +247,7 @@ From `src/types.ts`:
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid sentiment value
   ```json
   {
@@ -256,6 +269,7 @@ From `src/types.ts`:
 **Success Response (204 No Content):** Empty response body
 
 **Error Responses:**
+
 - `401 Unauthorized`: Not authenticated as service_role
 - `404 Not Found`: Article does not exist
 
@@ -439,13 +453,16 @@ All error responses follow this structure:
 
 ```typescript
 interface ErrorResponse {
-  error: string;           // Human-readable error message
-  code?: string;           // Machine-readable error code
-  details?: Array<{       // Validation error details (for 400)
-    field: string;
-    message: string;
-  }> | Record<string, unknown>;
-  timestamp: string;       // ISO 8601 timestamp
+  error: string; // Human-readable error message
+  code?: string; // Machine-readable error code
+  details?:
+    | Array<{
+        // Validation error details (for 400)
+        field: string;
+        message: string;
+      }>
+    | Record<string, unknown>;
+  timestamp: string; // ISO 8601 timestamp
 }
 ```
 
@@ -563,43 +580,52 @@ try {
   // Handle specific error types
   if (error instanceof ZodError) {
     // Validation errors
-    return new Response(JSON.stringify({
-      error: "Validation failed",
-      details: error.errors.map(e => ({
-        field: e.path.join("."),
-        message: e.message
-      })),
-      timestamp: new Date().toISOString()
-    }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" }
-    });
+    return new Response(
+      JSON.stringify({
+        error: "Validation failed",
+        details: error.errors.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
+        })),
+        timestamp: new Date().toISOString(),
+      }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 
   // Handle business logic errors
   if (error instanceof Error) {
     if (error.message === "ARTICLE_NOT_FOUND") {
-      return new Response(JSON.stringify({
-        error: "Article not found",
-        code: "NOT_FOUND",
-        timestamp: new Date().toISOString()
-      }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" }
-      });
+      return new Response(
+        JSON.stringify({
+          error: "Article not found",
+          code: "NOT_FOUND",
+          timestamp: new Date().toISOString(),
+        }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
   }
 
   // Generic error handling
   logger.error("Unexpected error", error, { endpoint: "..." });
-  return new Response(JSON.stringify({
-    error: "Internal server error",
-    code: "INTERNAL_ERROR",
-    timestamp: new Date().toISOString()
-  }), {
-    status: 500,
-    headers: { "Content-Type": "application/json" }
-  });
+  return new Response(
+    JSON.stringify({
+      error: "Internal server error",
+      code: "INTERNAL_ERROR",
+      timestamp: new Date().toISOString(),
+    }),
+    {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
 }
 ```
 
@@ -730,7 +756,8 @@ try {
    - Return 204 No Content
    - Log success and errors appropriately
 
-**Dependencies:** 
+**Dependencies:**
+
 - `ArticleService` from `src/lib/services/article.service.ts`
 - Validation schemas from `src/lib/validation/article.schema.ts`
 - Logger from `src/lib/utils/logger.ts`
@@ -892,4 +919,3 @@ try {
 - All error responses follow ErrorResponse interface
 - Timestamps use ISO 8601 format
 - Content-Type header is always `application/json`
-

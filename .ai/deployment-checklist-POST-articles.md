@@ -5,12 +5,14 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 ## Pre-Deployment
 
 ### Environment Setup
+
 - [ ] `SUPABASE_URL` environment variable configured
-- [ ] `SUPABASE_KEY` (anon key) environment variable configured  
+- [ ] `SUPABASE_KEY` (anon key) environment variable configured
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` environment variable configured (keep secret!)
 - [ ] Environment variables verified in deployment platform
 
 ### Database Setup
+
 - [ ] Database migration applied to create `app` schema
 - [ ] Table `app.rss_sources` exists with proper structure
 - [ ] Table `app.articles` exists with UNIQUE constraint on `link` field
@@ -28,6 +30,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 - [ ] Row Level Security (RLS) policies configured (service role bypasses)
 
 ### Database Types
+
 - [ ] Regenerate TypeScript types from Supabase:
   ```bash
   npx supabase gen types typescript --linked > src/db/database.types.ts
@@ -36,11 +39,13 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 - [ ] No TypeScript errors in codebase after regeneration
 
 ### Test Data
+
 - [ ] At least one RSS source seeded in `app.rss_sources` table
 - [ ] At least 3 test topics seeded in `app.topics` table
 - [ ] Test data UUIDs documented for testing
 
 ### Dependencies
+
 - [ ] All npm packages installed: `npm install`
 - [ ] `zod` package available (should be in dependencies)
 - [ ] `@supabase/supabase-js` package available
@@ -50,6 +55,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 ## Testing
 
 ### Manual Testing
+
 - [ ] Test without authentication → expect 401
 - [ ] Test with regular user token → expect 401
 - [ ] Test with service role token + missing required fields → expect 400
@@ -62,6 +68,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 - [ ] Test response format (camelCase properties)
 
 ### Integration Tests
+
 - [ ] Testing framework installed (Vitest recommended)
 - [ ] Test configuration created
 - [ ] Implement at least critical test cases:
@@ -73,6 +80,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 - [ ] Test coverage > 80%
 
 ### Load Testing (Optional for MVP)
+
 - [ ] Test with 100 concurrent requests
 - [ ] Verify p95 latency < 200ms
 - [ ] Verify no database connection pool exhaustion
@@ -81,12 +89,14 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 ## Security Review
 
 ### Authentication
+
 - [ ] Service role key stored securely (not in code)
 - [ ] Service role key not exposed in client-side code
 - [ ] JWT token validation working correctly
 - [ ] Regular users cannot access endpoint
 
 ### Input Validation
+
 - [ ] All inputs validated by Zod schema
 - [ ] SQL injection protection verified (Supabase SDK handles)
 - [ ] URL validation prevents javascript: and data: protocols
@@ -94,6 +104,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 - [ ] Array size limits enforced
 
 ### Error Handling
+
 - [ ] No sensitive data in error responses
 - [ ] No stack traces exposed to client
 - [ ] Database errors handled gracefully
@@ -102,6 +113,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 ## Monitoring Setup
 
 ### Logging
+
 - [ ] Structured logging working (JSON format)
 - [ ] Success logging includes article metadata
 - [ ] Error logging includes stack traces
@@ -109,12 +121,14 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 - [ ] Logs accessible for debugging
 
 ### Alerts (Optional for MVP)
+
 - [ ] Error rate monitoring (alert if > 5%)
 - [ ] Latency monitoring (alert if p95 > 500ms)
 - [ ] 500 error alerts (should be zero)
 - [ ] Unauthorized access attempt monitoring
 
 ### Metrics to Track
+
 - [ ] Article creation success rate
 - [ ] 409 conflict rate (duplicate detection)
 - [ ] Response time (p50, p95, p99)
@@ -135,6 +149,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 ## Cron Job Integration
 
 ### Preparation
+
 - [ ] Service role JWT token generated
 - [ ] Token stored securely in cron job environment
 - [ ] Cron job code updated to use new endpoint
@@ -142,6 +157,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 - [ ] Retry logic with exponential backoff
 
 ### Testing
+
 - [ ] Test cron job in development environment
 - [ ] Verify articles are created correctly
 - [ ] Verify duplicate detection works (409 responses)
@@ -149,6 +165,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 - [ ] Test with real RSS feed data
 
 ### Deployment
+
 - [ ] Cron job deployed to production
 - [ ] Cron schedule configured (e.g., every 15 minutes)
 - [ ] Initial run monitored
@@ -157,6 +174,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 ## Post-Deployment
 
 ### Verification
+
 - [ ] Endpoint accessible at production URL
 - [ ] Service role authentication working
 - [ ] Articles being created successfully
@@ -164,6 +182,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 - [ ] Database growing as expected
 
 ### Monitoring (First 24 Hours)
+
 - [ ] Check error logs every 2 hours
 - [ ] Verify success rate > 95%
 - [ ] Verify p95 latency < 200ms
@@ -171,16 +190,18 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 - [ ] Check for unusual 401 attempts
 
 ### Performance Baseline
+
 - [ ] Record baseline metrics:
-  - [ ] Average response time: _____ms
-  - [ ] p95 response time: _____ms
-  - [ ] Success rate: _____%
-  - [ ] 409 conflict rate: _____%
-  - [ ] Articles per hour: _____
+  - [ ] Average response time: **\_**ms
+  - [ ] p95 response time: **\_**ms
+  - [ ] Success rate: **\_**%
+  - [ ] 409 conflict rate: **\_**%
+  - [ ] Articles per hour: **\_**
 
 ## Rollback Plan
 
 ### If Critical Issues Found
+
 - [ ] Stop cron job immediately
 - [ ] Investigate error logs
 - [ ] Fix issue or rollback code
@@ -188,6 +209,7 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 - [ ] Resume cron job
 
 ### Rollback Steps
+
 1. Stop cron job
 2. Revert endpoint code to previous version
 3. Redeploy application
@@ -205,10 +227,10 @@ Use this checklist before deploying the POST /api/articles endpoint to productio
 
 ---
 
-**Deployment Date:** _______________  
-**Deployed By:** _______________  
-**Verified By:** _______________  
-**Production URL:** _______________  
+**Deployment Date:** ******\_\_\_******  
+**Deployed By:** ******\_\_\_******  
+**Verified By:** ******\_\_\_******  
+**Production URL:** ******\_\_\_******
 
 ## Notes
 
@@ -219,4 +241,3 @@ _Add any deployment-specific notes here:_
 **Status:** ⚠️ Ready for deployment after database setup  
 **Blocker:** Database schema must be created first  
 **Next Steps:** Apply database migration, then follow this checklist
-

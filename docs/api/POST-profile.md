@@ -20,10 +20,10 @@ Authorization: Bearer <user_jwt_token>
 
 ### Request Body
 
-| Field | Type | Required | Description | Constraints |
-|-------|------|----------|-------------|-------------|
-| `mood` | enum \| null | No | User's preferred mood filter | One of: "positive", "neutral", "negative", or null (defaults to null) |
-| `blocklist` | array of strings | No | List of keywords and URL fragments to filter out | Max 100 items, each item max 200 characters, defaults to empty array |
+| Field       | Type             | Required | Description                                      | Constraints                                                           |
+| ----------- | ---------------- | -------- | ------------------------------------------------ | --------------------------------------------------------------------- |
+| `mood`      | enum \| null     | No       | User's preferred mood filter                     | One of: "positive", "neutral", "negative", or null (defaults to null) |
+| `blocklist` | array of strings | No       | List of keywords and URL fragments to filter out | Max 100 items, each item max 200 characters, defaults to empty array  |
 
 **Note:** `userId` is automatically derived from the authenticated user's token and should NOT be included in the request body.
 
@@ -55,6 +55,7 @@ curl -X POST https://your-domain.com/api/profile \
 ```
 
 This will create a profile with default values:
+
 - `mood`: `null` (no preference)
 - `blocklist`: `[]` (empty array)
 
@@ -69,10 +70,7 @@ Returns the created profile entity with database-generated fields populated.
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "userId": "660e8400-e29b-41d4-a716-446655440001",
   "mood": "positive",
-  "blocklist": [
-    "covid",
-    "election"
-  ],
+  "blocklist": ["covid", "election"],
   "createdAt": "2025-11-15T10:00:00Z",
   "updatedAt": "2025-11-15T10:00:00Z"
 }
@@ -102,6 +100,7 @@ Returned when the request body fails validation.
 ```
 
 **Common validation errors:**
+
 - Invalid mood value (not in enum: "positive", "neutral", "negative", or null)
 - Blocklist item exceeds 200 characters
 - Blocklist contains more than 100 items
@@ -177,26 +176,26 @@ Returned when the user already has a profile. Use PATCH /api/profile to update i
 async function createProfile(
   token: string,
   preferences: {
-    mood?: 'positive' | 'neutral' | 'negative' | null;
+    mood?: "positive" | "neutral" | "negative" | null;
     blocklist?: string[];
   }
 ) {
-  const response = await fetch('https://your-domain.com/api/profile', {
-    method: 'POST',
+  const response = await fetch("https://your-domain.com/api/profile", {
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(preferences),
   });
 
   if (response.status === 201) {
     const profile = await response.json();
-    console.log('Profile created:', profile.id);
+    console.log("Profile created:", profile.id);
     return profile;
   } else if (response.status === 409) {
-    console.log('Profile already exists, use PATCH to update');
-    throw new Error('Profile already exists');
+    console.log("Profile already exists, use PATCH to update");
+    throw new Error("Profile already exists");
   } else {
     const error = await response.json();
     throw new Error(error.error);
@@ -207,30 +206,27 @@ async function createProfile(
 ### React Example - Onboarding Flow
 
 ```typescript
-import { useMutation } from '@tanstack/react-query';
+import { useMutation } from "@tanstack/react-query";
 
 function useCreateProfile() {
   const { data: session } = useSession();
-  
+
   return useMutation({
-    mutationFn: async (preferences: {
-      mood?: 'positive' | 'neutral' | 'negative' | null;
-      blocklist?: string[];
-    }) => {
-      const response = await fetch('/api/profile', {
-        method: 'POST',
+    mutationFn: async (preferences: { mood?: "positive" | "neutral" | "negative" | null; blocklist?: string[] }) => {
+      const response = await fetch("/api/profile", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(preferences),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error);
       }
-      
+
       return response.json();
     },
   });
@@ -239,21 +235,21 @@ function useCreateProfile() {
 // Usage in component
 function OnboardingForm() {
   const createProfile = useCreateProfile();
-  
+
   const handleSubmit = async (formData: FormData) => {
     try {
       await createProfile.mutateAsync({
-        mood: formData.get('mood') as string,
-        blocklist: formData.getAll('blocklist') as string[],
+        mood: formData.get("mood") as string,
+        blocklist: formData.getAll("blocklist") as string[],
       });
       // Redirect to main feed
     } catch (error) {
-      if (error.message.includes('already exists')) {
+      if (error.message.includes("already exists")) {
         // Profile exists, redirect to settings
       }
     }
   };
-  
+
   // ... form JSX
 }
 ```
@@ -275,4 +271,3 @@ function OnboardingForm() {
 - [GET /api/profile](./GET-profile.md) - Retrieve profile
 - [PATCH /api/profile](./PATCH-profile.md) - Update profile
 - [DELETE /api/profile](./DELETE-profile.md) - Delete profile
-

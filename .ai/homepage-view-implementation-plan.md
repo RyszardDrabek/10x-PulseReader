@@ -57,7 +57,7 @@ The hierarchy uses Astro for static rendering of the layout and React islands fo
 
 - Component description: Displays a single article with title, excerpt, metadata (date, sentiment indicator, source, topics as chips). Sanitizes content to prevent XSS.
 - Main elements: `<article role="article">` with `<h3>` (clickable title), `<p>` description, badges for sentiment (color-coded), source name, topic chips (Shadcn/ui Badge), and date (formatted).
-- Handled interactions: Click title or card to open link (target="_blank"); focus for keyboard navigation (tabindex=0).
+- Handled interactions: Click title or card to open link (target="\_blank"); focus for keyboard navigation (tabindex=0).
 - Handled validation: Sanitize title/description with DOMPurify; ensure link is valid URL; truncate description to 200 chars if too long.
 - Types: ArticleDto (full article data).
 - Props: { article: ArticleDto, onArticleClick?: (id: string) => void }.
@@ -113,6 +113,7 @@ These ViewModels ensure type-safe state management in React hooks and components
 State is managed using React's useState and useEffect for local component state, combined with TanStack Query (via @tanstack/react-query) for server-state management of articles (useInfiniteQuery for pagination). A custom hook, useArticles, will encapsulate API fetching, personalization logic, and caching. Global auth state is handled via Supabase Auth helpers (useSupabaseClient, useUser). No Redux/Zustand needed for MVP; query cache invalidates on filter changes. The Homepage page passes initial session to child components via context or props.
 
 Custom Hook: useArticles(queryParams: GetArticlesQueryParams, userId?: string)
+
 - Fetches via GET /api/articles with params.
 - Handles infinite scroll with { getNextPageParam: (lastPage) => lastPage.pagination.hasMore ? lastPage.pagination.offset + lastPage.pagination.limit : undefined }
 - Optimistic updates on filter toggle.
@@ -133,7 +134,7 @@ For profile-dependent filters, optionally fetch GET /api/profile on mount if aut
 - **Infinite Scroll**: User scrolls to bottom → useArticles hook calls fetchNextPage → Articles append to list, skeleton shows during load. Success: New cards render; Error: Retry button appears.
 - **Filter Toggle (Authenticated)**: Click switch in FilterBanner → Set isPersonalized=true/false → Refetch articles with updated applyPersonalization param → Banner updates to show/hide filters; Feed refreshes.
 - **Guest Personalization Tease**: Hover/click inactive toggle → Show tooltip/prompt: "Log in to personalize your feed" → Link to /login.
-- **Article Click**: Click title/card → window.open(article.link, '_blank') → Track analytics if implemented; Keyboard: Enter on focused card.
+- **Article Click**: Click title/card → window.open(article.link, '\_blank') → Track analytics if implemented; Keyboard: Enter on focused card.
 - **No Results**: If data empty after fetch → Render NoResultsPlaceholder → Click "Adjust filters" → Navigate to /settings (auth) or /login (guest).
 - **Loading**: Initial load or refetch → Show LoadingSkeleton in ArticleList position → Hide on data arrival.
 
@@ -184,7 +185,7 @@ Use Shadcn/ui Toast for non-blocking feedback; Ensure graceful degradation (e.g.
 
 8. Create LoadingSkeleton.tsx: Simple animated divs with Tailwind skeleton classes (bg-gray-200 animate-pulse).
 
-9. Add State Management: Wrap app in QueryClientProvider in _app or layout. Use useEffect in Homepage for initial fetch.
+9. Add State Management: Wrap app in QueryClientProvider in \_app or layout. Use useEffect in Homepage for initial fetch.
 
 10. Accessibility: Add ARIA roles (article, button), live regions for updates, keyboard handlers. Test with screen readers.
 

@@ -20,15 +20,15 @@ Authorization: Bearer <service_role_jwt_token>
 
 ### Request Body
 
-| Field | Type | Required | Description | Constraints |
-|-------|------|----------|-------------|-------------|
-| `sourceId` | string (UUID) | Yes | Reference to the RSS source | Must exist in `rss_sources` table |
-| `title` | string | Yes | Article title from RSS feed | 1-1000 characters |
-| `link` | string (URL) | Yes | Unique URL to the full article | Must be valid URL, unique across all articles |
-| `publicationDate` | string (ISO 8601) | Yes | When the article was published | Valid ISO 8601 datetime |
-| `description` | string \| null | No | Article description or excerpt | Max 5000 characters, defaults to null |
-| `sentiment` | enum \| null | No | AI-analyzed sentiment | One of: "positive", "neutral", "negative", or null |
-| `topicIds` | array of UUIDs | No | IDs of topics to associate | Max 20 topics, all must exist in `topics` table |
+| Field             | Type              | Required | Description                    | Constraints                                        |
+| ----------------- | ----------------- | -------- | ------------------------------ | -------------------------------------------------- |
+| `sourceId`        | string (UUID)     | Yes      | Reference to the RSS source    | Must exist in `rss_sources` table                  |
+| `title`           | string            | Yes      | Article title from RSS feed    | 1-1000 characters                                  |
+| `link`            | string (URL)      | Yes      | Unique URL to the full article | Must be valid URL, unique across all articles      |
+| `publicationDate` | string (ISO 8601) | Yes      | When the article was published | Valid ISO 8601 datetime                            |
+| `description`     | string \| null    | No       | Article description or excerpt | Max 5000 characters, defaults to null              |
+| `sentiment`       | enum \| null      | No       | AI-analyzed sentiment          | One of: "positive", "neutral", "negative", or null |
+| `topicIds`        | array of UUIDs    | No       | IDs of topics to associate     | Max 20 topics, all must exist in `topics` table    |
 
 ### Example Request
 
@@ -40,10 +40,7 @@ Authorization: Bearer <service_role_jwt_token>
   "link": "https://bbcnews.com/world/climate-agreement-2025",
   "publicationDate": "2025-11-15T10:30:00Z",
   "sentiment": "positive",
-  "topicIds": [
-    "f1e2d3c4-b5a6-7890-fedc-ba0987654321",
-    "a9b8c7d6-e5f4-3210-abcd-ef9876543210"
-  ]
+  "topicIds": ["f1e2d3c4-b5a6-7890-fedc-ba0987654321", "a9b8c7d6-e5f4-3210-abcd-ef9876543210"]
 }
 ```
 
@@ -103,6 +100,7 @@ Returned when the request body fails validation.
 ```
 
 **Common validation errors:**
+
 - Missing required fields (sourceId, title, link, publicationDate)
 - Invalid UUID format for sourceId or topicIds
 - Invalid URL format for link
@@ -205,13 +203,10 @@ The database enforces a unique constraint on the `link` field. Attempting to cre
 ### TypeScript Example
 
 ```typescript
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client with service role key
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 async function ingestArticle(articleData: {
   sourceId: string;
@@ -219,32 +214,34 @@ async function ingestArticle(articleData: {
   link: string;
   publicationDate: string;
   description?: string;
-  sentiment?: 'positive' | 'neutral' | 'negative' | null;
+  sentiment?: "positive" | "neutral" | "negative" | null;
   topicIds?: string[];
 }) {
   // Get service role token (already authenticated with service role key)
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
 
-  const response = await fetch('https://your-domain.com/api/articles', {
-    method: 'POST',
+  const response = await fetch("https://your-domain.com/api/articles", {
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(articleData),
   });
 
   if (response.status === 201) {
     const article = await response.json();
-    console.log('Article created:', article.id);
+    console.log("Article created:", article.id);
     return article;
   } else if (response.status === 409) {
-    console.log('Article already exists, skipping');
+    console.log("Article already exists, skipping");
     return null;
   } else {
     const error = await response.json();
-    console.error('Failed to create article:', error);
+    console.error("Failed to create article:", error);
     throw new Error(error.error);
   }
 }
@@ -289,4 +286,3 @@ SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 - [GET /api/articles/:id](./GET-article-by-id.md) - Get specific article
 - [PATCH /api/articles/:id](./PATCH-article-by-id.md) - Update article (service role)
 - [DELETE /api/articles/:id](./DELETE-article-by-id.md) - Delete article (service role)
-

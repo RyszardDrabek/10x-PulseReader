@@ -16,9 +16,9 @@ This endpoint is publicly accessible. All users (including guests) can retrieve 
 
 ### Path Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string (UUID) | Yes | The unique identifier of the article |
+| Parameter | Type          | Required | Description                          |
+| --------- | ------------- | -------- | ------------------------------------ |
+| `id`      | string (UUID) | Yes      | The unique identifier of the article |
 
 ### Example Request
 
@@ -62,23 +62,23 @@ Returns the complete article with nested source and topics information.
 
 ### Response Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string (UUID) | Unique article identifier |
-| `title` | string | Article title |
-| `description` | string \| null | Article description or excerpt |
-| `link` | string (URL) | Link to the full article |
-| `publicationDate` | string (ISO 8601) | Original publication date |
-| `sentiment` | enum \| null | AI-analyzed sentiment: "positive", "neutral", "negative", or null |
-| `source` | object | RSS source information |
-| `source.id` | string (UUID) | Source identifier |
-| `source.name` | string | Source name |
-| `source.url` | string (URL) | RSS feed URL |
-| `topics` | array | Associated topics |
-| `topics[].id` | string (UUID) | Topic identifier |
-| `topics[].name` | string | Topic name |
-| `createdAt` | string (ISO 8601) | When the article was created in the system |
-| `updatedAt` | string (ISO 8601) | Last update timestamp |
+| Field             | Type              | Description                                                       |
+| ----------------- | ----------------- | ----------------------------------------------------------------- |
+| `id`              | string (UUID)     | Unique article identifier                                         |
+| `title`           | string            | Article title                                                     |
+| `description`     | string \| null    | Article description or excerpt                                    |
+| `link`            | string (URL)      | Link to the full article                                          |
+| `publicationDate` | string (ISO 8601) | Original publication date                                         |
+| `sentiment`       | enum \| null      | AI-analyzed sentiment: "positive", "neutral", "negative", or null |
+| `source`          | object            | RSS source information                                            |
+| `source.id`       | string (UUID)     | Source identifier                                                 |
+| `source.name`     | string            | Source name                                                       |
+| `source.url`      | string (URL)      | RSS feed URL                                                      |
+| `topics`          | array             | Associated topics                                                 |
+| `topics[].id`     | string (UUID)     | Topic identifier                                                  |
+| `topics[].name`   | string            | Topic name                                                        |
+| `createdAt`       | string (ISO 8601) | When the article was created in the system                        |
+| `updatedAt`       | string (ISO 8601) | Last update timestamp                                             |
 
 ### Error Responses
 
@@ -144,15 +144,18 @@ Returned when the article with the specified ID does not exist.
 ```typescript
 async function getArticle(articleId: string) {
   const response = await fetch(`https://your-domain.com/api/articles/${articleId}`);
-  
+
   if (response.status === 200) {
     const article = await response.json();
-    console.log('Article:', article.title);
-    console.log('Source:', article.source.name);
-    console.log('Topics:', article.topics.map(t => t.name));
+    console.log("Article:", article.title);
+    console.log("Source:", article.source.name);
+    console.log(
+      "Topics:",
+      article.topics.map((t) => t.name)
+    );
     return article;
   } else if (response.status === 404) {
-    console.log('Article not found');
+    console.log("Article not found");
     return null;
   } else {
     const error = await response.json();
@@ -209,4 +212,3 @@ function ArticleDetail({ articleId }: { articleId: string }) {
 - [POST /api/articles](./POST-articles.md) - Create article (service role)
 - [PATCH /api/articles/:id](./PATCH-article-by-id.md) - Update article (service role)
 - [DELETE /api/articles/:id](./DELETE-article-by-id.md) - Delete article (service role)
-

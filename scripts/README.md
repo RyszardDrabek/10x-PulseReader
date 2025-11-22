@@ -22,6 +22,7 @@ npm run seed
 ```
 
 Skrypt utworzy:
+
 - **4 testowych użytkowników** z profilami
 - **6 źródeł RSS**
 - **12 tematów**
@@ -41,12 +42,12 @@ npm run seed:reset
 
 Wszyscy użytkownicy mają hasło: `Test123!@#`
 
-| Email | Imię | Nastrój | Blocklist |
-|-------|------|---------|-----------|
-| anna.kowalska@example.com | Anna Kowalska | positive | wojna, konflikt, kryzys |
-| piotr.nowak@example.com | Piotr Nowak | neutral | sport, piłka |
-| maria.wisniewska@example.com | Maria Wiśniewska | negative | (pusta) |
-| jan.kowalczyk@example.com | Jan Kowalczyk | null | polityka, wybory |
+| Email                        | Imię             | Nastrój  | Blocklist               |
+| ---------------------------- | ---------------- | -------- | ----------------------- |
+| anna.kowalska@example.com    | Anna Kowalska    | positive | wojna, konflikt, kryzys |
+| piotr.nowak@example.com      | Piotr Nowak      | neutral  | sport, piłka            |
+| maria.wisniewska@example.com | Maria Wiśniewska | negative | (pusta)                 |
+| jan.kowalczyk@example.com    | Jan Kowalczyk    | null     | polityka, wybory        |
 
 ### Źródła RSS
 
@@ -117,6 +118,7 @@ Skrypt `seed.ts` wykonuje następujące kroki w kolejności:
 ### Błąd: "Missing required environment variables"
 
 Upewnij się, że plik `.env` zawiera:
+
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
@@ -129,12 +131,14 @@ Upewnij się, że plik `.env` zawiera:
 ### Błąd: "Foreign key constraint violation"
 
 Skrypt wykonuje operacje w odpowiedniej kolejności, aby uniknąć naruszeń kluczy obcych. Jeśli wystąpi błąd:
+
 1. Użyj `npm run seed:reset`, aby wyczyścić wszystkie dane
 2. Uruchom ponownie `npm run seed`
 
 ### Duplikaty danych
 
 Skrypt automatycznie sprawdza, czy dane już istnieją przed ich utworzeniem. Jeśli chcesz wymusić ponowne utworzenie:
+
 1. Użyj `npm run seed:reset`, aby wyczyścić dane
 2. Uruchom `npm run seed`
 
@@ -148,6 +152,7 @@ Aby dodać więcej danych testowych, edytuj plik `scripts/seed.ts`:
 4. Dodaj artykuły do tablicy `TEST_ARTICLES`
 
 Pamiętaj o zachowaniu relacji:
+
 - Artykuły muszą odnosić się do istniejących źródeł RSS (`sourceIndex`)
 - Artykuły muszą mieć przypisane istniejące tematy (`topicIndices`)
 
@@ -164,4 +169,3 @@ Skrypty seed mogą być używane w pipeline CI/CD do przygotowania środowiska t
     SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
     SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 ```
-

@@ -16,11 +16,11 @@ This endpoint is publicly accessible and does not require authentication.
 
 ### Query Parameters
 
-| Parameter | Type | Required | Default | Description | Constraints |
-|-----------|------|----------|---------|-------------|-------------|
-| `limit` | integer | No | 100 | Number of topics per page | Min: 1, Max: 500 |
-| `offset` | integer | No | 0 | Pagination offset | Min: 0 |
-| `search` | string | No | - | Search topics by name (case-insensitive) | Optional |
+| Parameter | Type    | Required | Default | Description                              | Constraints      |
+| --------- | ------- | -------- | ------- | ---------------------------------------- | ---------------- |
+| `limit`   | integer | No       | 100     | Number of topics per page                | Min: 1, Max: 500 |
+| `offset`  | integer | No       | 0       | Pagination offset                        | Min: 0           |
+| `search`  | string  | No       | -       | Search topics by name (case-insensitive) | Optional         |
 
 ### Example Request with curl
 
@@ -65,18 +65,18 @@ Returns a paginated list of topics.
 
 **Response Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `data` | array | Array of topic objects |
-| `data[].id` | string (UUID) | Unique topic identifier |
-| `data[].name` | string | Topic name |
-| `data[].createdAt` | string (ISO 8601) | When the topic was created |
-| `data[].updatedAt` | string (ISO 8601) | When the topic was last updated |
-| `pagination` | object | Pagination metadata |
-| `pagination.limit` | integer | Number of items per page |
-| `pagination.offset` | integer | Number of items skipped |
-| `pagination.total` | integer | Total number of topics matching the query |
-| `pagination.hasMore` | boolean | Whether there are more topics available |
+| Field                | Type              | Description                               |
+| -------------------- | ----------------- | ----------------------------------------- |
+| `data`               | array             | Array of topic objects                    |
+| `data[].id`          | string (UUID)     | Unique topic identifier                   |
+| `data[].name`        | string            | Topic name                                |
+| `data[].createdAt`   | string (ISO 8601) | When the topic was created                |
+| `data[].updatedAt`   | string (ISO 8601) | When the topic was last updated           |
+| `pagination`         | object            | Pagination metadata                       |
+| `pagination.limit`   | integer           | Number of items per page                  |
+| `pagination.offset`  | integer           | Number of items skipped                   |
+| `pagination.total`   | integer           | Total number of topics matching the query |
+| `pagination.hasMore` | boolean           | Whether there are more topics available   |
 
 ### Error Responses
 
@@ -99,6 +99,7 @@ Returned when query parameters fail validation.
 ```
 
 **Common validation errors:**
+
 - `limit` exceeds maximum (500)
 - `limit` is less than 1
 - `offset` is negative
@@ -141,19 +142,13 @@ Topics are sorted alphabetically by name (ascending) by default.
 ### TypeScript Example
 
 ```typescript
-async function getTopics(params?: {
-  limit?: number;
-  offset?: number;
-  search?: string;
-}) {
+async function getTopics(params?: { limit?: number; offset?: number; search?: string }) {
   const queryParams = new URLSearchParams();
-  if (params?.limit) queryParams.append('limit', params.limit.toString());
-  if (params?.offset) queryParams.append('offset', params.offset.toString());
-  if (params?.search) queryParams.append('search', params.search);
+  if (params?.limit) queryParams.append("limit", params.limit.toString());
+  if (params?.offset) queryParams.append("offset", params.offset.toString());
+  if (params?.search) queryParams.append("search", params.search);
 
-  const response = await fetch(
-    `https://your-domain.com/api/topics?${queryParams.toString()}`
-  );
+  const response = await fetch(`https://your-domain.com/api/topics?${queryParams.toString()}`);
 
   if (!response.ok) {
     const error = await response.json();
@@ -164,7 +159,7 @@ async function getTopics(params?: {
 }
 
 // Usage
-const topics = await getTopics({ limit: 50, search: 'tech' });
+const topics = await getTopics({ limit: 50, search: "tech" });
 console.log(`Found ${topics.pagination.total} topics`);
 ```
 
@@ -228,11 +223,9 @@ async function getAllTopics() {
   let hasMore = true;
 
   while (hasMore) {
-    const response = await fetch(
-      `https://your-domain.com/api/topics?limit=${limit}&offset=${offset}`
-    );
+    const response = await fetch(`https://your-domain.com/api/topics?limit=${limit}&offset=${offset}`);
     const data = await response.json();
-    
+
     allTopics.push(...data.data);
     hasMore = data.pagination.hasMore;
     offset += limit;
@@ -261,4 +254,3 @@ async function getAllTopics() {
 - [GET /api/topics/:id](./GET-topic-by-id.md) - Get single topic
 - [POST /api/topics](./POST-topics.md) - Create topic (service role)
 - [DELETE /api/topics/:id](./DELETE-topic-by-id.md) - Delete topic (service role)
-

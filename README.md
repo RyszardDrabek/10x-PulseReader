@@ -22,13 +22,13 @@ By leveraging AI for sentiment and topic analysis, PulseReader aims to combat in
 
 The project is built using a modern, scalable, and efficient technology stack:
 
-| Category      | Technology                                                              |
-|---------------|-------------------------------------------------------------------------|
-| **Frontend**  | [Astro 5](https://astro.build/), [React 19](https://react.dev/), [TypeScript 5](https://www.typescriptlang.org/), [Tailwind 4](https://tailwindcss.com/), [Shadcn/ui](https://ui.shadcn.com/) |
-| **Backend**   | [Supabase](https://supabase.com/) (PostgreSQL, Authentication, BaaS)      |
-| **AI**        | [OpenRouter.ai](https://openrouter.ai/) for multi-model access            |
-| **Testing**   | [Vitest](https://vitest.dev/) for unit/integration tests, [Playwright](https://playwright.dev/) for E2E tests, [k6](https://k6.io/) for load testing |
-| **DevOps**    | [GitHub Actions](https://github.com/features/actions) for CI/CD, [DigitalOcean](https://www.digitalocean.com/) for hosting |
+| Category     | Technology                                                                                                                                                                                    |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Frontend** | [Astro 5](https://astro.build/), [React 19](https://react.dev/), [TypeScript 5](https://www.typescriptlang.org/), [Tailwind 4](https://tailwindcss.com/), [Shadcn/ui](https://ui.shadcn.com/) |
+| **Backend**  | [Supabase](https://supabase.com/) (PostgreSQL, Authentication, BaaS)                                                                                                                          |
+| **AI**       | [OpenRouter.ai](https://openrouter.ai/) for multi-model access                                                                                                                                |
+| **Testing**  | [Vitest](https://vitest.dev/) for unit/integration tests, [Playwright](https://playwright.dev/) for E2E tests, [k6](https://k6.io/) for load testing                                          |
+| **DevOps**   | [GitHub Actions](https://github.com/features/actions) for CI/CD, [DigitalOcean](https://www.digitalocean.com/) for hosting                                                                    |
 
 ## Getting Started Locally
 
@@ -42,6 +42,7 @@ To set up and run the project on your local machine, follow these steps:
 ### Installation
 
 1.  **Clone the repository:**
+
     ```sh
     git clone https://github.com/your-username/10x-PulseReader.git
     cd 10x-PulseReader
@@ -49,17 +50,20 @@ To set up and run the project on your local machine, follow these steps:
 
 2.  **Set the correct Node.js version:**
     If you are using `nvm`, run this command in the project root:
+
     ```sh
     nvm use
     ```
 
 3.  **Install dependencies:**
+
     ```sh
     npm install
     ```
 
 4.  **Set up environment variables:**
     Create a `.env` file in the root of the project and add the necessary environment variables for Supabase and OpenRouter.
+
     ```env
     # .env
     PUBLIC_SUPABASE_URL="your-supabase-project-url"
@@ -77,36 +81,36 @@ To set up and run the project on your local machine, follow these steps:
 
 The following scripts are available in the `package.json`:
 
--   `npm run dev`: Starts the development server with hot-reloading.
--   `npm run build`: Builds the application for production.
--   `npm run preview`: Starts a local server to preview the production build.
--   `npm run lint`: Lints the codebase for errors and style issues.
--   `npm run lint:fix`: Automatically fixes fixable linting issues.
--   `npm run format`: Formats the code using Prettier.
--   `npm run docs:api`: Serves the API documentation using Swagger UI.
--   `npm run docs:api:validate`: Validates the OpenAPI specification.
--   `npm run docs:api:build`: Generates static HTML documentation from the OpenAPI spec.
+- `npm run dev`: Starts the development server with hot-reloading.
+- `npm run build`: Builds the application for production.
+- `npm run preview`: Starts a local server to preview the production build.
+- `npm run lint`: Lints the codebase for errors and style issues.
+- `npm run lint:fix`: Automatically fixes fixable linting issues.
+- `npm run format`: Formats the code using Prettier.
+- `npm run docs:api`: Serves the API documentation using Swagger UI.
+- `npm run docs:api:validate`: Validates the OpenAPI specification.
+- `npm run docs:api:build`: Generates static HTML documentation from the OpenAPI spec.
 
 ## Project Scope
 
 ### Key Features (MVP)
 
--   **Content Aggregation**: Automatically fetches articles from predefined RSS feeds every 15 minutes.
--   **User Management**: Secure user registration and authentication via Supabase Auth.
--   **AI Integration**: Background AI analysis of articles for sentiment (positive, neutral, negative) and topic classification.
--   **Personalization & Filtering**: Users can filter their feed by mood and manage a unified blocklist for keywords and URLs.
--   **Responsive UI**: A fully responsive web interface with an infinite scroll feed.
+- **Content Aggregation**: Automatically fetches articles from predefined RSS feeds every 15 minutes.
+- **User Management**: Secure user registration and authentication via Supabase Auth.
+- **AI Integration**: Background AI analysis of articles for sentiment (positive, neutral, negative) and topic classification.
+- **Personalization & Filtering**: Users can filter their feed by mood and manage a unified blocklist for keywords and URLs.
+- **Responsive UI**: A fully responsive web interface with an infinite scroll feed.
 
 ### Out of Scope (for MVP)
 
 The following features are not planned for the initial release:
 
--   Displaying full article content within the app.
--   Advanced AI-based recommendation systems.
--   Social features (comments, ratings, sharing).
--   Push or email notifications.
--   Integration with paid, commercial news APIs.
--   Manual content moderation by administrators.
+- Displaying full article content within the app.
+- Advanced AI-based recommendation systems.
+- Social features (comments, ratings, sharing).
+- Push or email notifications.
+- Integration with paid, commercial news APIs.
+- Manual content moderation by administrators.
 
 ## API Documentation
 

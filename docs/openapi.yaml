@@ -4,21 +4,21 @@ info:
   description: |
     REST API for PulseReader - an intelligent news aggregator that provides personalized content filtering 
     based on user mood, topics, and blocklists.
-    
+
     ## Authentication
-    
+
     PulseReader uses Supabase Auth for user authentication. Most endpoints support both authenticated and 
     guest access, with personalized features requiring authentication.
-    
+
     ### Authentication Flow
-    
+
     1. Register or login via Supabase Auth SDK
     2. Receive JWT token from Supabase
     3. Include token in `Authorization` header: `Bearer <token>`
     4. API validates token and extracts user context
-    
+
     ### Authorization Levels
-    
+
     - **Guest**: Read-only access to articles, RSS sources, and topics
     - **Authenticated User**: Full access to own profile, personalized article filtering
     - **Service Role**: Full CRUD access to all resources (backend jobs only)
@@ -52,11 +52,11 @@ paths:
       summary: List articles
       description: |
         Retrieves a paginated list of articles with optional filtering and personalization.
-        
+
         **Personalization**: When `applyPersonalization=true`, articles are filtered based on:
         - User's mood preference (sentiment matching)
         - User's blocklist (keywords and URL fragments)
-        
+
         **Filtering**: Multiple filters can be combined (AND logic).
       tags:
         - Articles
@@ -86,7 +86,7 @@ paths:
           description: Filter by sentiment
           required: false
           schema:
-            $ref: '#/components/schemas/ArticleSentiment'
+            $ref: "#/components/schemas/ArticleSentiment"
         - name: topicId
           in: query
           description: Filter by topic ID (UUID)
@@ -125,12 +125,12 @@ paths:
             enum: [asc, desc]
             default: desc
       responses:
-        '200':
+        "200":
           description: Successful response with paginated articles
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ArticleListResponse'
+                $ref: "#/components/schemas/ArticleListResponse"
               examples:
                 guest:
                   summary: Guest user response
@@ -182,17 +182,17 @@ paths:
                       sentiment: "positive"
                       personalization: true
                       blockedItemsCount: 5
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/UnauthorizedPersonalization'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedPersonalization"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     post:
       summary: Create article
       description: |
         Creates a new article. **Service role only** - used by RSS fetching cron job.
-        
+
         The article link must be unique. If a duplicate link is provided, a 409 Conflict response is returned.
       tags:
         - Articles
@@ -203,7 +203,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateArticleCommand'
+              $ref: "#/components/schemas/CreateArticleCommand"
             examples:
               basic:
                 summary: Basic article creation
@@ -226,20 +226,20 @@ paths:
                     - "770e8400-e29b-41d4-a716-446655440002"
                     - "880e8400-e29b-41d4-a716-446655440003"
       responses:
-        '201':
+        "201":
           description: Article created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ArticleEntity'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/UnauthorizedServiceRole'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/ArticleEntity"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedServiceRole"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /articles/{id}:
     get:
@@ -259,21 +259,21 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: Article found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ArticleDto'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/ArticleDto"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     patch:
       summary: Update article
       description: |
         Updates an article. **Service role only** - used by AI analysis job to add sentiment and topics.
-        
+
         Only `sentiment` and `topicIds` can be updated. Other fields are immutable after creation.
       tags:
         - Articles
@@ -292,7 +292,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateArticleCommand'
+              $ref: "#/components/schemas/UpdateArticleCommand"
             examples:
               addSentiment:
                 summary: Add sentiment analysis
@@ -311,25 +311,25 @@ paths:
                   topicIds:
                     - "770e8400-e29b-41d4-a716-446655440002"
       responses:
-        '200':
+        "200":
           description: Article updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ArticleEntity'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/UnauthorizedServiceRole'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/ArticleEntity"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedServiceRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     delete:
       summary: Delete article
       description: |
         Deletes an article. **Service role only** - primarily used by retention policy cron job.
-        
+
         Associated topic relationships are automatically removed (CASCADE).
       tags:
         - Articles
@@ -344,33 +344,33 @@ paths:
             type: string
             format: uuid
       responses:
-        '204':
+        "204":
           description: Article deleted successfully
-        '401':
-          $ref: '#/components/responses/UnauthorizedServiceRole'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        "401":
+          $ref: "#/components/responses/UnauthorizedServiceRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /profile:
     get:
       summary: Get user profile
       description: |
         Retrieves the authenticated user's profile with mood preferences and blocklist settings.
-        
+
         If the profile doesn't exist, returns 404. The frontend should call POST /api/profile to create one.
       tags:
         - Profile
       security:
         - BearerAuth: []
       responses:
-        '200':
+        "200":
           description: Profile found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileDto'
+                $ref: "#/components/schemas/ProfileDto"
               examples:
                 withPreferences:
                   summary: Profile with mood and blocklist
@@ -393,25 +393,25 @@ paths:
                     blocklist: []
                     createdAt: "2025-11-10T08:00:00Z"
                     updatedAt: "2025-11-10T08:00:00Z"
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Profile not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "Profile not found"
                 code: "PROFILE_NOT_FOUND"
                 timestamp: "2025-11-15T10:30:00Z"
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     post:
       summary: Create profile
       description: |
         Creates a profile for the authenticated user. Automatically called after registration if profile doesn't exist.
-        
+
         User ID is derived from authentication context, not from request body.
       tags:
         - Profile
@@ -422,7 +422,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateProfileCommand'
+              $ref: "#/components/schemas/CreateProfileCommand"
             examples:
               default:
                 summary: Create with default values
@@ -436,31 +436,31 @@ paths:
                   blocklist:
                     - "spam"
       responses:
-        '201':
+        "201":
           description: Profile created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileDto'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
+                $ref: "#/components/schemas/ProfileDto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
           description: Profile already exists
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "Profile already exists for this user"
                 code: "CONFLICT"
                 timestamp: "2025-11-15T10:30:00Z"
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     patch:
       summary: Update profile
       description: |
         Updates the authenticated user's profile preferences.
-        
+
         All fields are optional for partial updates. User ID cannot be changed.
       tags:
         - Profile
@@ -471,7 +471,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateProfileCommand'
+              $ref: "#/components/schemas/UpdateProfileCommand"
             examples:
               updateMood:
                 summary: Update mood only
@@ -492,18 +492,18 @@ paths:
                     - "spam"
                     - "ads"
       responses:
-        '200':
+        "200":
           description: Profile updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileDto'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/ProfileDto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     delete:
       summary: Delete profile
       description: Deletes the authenticated user's profile.
@@ -512,14 +512,14 @@ paths:
       security:
         - BearerAuth: []
       responses:
-        '204':
+        "204":
           description: Profile deleted successfully
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /rss-sources:
     get:
@@ -549,19 +549,19 @@ paths:
             minimum: 0
             default: 0
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RssSourceListResponse'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/RssSourceListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     post:
       summary: Create RSS source
       description: |
         Creates a new RSS source. **Service role only**.
-        
+
         The source URL must be unique. If a duplicate URL is provided, a 409 Conflict response is returned.
       tags:
         - RSS Sources
@@ -572,25 +572,25 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateRssSourceCommand'
+              $ref: "#/components/schemas/CreateRssSourceCommand"
             example:
               name: "The Guardian - World"
               url: "https://www.theguardian.com/world/rss"
       responses:
-        '201':
+        "201":
           description: RSS source created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RssSourceDto'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/UnauthorizedServiceRole'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/RssSourceDto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedServiceRole"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /rss-sources/{id}:
     get:
@@ -610,16 +610,16 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: RSS source found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RssSourceDto'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/RssSourceDto"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     patch:
       summary: Update RSS source
       description: Updates an RSS source. **Service role only**.
@@ -640,30 +640,30 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateRssSourceCommand'
+              $ref: "#/components/schemas/UpdateRssSourceCommand"
             example:
               name: "The Guardian - World News"
               url: "https://www.theguardian.com/world/rss"
       responses:
-        '200':
+        "200":
           description: RSS source updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RssSourceDto'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/UnauthorizedServiceRole'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/RssSourceDto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedServiceRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     delete:
       summary: Delete RSS source
       description: |
         Deletes an RSS source. **Service role only**.
-        
+
         Associated articles are automatically deleted (CASCADE).
       tags:
         - RSS Sources
@@ -678,21 +678,21 @@ paths:
             type: string
             format: uuid
       responses:
-        '204':
+        "204":
           description: RSS source deleted successfully
-        '401':
-          $ref: '#/components/responses/UnauthorizedServiceRole'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        "401":
+          $ref: "#/components/responses/UnauthorizedServiceRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /topics:
     get:
       summary: List topics
       description: |
         Retrieves all topics with optional filtering and pagination.
-        
+
         Supports case-insensitive search by topic name.
       tags:
         - Topics
@@ -724,19 +724,19 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TopicListResponse'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/TopicListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     post:
       summary: Create topic
       description: |
         Creates a new topic or returns existing one if name already exists (case-insensitive). **Service role only**.
-        
+
         Used by AI analysis job to create topics dynamically.
       tags:
         - Topics
@@ -747,28 +747,28 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateTopicCommand'
+              $ref: "#/components/schemas/CreateTopicCommand"
             example:
               name: "climate change"
       responses:
-        '200':
+        "200":
           description: Topic found (already exists)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TopicDto'
-        '201':
+                $ref: "#/components/schemas/TopicDto"
+        "201":
           description: Topic created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TopicDto'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/UnauthorizedServiceRole'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/TopicDto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedServiceRole"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
   /topics/{id}:
     get:
@@ -788,21 +788,21 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: Topic found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TopicDto'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/TopicDto"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     delete:
       summary: Delete topic
       description: |
         Deletes a topic. **Service role only**.
-        
+
         Associated article-topic relationships are automatically removed (CASCADE).
       tags:
         - Topics
@@ -817,14 +817,14 @@ paths:
             type: string
             format: uuid
       responses:
-        '204':
+        "204":
           description: Topic deleted successfully
-        '401':
-          $ref: '#/components/responses/UnauthorizedServiceRole'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        "401":
+          $ref: "#/components/responses/UnauthorizedServiceRole"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
 components:
   securitySchemes:
@@ -931,14 +931,14 @@ components:
           description: Article publication date (ISO 8601)
           example: "2025-11-15T10:30:00Z"
         sentiment:
-          $ref: '#/components/schemas/ArticleSentiment'
+          $ref: "#/components/schemas/ArticleSentiment"
           nullable: true
         source:
-          $ref: '#/components/schemas/ArticleSourceDto'
+          $ref: "#/components/schemas/ArticleSourceDto"
         topics:
           type: array
           items:
-            $ref: '#/components/schemas/ArticleTopicDto'
+            $ref: "#/components/schemas/ArticleTopicDto"
           description: Associated topics
         createdAt:
           type: string
@@ -980,7 +980,7 @@ components:
           type: string
           format: date-time
         sentiment:
-          $ref: '#/components/schemas/ArticleSentiment'
+          $ref: "#/components/schemas/ArticleSentiment"
           nullable: true
         createdAt:
           type: string
@@ -994,7 +994,7 @@ components:
       type: object
       properties:
         sentiment:
-          $ref: '#/components/schemas/ArticleSentiment'
+          $ref: "#/components/schemas/ArticleSentiment"
         personalization:
           type: boolean
           description: Whether personalization filters were applied
@@ -1012,11 +1012,11 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/ArticleDto'
+            $ref: "#/components/schemas/ArticleDto"
         pagination:
-          $ref: '#/components/schemas/PaginationMetadata'
+          $ref: "#/components/schemas/PaginationMetadata"
         filtersApplied:
-          $ref: '#/components/schemas/ArticleFiltersApplied'
+          $ref: "#/components/schemas/ArticleFiltersApplied"
 
     CreateArticleCommand:
       type: object
@@ -1045,7 +1045,7 @@ components:
           type: string
           format: date-time
         sentiment:
-          $ref: '#/components/schemas/ArticleSentiment'
+          $ref: "#/components/schemas/ArticleSentiment"
           nullable: true
         topicIds:
           type: array
@@ -1058,7 +1058,7 @@ components:
       type: object
       properties:
         sentiment:
-          $ref: '#/components/schemas/ArticleSentiment'
+          $ref: "#/components/schemas/ArticleSentiment"
           nullable: true
         topicIds:
           type: array
@@ -1086,7 +1086,7 @@ components:
           format: uuid
           description: User ID (matches authenticated user)
         mood:
-          $ref: '#/components/schemas/UserMood'
+          $ref: "#/components/schemas/UserMood"
           nullable: true
           description: User's preferred mood filter
         blocklist:
@@ -1108,7 +1108,7 @@ components:
       type: object
       properties:
         mood:
-          $ref: '#/components/schemas/UserMood'
+          $ref: "#/components/schemas/UserMood"
           nullable: true
         blocklist:
           type: array
@@ -1122,7 +1122,7 @@ components:
       type: object
       properties:
         mood:
-          $ref: '#/components/schemas/UserMood'
+          $ref: "#/components/schemas/UserMood"
           nullable: true
         blocklist:
           type: array
@@ -1168,9 +1168,9 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/RssSourceDto'
+            $ref: "#/components/schemas/RssSourceDto"
         pagination:
-          $ref: '#/components/schemas/PaginationMetadata'
+          $ref: "#/components/schemas/PaginationMetadata"
 
     CreateRssSourceCommand:
       type: object
@@ -1228,9 +1228,9 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/TopicDto'
+            $ref: "#/components/schemas/TopicDto"
         pagination:
-          $ref: '#/components/schemas/PaginationMetadata'
+          $ref: "#/components/schemas/PaginationMetadata"
 
     CreateTopicCommand:
       type: object
@@ -1293,7 +1293,7 @@ components:
 
     ValidationErrorResponse:
       allOf:
-        - $ref: '#/components/schemas/ErrorResponse'
+        - $ref: "#/components/schemas/ErrorResponse"
         - type: object
           required:
             - details
@@ -1321,7 +1321,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ValidationErrorResponse'
+            $ref: "#/components/schemas/ValidationErrorResponse"
           examples:
             validation:
               summary: Validation error
@@ -1338,7 +1338,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Authentication required"
             code: "AUTHENTICATION_REQUIRED"
@@ -1349,7 +1349,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Authentication required for personalized filtering"
             code: "AUTHENTICATION_REQUIRED"
@@ -1360,7 +1360,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Service role required for this endpoint"
             code: "FORBIDDEN"
@@ -1371,7 +1371,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Resource not found"
             code: "NOT_FOUND"
@@ -1382,7 +1382,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           examples:
             duplicateArticle:
               summary: Duplicate article link
@@ -1402,9 +1402,8 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: "#/components/schemas/ErrorResponse"
           example:
             error: "Internal server error"
             code: "INTERNAL_ERROR"
             timestamp: "2025-11-15T10:30:00Z"
-

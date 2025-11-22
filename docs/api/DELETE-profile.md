@@ -97,18 +97,18 @@ Returned when the authenticated user doesn't have a profile to delete.
 
 ```typescript
 async function deleteProfile(token: string) {
-  const response = await fetch('https://your-domain.com/api/profile', {
-    method: 'DELETE',
+  const response = await fetch("https://your-domain.com/api/profile", {
+    method: "DELETE",
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
   if (response.status === 204) {
-    console.log('Profile deleted successfully');
+    console.log("Profile deleted successfully");
     return true;
   } else if (response.status === 404) {
-    console.log('Profile not found');
+    console.log("Profile not found");
     return false;
   } else {
     const error = await response.json();
@@ -127,7 +127,7 @@ function useDeleteProfile() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const router = useRouter();
-  
+
   return useMutation({
     mutationFn: async () => {
       const response = await fetch('/api/profile', {
@@ -136,7 +136,7 @@ function useDeleteProfile() {
           'Authorization': `Bearer ${session?.access_token}`,
         },
       });
-      
+
       if (response.status === 204) {
         return true;
       } else if (response.status === 404) {
@@ -159,12 +159,12 @@ function useDeleteProfile() {
 // Usage in component
 function AccountSettings() {
   const deleteProfile = useDeleteProfile();
-  
+
   const handleDeleteProfile = async () => {
     if (!confirm('Are you sure you want to delete your profile? This will reset all your preferences.')) {
       return;
     }
-    
+
     try {
       await deleteProfile.mutateAsync();
       // Show success message
@@ -172,7 +172,7 @@ function AccountSettings() {
       // Show error message
     }
   };
-  
+
   return (
     <button onClick={handleDeleteProfile}>
       Delete Profile
@@ -222,4 +222,3 @@ await createProfile(token, {});
 - [GET /api/profile](./GET-profile.md) - Retrieve profile
 - [POST /api/profile](./POST-profile.md) - Create profile
 - [PATCH /api/profile](./PATCH-profile.md) - Update profile
-

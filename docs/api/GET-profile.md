@@ -40,11 +40,7 @@ Returns the user's profile entity with all preferences.
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "userId": "660e8400-e29b-41d4-a716-446655440001",
   "mood": "positive",
-  "blocklist": [
-    "covid",
-    "election",
-    "tabloid.com"
-  ],
+  "blocklist": ["covid", "election", "tabloid.com"],
   "createdAt": "2025-11-10T08:00:00Z",
   "updatedAt": "2025-11-15T09:00:00Z"
 }
@@ -52,14 +48,14 @@ Returns the user's profile entity with all preferences.
 
 **Response Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string (UUID) | Unique profile identifier |
-| `userId` | string (UUID) | Reference to authenticated user (matches token) |
-| `mood` | enum \| null | User's preferred mood filter: "positive", "neutral", "negative", or null (no preference) |
-| `blocklist` | array of strings | List of keywords and URL fragments to filter out |
-| `createdAt` | string (ISO 8601) | When the profile was created |
-| `updatedAt` | string (ISO 8601) | When the profile was last updated |
+| Field       | Type              | Description                                                                              |
+| ----------- | ----------------- | ---------------------------------------------------------------------------------------- |
+| `id`        | string (UUID)     | Unique profile identifier                                                                |
+| `userId`    | string (UUID)     | Reference to authenticated user (matches token)                                          |
+| `mood`      | enum \| null      | User's preferred mood filter: "positive", "neutral", "negative", or null (no preference) |
+| `blocklist` | array of strings  | List of keywords and URL fragments to filter out                                         |
+| `createdAt` | string (ISO 8601) | When the profile was created                                                             |
+| `updatedAt` | string (ISO 8601) | When the profile was last updated                                                        |
 
 ### Error Responses
 
@@ -120,17 +116,17 @@ Returned when the authenticated user doesn't have a profile yet. The frontend sh
 
 ```typescript
 async function getUserProfile(token: string) {
-  const response = await fetch('https://your-domain.com/api/profile', {
-    method: 'GET',
+  const response = await fetch("https://your-domain.com/api/profile", {
+    method: "GET",
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
   if (response.status === 200) {
     const profile = await response.json();
-    console.log('User mood:', profile.mood);
-    console.log('Blocklist items:', profile.blocklist.length);
+    console.log("User mood:", profile.mood);
+    console.log("Blocklist items:", profile.blocklist.length);
     return profile;
   } else if (response.status === 404) {
     // Profile doesn't exist - create one
@@ -145,27 +141,27 @@ async function getUserProfile(token: string) {
 ### React Example
 
 ```typescript
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 
 function useProfile() {
   const { data: session } = useSession(); // Supabase session
-  
+
   return useQuery({
-    queryKey: ['profile'],
+    queryKey: ["profile"],
     queryFn: async () => {
-      const response = await fetch('/api/profile', {
+      const response = await fetch("/api/profile", {
         headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
+          Authorization: `Bearer ${session?.access_token}`,
         },
       });
-      
+
       if (!response.ok) {
         if (response.status === 404) {
           return null; // Profile doesn't exist yet
         }
-        throw new Error('Failed to fetch profile');
+        throw new Error("Failed to fetch profile");
       }
-      
+
       return response.json();
     },
     enabled: !!session,
@@ -184,4 +180,3 @@ function useProfile() {
 - [POST /api/profile](./POST-profile.md) - Create profile
 - [PATCH /api/profile](./PATCH-profile.md) - Update profile
 - [DELETE /api/profile](./DELETE-profile.md) - Delete profile
-

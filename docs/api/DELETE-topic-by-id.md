@@ -22,9 +22,9 @@ Authorization: Bearer <service_role_token>
 
 ### Path Parameters
 
-| Parameter | Type | Required | Description | Constraints |
-|-----------|------|----------|-------------|-------------|
-| `id` | string (UUID) | Yes | Topic identifier | Valid UUID format |
+| Parameter | Type          | Required | Description      | Constraints       |
+| --------- | ------------- | -------- | ---------------- | ----------------- |
+| `id`      | string (UUID) | Yes      | Topic identifier | Valid UUID format |
 
 ### Example Request with curl
 
@@ -122,6 +122,7 @@ Returned when no topic exists with the provided ID.
 ### Cascade Deletion
 
 When deleting a topic:
+
 - The topic record is removed from `app.topics`
 - Database CASCADE automatically removes all associated records from `app.article_topics`
 - Articles themselves are not affected (only the topic associations)
@@ -139,27 +140,21 @@ When deleting a topic:
 ### TypeScript Example
 
 ```typescript
-async function deleteTopic(
-  serviceRoleToken: string,
-  topicId: string
-) {
-  const response = await fetch(
-    `https://your-domain.com/api/topics/${topicId}`,
-    {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${serviceRoleToken}`,
-      },
-    }
-  );
+async function deleteTopic(serviceRoleToken: string, topicId: string) {
+  const response = await fetch(`https://your-domain.com/api/topics/${topicId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${serviceRoleToken}`,
+    },
+  });
 
   if (response.status === 204) {
-    console.log('Topic deleted successfully');
+    console.log("Topic deleted successfully");
     return true;
   }
 
   if (response.status === 404) {
-    console.log('Topic not found');
+    console.log("Topic not found");
     return false;
   }
 
@@ -168,7 +163,7 @@ async function deleteTopic(
 }
 
 // Usage
-await deleteTopic(serviceRoleToken, '550e8400-e29b-41d4-a716-446655440000');
+await deleteTopic(serviceRoleToken, "550e8400-e29b-41d4-a716-446655440000");
 ```
 
 ### React Example - Admin Interface
@@ -233,31 +228,28 @@ function TopicAdminPanel() {
 ### Error Handling Example
 
 ```typescript
-async function deleteTopicWithErrorHandling(
-  serviceRoleToken: string,
-  topicId: string
-) {
+async function deleteTopicWithErrorHandling(serviceRoleToken: string, topicId: string) {
   try {
     const response = await fetch(`/api/topics/${topicId}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: {
-        'Authorization': `Bearer ${serviceRoleToken}`,
+        Authorization: `Bearer ${serviceRoleToken}`,
       },
     });
 
     if (response.status === 400) {
       const error = await response.json();
-      console.error('Invalid UUID format:', error.details);
-      throw new Error('Invalid topic ID format');
+      console.error("Invalid UUID format:", error.details);
+      throw new Error("Invalid topic ID format");
     }
 
     if (response.status === 401) {
       const error = await response.json();
-      if (error.code === 'AUTHENTICATION_REQUIRED') {
-        throw new Error('Service role token required');
+      if (error.code === "AUTHENTICATION_REQUIRED") {
+        throw new Error("Service role token required");
       }
-      if (error.code === 'FORBIDDEN') {
-        throw new Error('Service role required for this operation');
+      if (error.code === "FORBIDDEN") {
+        throw new Error("Service role required for this operation");
       }
     }
 
@@ -269,11 +261,11 @@ async function deleteTopicWithErrorHandling(
       return true; // Successfully deleted
     }
 
-    throw new Error('Failed to delete topic');
+    throw new Error("Failed to delete topic");
   } catch (error) {
     if (error instanceof TypeError) {
       // Network error
-      console.error('Network error:', error);
+      console.error("Network error:", error);
     }
     throw error;
   }
@@ -299,4 +291,3 @@ async function deleteTopicWithErrorHandling(
 - [GET /api/topics](./GET-topics.md) - List all topics
 - [GET /api/topics/:id](./GET-topic-by-id.md) - Get single topic
 - [POST /api/topics](./POST-topics.md) - Create topic
-

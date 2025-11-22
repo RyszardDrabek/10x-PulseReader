@@ -22,9 +22,9 @@ Authorization: Bearer <service_role_token>
 
 ### Request Body
 
-| Field | Type | Required | Description | Constraints |
-|-------|------|----------|-------------|-------------|
-| `name` | string | Yes | Topic name | Min: 1 character, Max: 500 characters, trimmed |
+| Field  | Type   | Required | Description | Constraints                                    |
+| ------ | ------ | -------- | ----------- | ---------------------------------------------- |
+| `name` | string | Yes      | Topic name  | Min: 1 character, Max: 500 characters, trimmed |
 
 ### Example Request
 
@@ -75,12 +75,12 @@ Returned when a topic with the same name (case-insensitive) already exists. The 
 
 **Response Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string (UUID) | Unique topic identifier |
-| `name` | string | Topic name (may differ in case from request) |
-| `createdAt` | string (ISO 8601) | When the topic was created |
-| `updatedAt` | string (ISO 8601) | When the topic was last updated |
+| Field       | Type              | Description                                  |
+| ----------- | ----------------- | -------------------------------------------- |
+| `id`        | string (UUID)     | Unique topic identifier                      |
+| `name`      | string            | Topic name (may differ in case from request) |
+| `createdAt` | string (ISO 8601) | When the topic was created                   |
+| `updatedAt` | string (ISO 8601) | When the topic was last updated              |
 
 ### Error Responses
 
@@ -103,6 +103,7 @@ Returned when the request body fails validation.
 ```
 
 **Common validation errors:**
+
 - `name` is missing
 - `name` is empty string
 - `name` exceeds 500 characters
@@ -168,6 +169,7 @@ Returned when the authenticated user is not a service role.
 ### Upsert Behavior
 
 The endpoint implements an "upsert" pattern:
+
 - **Case-insensitive matching**: "Technology", "technology", and "TECHNOLOGY" are considered the same topic
 - **Idempotent**: Multiple calls with the same name return the same topic
 - **Status codes**: 201 for new topics, 200 for existing topics
@@ -186,15 +188,12 @@ This enables idempotent topic creation for AI analysis jobs that may attempt to 
 ### TypeScript Example - AI Analysis Job
 
 ```typescript
-async function createTopicIfNotExists(
-  serviceRoleToken: string,
-  topicName: string
-) {
-  const response = await fetch('https://your-domain.com/api/topics', {
-    method: 'POST',
+async function createTopicIfNotExists(serviceRoleToken: string, topicName: string) {
+  const response = await fetch("https://your-domain.com/api/topics", {
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${serviceRoleToken}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${serviceRoleToken}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ name: topicName }),
   });
@@ -206,19 +205,16 @@ async function createTopicIfNotExists(
 
   const topic = await response.json();
   const wasCreated = response.status === 201;
-  
-  console.log(
-    wasCreated ? 'Created new topic' : 'Topic already exists',
-    topic.id
-  );
-  
+
+  console.log(wasCreated ? "Created new topic" : "Topic already exists", topic.id);
+
   return topic;
 }
 
 // Usage in AI analysis job
 async function analyzeArticle(article: Article) {
   const topics = extractTopics(article); // AI analysis
-  
+
   for (const topicName of topics) {
     // Idempotent - safe to call multiple times
     await createTopicIfNotExists(serviceRoleToken, topicName);
@@ -229,21 +225,14 @@ async function analyzeArticle(article: Article) {
 ### Batch Topic Creation Example
 
 ```typescript
-async function createTopicsBatch(
-  serviceRoleToken: string,
-  topicNames: string[]
-) {
-  const results = await Promise.allSettled(
-    topicNames.map((name) =>
-      createTopicIfNotExists(serviceRoleToken, name)
-    )
-  );
+async function createTopicsBatch(serviceRoleToken: string, topicNames: string[]) {
+  const results = await Promise.allSettled(topicNames.map((name) => createTopicIfNotExists(serviceRoleToken, name)));
 
-  const created = results.filter((r) => r.status === 'fulfilled').length;
-  const errors = results.filter((r) => r.status === 'rejected').length;
+  const created = results.filter((r) => r.status === "fulfilled").length;
+  const errors = results.filter((r) => r.status === "rejected").length;
 
   console.log(`Created/found ${created} topics, ${errors} errors`);
-  
+
   return results;
 }
 ```
@@ -251,45 +240,42 @@ async function createTopicsBatch(
 ### Error Handling Example
 
 ```typescript
-async function createTopicWithErrorHandling(
-  serviceRoleToken: string,
-  topicName: string
-) {
+async function createTopicWithErrorHandling(serviceRoleToken: string, topicName: string) {
   try {
-    const response = await fetch('/api/topics', {
-      method: 'POST',
+    const response = await fetch("/api/topics", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${serviceRoleToken}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${serviceRoleToken}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ name: topicName }),
     });
 
     if (response.status === 400) {
       const error = await response.json();
-      console.error('Validation error:', error.details);
-      throw new Error('Invalid topic name');
+      console.error("Validation error:", error.details);
+      throw new Error("Invalid topic name");
     }
 
     if (response.status === 401) {
       const error = await response.json();
-      if (error.code === 'AUTHENTICATION_REQUIRED') {
-        throw new Error('Service role token required');
+      if (error.code === "AUTHENTICATION_REQUIRED") {
+        throw new Error("Service role token required");
       }
-      if (error.code === 'FORBIDDEN') {
-        throw new Error('Service role required for this operation');
+      if (error.code === "FORBIDDEN") {
+        throw new Error("Service role required for this operation");
       }
     }
 
     if (!response.ok) {
-      throw new Error('Failed to create topic');
+      throw new Error("Failed to create topic");
     }
 
     return await response.json();
   } catch (error) {
     if (error instanceof TypeError) {
       // Network error
-      console.error('Network error:', error);
+      console.error("Network error:", error);
     }
     throw error;
   }
@@ -315,4 +301,3 @@ async function createTopicWithErrorHandling(
 - [GET /api/topics](./GET-topics.md) - List all topics
 - [GET /api/topics/:id](./GET-topic-by-id.md) - Get single topic
 - [DELETE /api/topics/:id](./DELETE-topic-by-id.md) - Delete topic
-

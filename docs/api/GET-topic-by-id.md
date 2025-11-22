@@ -16,9 +16,9 @@ This endpoint is publicly accessible and does not require authentication.
 
 ### Path Parameters
 
-| Parameter | Type | Required | Description | Constraints |
-|-----------|------|----------|-------------|-------------|
-| `id` | string (UUID) | Yes | Topic identifier | Valid UUID format |
+| Parameter | Type          | Required | Description      | Constraints       |
+| --------- | ------------- | -------- | ---------------- | ----------------- |
+| `id`      | string (UUID) | Yes      | Topic identifier | Valid UUID format |
 
 ### Example Request with curl
 
@@ -43,11 +43,11 @@ Returns the topic entity.
 
 **Response Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string (UUID) | Unique topic identifier |
-| `name` | string | Topic name |
-| `createdAt` | string (ISO 8601) | When the topic was created |
+| Field       | Type              | Description                     |
+| ----------- | ----------------- | ------------------------------- |
+| `id`        | string (UUID)     | Unique topic identifier         |
+| `name`      | string            | Topic name                      |
+| `createdAt` | string (ISO 8601) | When the topic was created      |
 | `updatedAt` | string (ISO 8601) | When the topic was last updated |
 
 ### Error Responses
@@ -114,9 +114,7 @@ Returned when no topic exists with the provided ID.
 
 ```typescript
 async function getTopicById(topicId: string) {
-  const response = await fetch(
-    `https://your-domain.com/api/topics/${topicId}`
-  );
+  const response = await fetch(`https://your-domain.com/api/topics/${topicId}`);
 
   if (response.status === 404) {
     return null; // Topic not found
@@ -131,7 +129,7 @@ async function getTopicById(topicId: string) {
 }
 
 // Usage
-const topic = await getTopicById('550e8400-e29b-41d4-a716-446655440000');
+const topic = await getTopicById("550e8400-e29b-41d4-a716-446655440000");
 if (topic) {
   console.log(`Topic: ${topic.name}`);
 }
@@ -149,15 +147,15 @@ function useTopic(topicId: string | null) {
       if (!topicId) return null;
 
       const response = await fetch(`/api/topics/${topicId}`);
-      
+
       if (response.status === 404) {
         return null;
       }
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch topic');
       }
-      
+
       return response.json();
     },
     enabled: !!topicId,
@@ -187,26 +185,26 @@ function TopicDisplay({ topicId }: { topicId: string }) {
 async function getTopicWithErrorHandling(topicId: string) {
   try {
     const response = await fetch(`/api/topics/${topicId}`);
-    
+
     if (response.status === 400) {
       const error = await response.json();
-      console.error('Invalid UUID format:', error.details);
-      throw new Error('Invalid topic ID format');
+      console.error("Invalid UUID format:", error.details);
+      throw new Error("Invalid topic ID format");
     }
-    
+
     if (response.status === 404) {
       return null; // Topic doesn't exist
     }
-    
+
     if (!response.ok) {
-      throw new Error('Failed to fetch topic');
+      throw new Error("Failed to fetch topic");
     }
-    
+
     return await response.json();
   } catch (error) {
     if (error instanceof TypeError) {
       // Network error
-      console.error('Network error:', error);
+      console.error("Network error:", error);
     }
     throw error;
   }
@@ -231,4 +229,3 @@ async function getTopicWithErrorHandling(topicId: string) {
 - [GET /api/topics](./GET-topics.md) - List all topics
 - [POST /api/topics](./POST-topics.md) - Create topic (service role)
 - [DELETE /api/topics/:id](./DELETE-topic-by-id.md) - Delete topic (service role)
-

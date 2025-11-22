@@ -14,8 +14,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
+          node-version-file: ".nvmrc"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -34,15 +34,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
+          node-version-file: ".nvmrc"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run unit tests
         run: npm run test
-
 
   e2e-test:
     name: E2E Tests
@@ -51,7 +50,7 @@ jobs:
     # Secrets are accessed from the 'integration' environment
     # Ensure these secrets are configured in: Settings → Environments → integration
     environment: integration
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -60,7 +59,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -92,5 +91,3 @@ jobs:
           name: playwright-test-results
           path: test-results/
           retention-days: 30
-
-          

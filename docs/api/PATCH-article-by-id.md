@@ -20,28 +20,25 @@ Authorization: Bearer <service_role_jwt_token>
 
 ### Path Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string (UUID) | Yes | The unique identifier of the article to update |
+| Parameter | Type          | Required | Description                                    |
+| --------- | ------------- | -------- | ---------------------------------------------- |
+| `id`      | string (UUID) | Yes      | The unique identifier of the article to update |
 
 ### Request Body
 
 All fields are optional. Only provided fields will be updated.
 
-| Field | Type | Required | Description | Constraints |
-|-------|------|----------|-------------|-------------|
-| `sentiment` | enum \| null | No | AI-analyzed sentiment | One of: "positive", "neutral", "negative", or null |
-| `topicIds` | array of UUIDs | No | IDs of topics to associate | Max 20 topics, all must exist in `topics` table |
+| Field       | Type           | Required | Description                | Constraints                                        |
+| ----------- | -------------- | -------- | -------------------------- | -------------------------------------------------- |
+| `sentiment` | enum \| null   | No       | AI-analyzed sentiment      | One of: "positive", "neutral", "negative", or null |
+| `topicIds`  | array of UUIDs | No       | IDs of topics to associate | Max 20 topics, all must exist in `topics` table    |
 
 ### Example Request
 
 ```json
 {
   "sentiment": "neutral",
-  "topicIds": [
-    "f1e2d3c4-b5a6-7890-fedc-ba0987654321",
-    "a9b8c7d6-e5f4-3210-abcd-ef9876543210"
-  ]
+  "topicIds": ["f1e2d3c4-b5a6-7890-fedc-ba0987654321", "a9b8c7d6-e5f4-3210-abcd-ef9876543210"]
 }
 ```
 
@@ -99,6 +96,7 @@ Returned when the request body fails validation.
 ```
 
 **Common validation errors:**
+
 - Invalid UUID format for article ID in path
 - Invalid sentiment value (not in enum)
 - Invalid UUID format in topicIds array
@@ -176,11 +174,13 @@ Returned when the article with the specified ID does not exist.
 ### Topic Associations Update Behavior
 
 When `topicIds` is provided:
+
 - All existing topic associations for the article are deleted
 - New associations are created with the provided topic IDs
 - If topic association creation fails, the article update is rolled back
 
 When `topicIds` is not provided:
+
 - Existing topic associations remain unchanged
 - Only article fields (like sentiment) are updated
 
@@ -193,28 +193,27 @@ The implementation uses a rollback mechanism: if topic associations fail after a
 ### TypeScript Example
 
 ```typescript
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client with service role key
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 async function updateArticleAnalysis(
   articleId: string,
-  sentiment: 'positive' | 'neutral' | 'negative' | null,
+  sentiment: "positive" | "neutral" | "negative" | null,
   topicIds: string[]
 ) {
   // Get service role token
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
 
   const response = await fetch(`https://your-domain.com/api/articles/${articleId}`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       sentiment,
@@ -224,14 +223,14 @@ async function updateArticleAnalysis(
 
   if (response.status === 200) {
     const article = await response.json();
-    console.log('Article updated:', article.id);
+    console.log("Article updated:", article.id);
     return article;
   } else if (response.status === 404) {
-    console.log('Article not found');
+    console.log("Article not found");
     return null;
   } else {
     const error = await response.json();
-    console.error('Failed to update article:', error);
+    console.error("Failed to update article:", error);
     throw new Error(error.error);
   }
 }
@@ -251,4 +250,3 @@ When using this endpoint in an AI analysis job:
 - [GET /api/articles/:id](./GET-article-by-id.md) - Get specific article
 - [POST /api/articles](./POST-articles.md) - Create article (service role)
 - [DELETE /api/articles/:id](./DELETE-article-by-id.md) - Delete article (service role)
-
