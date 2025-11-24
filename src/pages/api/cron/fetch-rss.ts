@@ -124,9 +124,11 @@ export const POST: APIRoute = async (context) => {
       }
 
       // Limit sources to prevent hitting Cloudflare's 50 subrequest limit
-      // Each source: 1 HTTP fetch + N article creates (each = 1 DB call = 1 HTTP request) + 1 status update
-      // With 5 sources × 5 articles = 5 fetches + 25 creates + 5 updates = 35 requests (under 50 limit)
-      const MAX_SOURCES_PER_RUN = 5;
+      // Strategy: Process ALL articles from fewer sources to ensure completeness
+      // Each source: 1 HTTP fetch + N article creates (each = 1 DB call = 1 HTTP request)
+      // With 2 sources × 15 articles = 2 fetches + 30 creates = 32 requests (well under 50 limit)
+      // This ensures each source is fully processed before moving to the next
+      const MAX_SOURCES_PER_RUN = 2;
       const sourcesToProcess = activeSources.slice(0, MAX_SOURCES_PER_RUN);
       const skippedSources = activeSources.length - sourcesToProcess.length;
 
@@ -138,16 +140,37 @@ export const POST: APIRoute = async (context) => {
       });
 
       // Process each source sequentially
+      // Track total requests to stay under Cloudflare's 50 subrequest limit
+      // Each RSS fetch = 1 request, each article create = 1 request
+      const MAX_SUBREQUESTS = 45; // Leave buffer under 50 limit
+      let totalSubrequests = 0;
+
       const results = {
-        processed: sourcesToProcess.length,
+        processed: 0,
         succeeded: 0,
         failed: 0,
         articlesCreated: 0,
         errors: [] as { sourceId: string; sourceName: string; error: string }[],
-        skippedSources,
+        skippedSources: 0,
+        skippedArticles: [] as { sourceId: string; sourceName: string; skippedCount: number }[],
+        hasMoreWork: false,
+        stoppedEarly: false,
       };
 
       for (const source of sourcesToProcess) {
+        // Check if we're approaching the subrequest limit
+        if (totalSubrequests >= MAX_SUBREQUESTS) {
+          results.stoppedEarly = true;
+          results.skippedSources = activeSources.length - results.processed;
+          results.hasMoreWork = true;
+          logger.warn("Stopped processing early due to subrequest limit", {
+            endpoint: "POST /api/cron/fetch-rss",
+            processedSources: results.processed,
+            totalSubrequests,
+            remainingSources: activeSources.length - results.processed,
+          });
+          break;
+        }
         try {
           logger.info("Processing RSS source", {
             endpoint: "POST /api/cron/fetch-rss",
@@ -156,12 +179,19 @@ export const POST: APIRoute = async (context) => {
             sourceUrl: source.url,
           });
 
-          // Fetch and parse RSS feed
+          // Add small delay between sources to be gentle on rate limits
+          // Skip delay for first source
+          if (results.processed > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
+          }
+
+          // Fetch and parse RSS feed (1 subrequest)
+          totalSubrequests++;
           const fetchResult = await rssFetchService.fetchRssFeed(source.url);
 
           if (!fetchResult.success) {
-            // Update source with error
-            await rssSourceService.updateFetchStatus(source.id, false, fetchResult.error);
+            // Skip status update to save subrequests
+            // await rssSourceService.updateFetchStatus(source.id, false, fetchResult.error);
             results.failed++;
             results.errors.push({
               sourceId: source.id,
@@ -176,18 +206,44 @@ export const POST: APIRoute = async (context) => {
               error: fetchResult.error,
             });
 
+            results.processed++;
             continue;
           }
 
-          // Process each article from the feed
-          // Limit articles per source to prevent hitting Cloudflare's 50 subrequest limit
-          // Each article creation = 1 database call = 1 HTTP subrequest
-          const MAX_ARTICLES_PER_SOURCE = 5;
-          const itemsToProcess = fetchResult.items.slice(0, MAX_ARTICLES_PER_SOURCE);
-          
+          // Process ALL articles from this source to ensure completeness
+          // Process articles until we approach the subrequest limit
           let articlesCreatedForSource = 0;
-          for (const item of itemsToProcess) {
+          
+          // Process all articles, but stop if we're running out of requests
+          for (const item of fetchResult.items) {
+            // Check if we have enough requests left (need at least 1 for this article)
+            if (totalSubrequests >= MAX_SUBREQUESTS) {
+              const skippedCount = fetchResult.items.length - articlesCreatedForSource;
+              if (skippedCount > 0) {
+                logger.warn("Stopped processing articles due to subrequest limit", {
+                  endpoint: "POST /api/cron/fetch-rss",
+                  sourceId: source.id,
+                  processedArticles: articlesCreatedForSource,
+                  skippedArticles: skippedCount,
+                  totalSubrequests,
+                });
+                results.skippedArticles.push({
+                  sourceId: source.id,
+                  sourceName: source.name,
+                  skippedCount,
+                });
+              }
+              break;
+            }
+
             try {
+              // Add small delay between article creations to be gentle on rate limits
+              // Skip delay for first article
+              if (articlesCreatedForSource > 0) {
+                await new Promise((resolve) => setTimeout(resolve, 100)); // 100ms delay
+              }
+
+              totalSubrequests++; // Count this article creation
               await articleService.createArticle({
                 sourceId: source.id,
                 title: item.title,
@@ -201,11 +257,13 @@ export const POST: APIRoute = async (context) => {
             } catch (error) {
               // Handle duplicate articles (409 Conflict) as success
               if (error instanceof Error && error.message === "ARTICLE_ALREADY_EXISTS") {
-                // Article already exists, treat as success
+                // Article already exists, treat as success (but don't count as subrequest since it failed early)
+                totalSubrequests--; // Don't count failed requests
                 continue;
               }
 
               // Log other errors but continue processing
+              totalSubrequests--; // Don't count failed requests
               logger.warn("Failed to create article", {
                 endpoint: "POST /api/cron/fetch-rss",
                 sourceId: source.id,
@@ -214,19 +272,11 @@ export const POST: APIRoute = async (context) => {
               });
             }
           }
-          
-          if (fetchResult.items.length > MAX_ARTICLES_PER_SOURCE) {
-            logger.info("Limited articles processed per source", {
-              endpoint: "POST /api/cron/fetch-rss",
-              sourceId: source.id,
-              totalItems: fetchResult.items.length,
-              processedItems: MAX_ARTICLES_PER_SOURCE,
-            });
-          }
 
-          // Update source with success
-          await rssSourceService.updateFetchStatus(source.id, true);
+          // Skip status update to save subrequests - will update in batch at end if needed
+          // await rssSourceService.updateFetchStatus(source.id, true);
           results.succeeded++;
+          results.processed++;
 
           logger.info("Successfully processed RSS source", {
             endpoint: "POST /api/cron/fetch-rss",
@@ -236,9 +286,11 @@ export const POST: APIRoute = async (context) => {
           });
         } catch (error) {
           // Handle unexpected errors for this source
+          // Skip status update to save subrequests
           const errorMessage = error instanceof Error ? error.message : String(error);
-          await rssSourceService.updateFetchStatus(source.id, false, errorMessage);
+          // await rssSourceService.updateFetchStatus(source.id, false, errorMessage);
           results.failed++;
+          results.processed++;
           results.errors.push({
             sourceId: source.id,
             sourceName: source.name,
@@ -253,9 +305,14 @@ export const POST: APIRoute = async (context) => {
         }
       }
 
+      // Calculate remaining sources
+      results.skippedSources = activeSources.length - results.processed;
+      results.hasMoreWork = results.skippedSources > 0 || results.stoppedEarly;
+
       logger.info("RSS feed fetch job completed", {
         endpoint: "POST /api/cron/fetch-rss",
         ...results,
+        totalSubrequests,
       });
 
       // Return summary
