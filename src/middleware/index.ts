@@ -131,90 +131,125 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
 
         if (supabaseUrl && supabaseKey) {
           try {
-            // Create a client to verify the JWT token
-            const { createClient } = await import("@supabase/supabase-js");
-            const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
-              auth: {
-                autoRefreshToken: false,
-                persistSession: false,
-              },
-            });
+            // First, decode JWT to check if it's a service_role token
+            let isServiceRoleToken = false;
+            let tokenPayload: { role?: string; exp?: number; iss?: string; ref?: string } | null = null;
 
-            // Verify the JWT token by calling getUser with the token
-            const {
-              data: { user },
-              error: authError,
-            } = await supabase.auth.getUser(token);
+            try {
+              const tokenParts = token.split(".");
+              if (tokenParts.length === 3) {
+                tokenPayload = JSON.parse(decodeBase64Url(tokenParts[1]));
+                isServiceRoleToken = tokenPayload.role === "service_role";
 
-            if (user && !authError) {
-              // Check if this is a service_role token by examining the token claims
-              // Decode JWT to check role (without verification, we already verified above)
-              let userRole = "authenticated";
-              try {
-                const tokenParts = token.split(".");
-                if (tokenParts.length === 3) {
-                  const payload = JSON.parse(decodeBase64Url(tokenParts[1]));
-                  if (payload.role === "service_role") {
-                    userRole = "service_role";
-                    // For service_role, use service role key for the client
-                    const serviceRoleKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-                    if (serviceRoleKey) {
-                      const serviceSupabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
-                        auth: {
-                          autoRefreshToken: false,
-                          persistSession: false,
-                        },
-                      });
-                      locals.supabase = serviceSupabase;
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      locals.user = { ...user, role: "service_role" } as any;
-                    } else {
-                      locals.supabase = supabase;
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      locals.user = { ...user, role: "service_role" } as any;
-                    }
-                  } else {
-                    locals.supabase = supabase;
-                    locals.user = user;
+                // Check token expiration
+                if (tokenPayload.exp) {
+                  const expirationTime = tokenPayload.exp * 1000; // Convert to milliseconds
+                  if (Date.now() > expirationTime) {
+                    cfLogger.trace("AUTH_JWT_EXPIRED");
+                    reqLogger.debug("JWT token has expired");
+                    throw new Error("Token expired");
                   }
-                } else {
-                  locals.supabase = supabase;
-                  locals.user = user;
                 }
-              } catch {
-                // If we can't decode, just use the verified user
+
+                // Verify issuer matches Supabase
+                if (tokenPayload.iss && !tokenPayload.iss.includes("supabase")) {
+                  cfLogger.trace("AUTH_JWT_INVALID_ISSUER");
+                  reqLogger.debug("JWT token has invalid issuer");
+                  throw new Error("Invalid token issuer");
+                }
+              }
+            } catch (decodeError) {
+              cfLogger.trace("AUTH_JWT_DECODE_ERROR", {
+                error: decodeError instanceof Error ? decodeError.message : String(decodeError),
+              });
+              reqLogger.debug("Error decoding JWT token", { error: decodeError });
+              // Fall through to try getUser() verification
+            }
+
+            // Handle service_role JWT tokens
+            if (isServiceRoleToken && tokenPayload) {
+              const serviceRoleKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+              if (serviceRoleKey) {
+                const { createClient } = await import("@supabase/supabase-js");
+                const serviceSupabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
+                  auth: {
+                    autoRefreshToken: false,
+                    persistSession: false,
+                  },
+                });
+                locals.supabase = serviceSupabase;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                locals.user = { role: "service_role" } as any;
+
+                cfLogger.trace("AUTH_SERVICE_ROLE_JWT_SUCCESS");
+                reqLogger.debug("Service role JWT token authenticated", {
+                  ref: tokenPayload.ref,
+                });
+
+                // Skip auth check for public paths
+                if (isPublicPath(url.pathname, request.method)) {
+                  return next();
+                }
+
+                // For API routes, let the route handler decide
+                if (url.pathname.startsWith("/api/")) {
+                  return next();
+                }
+
+                return next();
+              } else {
+                cfLogger.trace("AUTH_SERVICE_ROLE_KEY_MISSING");
+                reqLogger.warn("Service role JWT token detected but SUPABASE_SERVICE_ROLE_KEY is not configured");
+                // Fall through to normal auth flow
+              }
+            } else {
+              // Try to verify as regular user JWT token
+              const { createClient } = await import("@supabase/supabase-js");
+              const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+                auth: {
+                  autoRefreshToken: false,
+                  persistSession: false,
+                },
+              });
+
+              // Verify the JWT token by calling getUser with the token
+              const {
+                data: { user },
+                error: authError,
+              } = await supabase.auth.getUser(token);
+
+              if (user && !authError) {
                 locals.supabase = supabase;
                 locals.user = user;
+
+                cfLogger.trace("AUTH_USER_SUCCESS", { userId: user.id });
+                reqLogger.debug("User authenticated via Bearer token", {
+                  userId: user.id,
+                  userEmail: user.email,
+                });
+
+                // Skip auth check for public paths
+                if (isPublicPath(url.pathname, request.method)) {
+                  return next();
+                }
+
+                // For API routes, let the route handler decide
+                if (url.pathname.startsWith("/api/")) {
+                  return next();
+                }
+
+                // For protected routes, continue
+                const result = await next();
+                cfLogger.trace("REQUEST_COMPLETE");
+                return result;
+              } else {
+                cfLogger.trace("AUTH_JWT_VERIFICATION_FAILED", {
+                  error: authError?.message,
+                });
+                reqLogger.debug("JWT token verification failed", {
+                  error: authError?.message,
+                });
               }
-
-              cfLogger.trace("AUTH_USER_SUCCESS", { userId: user.id, role: userRole });
-              reqLogger.debug("User authenticated via Bearer token", {
-                userId: user.id,
-                userEmail: user.email,
-                role: userRole,
-              });
-
-              // Skip auth check for public paths
-              if (isPublicPath(url.pathname, request.method)) {
-                return next();
-              }
-
-              // For API routes, let the route handler decide
-              if (url.pathname.startsWith("/api/")) {
-                return next();
-              }
-
-              // For protected routes, continue
-              const result = await next();
-              cfLogger.trace("REQUEST_COMPLETE");
-              return result;
-            } else {
-              cfLogger.trace("AUTH_JWT_VERIFICATION_FAILED", {
-                error: authError?.message,
-              });
-              reqLogger.debug("JWT token verification failed", {
-                error: authError?.message,
-              });
             }
           } catch (jwtError) {
             cfLogger.trace("AUTH_JWT_ERROR", {
