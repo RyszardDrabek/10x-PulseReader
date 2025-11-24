@@ -266,7 +266,27 @@ export const POST: APIRoute = async (context) => {
         endpoint: "POST /api/articles",
         bodyLength: rawBody.length,
         bodyPreview: rawBody.substring(0, 200),
+        contentType: context.request.headers.get("Content-Type"),
+        contentLength: context.request.headers.get("Content-Length"),
       });
+      
+      // Check if body is empty
+      if (!rawBody || rawBody.trim().length === 0) {
+        logger.warn("Empty request body", {
+          endpoint: "POST /api/articles",
+        });
+        return new Response(
+          JSON.stringify({
+            error: "Request body is required",
+            code: "MISSING_BODY",
+            timestamp: new Date().toISOString(),
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
       
       // Try to parse as JSON
       body = JSON.parse(rawBody);
@@ -275,6 +295,7 @@ export const POST: APIRoute = async (context) => {
         logger.warn("Invalid JSON in request body", {
           endpoint: "POST /api/articles",
           error: error.message,
+          rawBody: rawBody?.substring(0, 500),
         });
 
         return new Response(
