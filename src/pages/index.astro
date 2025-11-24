@@ -11,8 +11,8 @@ let initialArticles;
 if (supabase) {
   try {
     const articleService = new ArticleService(supabase);
-    initialArticles = await articleService.getArticles({ 
-      limit: 20, 
+    initialArticles = await articleService.getArticles({
+      limit: 20,
       offset: 0,
       sortBy: "publication_date",
       sortOrder: "desc",

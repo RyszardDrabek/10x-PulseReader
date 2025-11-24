@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { test, expect } from "@playwright/test";
 import { HomePage } from "./page-objects/HomePage";
 
@@ -152,7 +153,7 @@ test.describe("Homepage", () => {
   test("should trigger API request when scrolling to last article", async ({ page }) => {
     // Arrange
     const homepage = new HomePage(page);
-    
+
     // Track network requests
     const articleRequests: string[] = [];
     page.on("request", (request) => {
@@ -167,7 +168,7 @@ test.describe("Homepage", () => {
     await homepage.waitForArticleList();
 
     const initialCount = await homepage.getArticleCount();
-    
+
     if (initialCount === 0) {
       test.skip();
       return;
@@ -180,13 +181,13 @@ test.describe("Homepage", () => {
     // Act - Scroll to trigger IntersectionObserver
     const lastArticle = homepage.getLastArticleCard();
     await homepage.scrollToElement(lastArticle);
-    
+
     // Wait for IntersectionObserver to potentially trigger
     await page.waitForTimeout(2000);
 
     // Scroll to bottom
     await homepage.scrollToBottom();
-    
+
     // Wait for potential network request (with timeout)
     try {
       await homepage.waitForArticleLoad(5000);
@@ -201,14 +202,14 @@ test.describe("Homepage", () => {
     // Assert
     const finalRequestCount = articleRequests.length;
     const finalCount = await homepage.getArticleCount();
-    
+
     console.log(`Final API requests: ${finalRequestCount}`);
     console.log(`Final article count: ${finalCount}`);
 
     // Check if a new request was made (indicating IntersectionObserver triggered)
     // OR if we already have all articles (hasMore = false)
     const hasNoMore = await homepage.hasNoMoreArticlesMessage();
-    
+
     if (hasNoMore) {
       // If we see "no more articles", that's fine - we've reached the end
       console.log("Reached end - no more articles to load");

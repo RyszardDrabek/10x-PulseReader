@@ -49,9 +49,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
   const sanitizedDescription = DOMPurify.sanitize(truncateDescription(article.description));
 
   // Clean and validate the link - strip any CDATA tags that might have been missed
-  const cleanLink = article.link
-    ? article.link.replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim()
-    : "#";
+  const cleanLink = article.link ? article.link.replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim() : "#";
 
   // Ensure link is a valid URL, otherwise use "#" to prevent navigation errors
   let href = cleanLink;

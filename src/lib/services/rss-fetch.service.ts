@@ -51,19 +51,19 @@ export class RssFetchService {
       // First, try to detect encoding from XML declaration or Content-Type header
       const contentType = response.headers.get("content-type") || "";
       let xmlText: string;
-      
+
       // Get as array buffer to manually decode if needed
       const arrayBuffer = await response.arrayBuffer();
-      
+
       // Try to detect encoding from XML declaration (first 100 bytes should be enough)
       const preview = new TextDecoder("utf-8", { fatal: false }).decode(
         arrayBuffer.slice(0, Math.min(100, arrayBuffer.byteLength))
       );
-      
+
       // Check XML declaration for encoding
       const xmlEncodingMatch = preview.match(/<\?xml[^>]*encoding=["']([^"']+)["']/i);
       const xmlEncoding = xmlEncodingMatch?.[1]?.toLowerCase();
-      
+
       // Determine encoding: XML declaration > Content-Type header > UTF-8 default
       let encoding = "utf-8";
       if (xmlEncoding) {
@@ -74,7 +74,7 @@ export class RssFetchService {
           encoding = charsetMatch[1].trim().toLowerCase();
         }
       }
-      
+
       // Decode with detected encoding, fallback to UTF-8
       try {
         const decoder = new TextDecoder(encoding, { fatal: false });
@@ -84,7 +84,7 @@ export class RssFetchService {
         const decoder = new TextDecoder("utf-8", { fatal: false });
         xmlText = decoder.decode(arrayBuffer);
       }
-      
+
       const items = this.parseRssXml(xmlText);
 
       logger.info("RSS feed fetched successfully", {
@@ -263,7 +263,7 @@ export class RssFetchService {
       itemXml.match(/<link[^>]*href=["']([^"']+)["'][^>]*\/?>/i);
     let link = linkMatch?.[1]?.trim();
     if (!link) return null;
-    
+
     // Strip CDATA tags from link (same as title)
     link = link.replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim();
 

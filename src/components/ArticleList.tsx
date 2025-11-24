@@ -155,7 +155,7 @@ export default function ArticleList({
 
   useEffect(() => {
     const prevPersonalization = prevPersonalizationRef.current;
-    
+
     // Only update if personalization actually changed
     if (prevPersonalization !== isPersonalized) {
       setUsePersonalization(isPersonalized);
@@ -185,11 +185,7 @@ export default function ArticleList({
         observerRef.current = new IntersectionObserver(
           (entries) => {
             // Check conditions using refs to get latest values
-            if (
-              entries[0].isIntersecting &&
-              hasMoreRef.current &&
-              !loadingRef.current
-            ) {
+            if (entries[0].isIntersecting && hasMoreRef.current && !loadingRef.current) {
               fetchArticles(currentOffsetRef.current, true);
             }
           },
@@ -203,7 +199,6 @@ export default function ArticleList({
     },
     [fetchArticles]
   );
-
 
   const isEmpty = articles.length === 0 && !loading && !error;
   if (isEmpty) {
