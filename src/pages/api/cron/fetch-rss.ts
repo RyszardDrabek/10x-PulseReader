@@ -99,7 +99,8 @@ export const POST: APIRoute = async (context) => {
       const rssFetchService = new RssFetchService();
       const articleService = new ArticleService(supabase);
 
-      // Fetch all active RSS sources
+      // Fetch all active RSS sources (ordered by last_fetched_at ascending, nulls first)
+      // This ensures sources that haven't been fetched recently are prioritized
       const activeSources = await rssSourceService.getActiveRssSources();
 
       if (activeSources.length === 0) {
@@ -115,6 +116,7 @@ export const POST: APIRoute = async (context) => {
             failed: 0,
             articlesCreated: 0,
             errors: [],
+            hasMoreWork: false,
           }),
           {
             status: 200,
@@ -131,6 +133,15 @@ export const POST: APIRoute = async (context) => {
       const MAX_SOURCES_PER_RUN = 2;
       const sourcesToProcess = activeSources.slice(0, MAX_SOURCES_PER_RUN);
       const skippedSources = activeSources.length - sourcesToProcess.length;
+
+      logger.info("Source selection for processing", {
+        endpoint: "POST /api/cron/fetch-rss",
+        totalSources: activeSources.length,
+        processingSources: sourcesToProcess.map((s) => ({ id: s.id, name: s.name, lastFetchedAt: s.lastFetchedAt })),
+        skippedSources: activeSources
+          .slice(MAX_SOURCES_PER_RUN)
+          .map((s) => ({ id: s.id, name: s.name, lastFetchedAt: s.lastFetchedAt })),
+      });
 
       logger.info("Found active RSS sources", {
         endpoint: "POST /api/cron/fetch-rss",
@@ -213,7 +224,7 @@ export const POST: APIRoute = async (context) => {
           // Process ALL articles from this source to ensure completeness
           // Process articles until we approach the subrequest limit
           let articlesCreatedForSource = 0;
-          
+
           // Process all articles, but stop if we're running out of requests
           for (const item of fetchResult.items) {
             // Check if we have enough requests left (need at least 1 for this article)
@@ -314,7 +325,7 @@ export const POST: APIRoute = async (context) => {
       if (results.succeeded > 0 && totalSubrequests < MAX_SUBREQUESTS - 1) {
         const succeededSourceIds = sourcesToProcess
           .slice(0, results.processed)
-          .filter((source, index) => {
+          .filter((source) => {
             // Check if this source succeeded (not in errors array)
             return !results.errors.some((err) => err.sourceId === source.id);
           })
@@ -374,13 +385,14 @@ export const POST: APIRoute = async (context) => {
       });
 
       // Include error details for debugging (even in production for this endpoint)
-      const errorDetails = error instanceof Error 
-        ? { 
-            message: error.message, 
-            stack: error.stack?.split('\n').slice(0, 5).join('\n'), // First 5 lines of stack
-            name: error.name,
-          } 
-        : { message: String(error) };
+      const errorDetails =
+        error instanceof Error
+          ? {
+              message: error.message,
+              stack: error.stack?.split("\n").slice(0, 5).join("\n"), // First 5 lines of stack
+              name: error.name,
+            }
+          : { message: String(error) };
 
       return new Response(
         JSON.stringify({
@@ -401,13 +413,14 @@ export const POST: APIRoute = async (context) => {
       endpoint: "POST /api/cron/fetch-rss",
     });
 
-    const errorDetails = outerError instanceof Error 
-      ? { 
-          message: outerError.message, 
-          stack: outerError.stack?.split('\n').slice(0, 5).join('\n'),
-          name: outerError.name,
-        } 
-      : { message: String(outerError) };
+    const errorDetails =
+      outerError instanceof Error
+        ? {
+            message: outerError.message,
+            stack: outerError.stack?.split("\n").slice(0, 5).join("\n"),
+            name: outerError.name,
+          }
+        : { message: String(outerError) };
 
     return new Response(
       JSON.stringify({

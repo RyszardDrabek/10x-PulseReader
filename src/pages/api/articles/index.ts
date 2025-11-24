@@ -259,17 +259,11 @@ export const POST: APIRoute = async (context) => {
   let body: unknown;
   try {
     // Parse request body
+    let rawBody: string;
     try {
-      // Debug: Log raw body for troubleshooting
-      const rawBody = await context.request.text();
-      logger.debug("Raw request body received", {
-        endpoint: "POST /api/articles",
-        bodyLength: rawBody.length,
-        bodyPreview: rawBody.substring(0, 200),
-        contentType: context.request.headers.get("Content-Type"),
-        contentLength: context.request.headers.get("Content-Length"),
-      });
-      
+      // Read request body
+      rawBody = await context.request.text();
+
       // Check if body is empty
       if (!rawBody || rawBody.trim().length === 0) {
         logger.warn("Empty request body", {
@@ -287,7 +281,7 @@ export const POST: APIRoute = async (context) => {
           }
         );
       }
-      
+
       // Try to parse as JSON
       body = JSON.parse(rawBody);
     } catch (error) {
@@ -295,7 +289,6 @@ export const POST: APIRoute = async (context) => {
         logger.warn("Invalid JSON in request body", {
           endpoint: "POST /api/articles",
           error: error.message,
-          rawBody: rawBody?.substring(0, 500),
         });
 
         return new Response(
@@ -310,6 +303,7 @@ export const POST: APIRoute = async (context) => {
           }
         );
       }
+      // Re-throw non-SyntaxError to be handled by outer catch
       throw error;
     }
 

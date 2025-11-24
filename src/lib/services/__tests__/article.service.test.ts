@@ -22,6 +22,7 @@ interface MockQueryBuilder {
   order: (column: string, options?: { ascending: boolean }) => MockQueryBuilder;
   range: (from: number, to: number) => MockQueryBuilder;
   single: () => Promise<{ data: unknown; error: PostgrestError | null }>;
+  maybeSingle: () => Promise<{ data: unknown | null; error: PostgrestError | null }>;
   then?: (resolve: (value: unknown) => void) => Promise<unknown>;
 }
 
@@ -39,6 +40,7 @@ function createMockSupabaseClient(): {
     eq: MockedFunction<(column: string, value: unknown) => MockQueryBuilder>;
     in: MockedFunction<(column: string, values: unknown[]) => MockQueryBuilder>;
     single: MockedFunction<() => Promise<{ data: unknown; error: PostgrestError | null }>>;
+    maybeSingle: MockedFunction<() => Promise<{ data: unknown | null; error: PostgrestError | null }>>;
     order: MockedFunction<(column: string, options?: { ascending: boolean }) => MockQueryBuilder>;
     range: MockedFunction<
       (
@@ -50,6 +52,7 @@ function createMockSupabaseClient(): {
 } {
   // Create mock query builder chain
   const mockSingle = vi.fn();
+  const mockMaybeSingle = vi.fn();
   const mockRange = vi.fn();
   const mockEq = vi.fn();
   const mockIn = vi.fn();
@@ -70,6 +73,7 @@ function createMockSupabaseClient(): {
     insert: mockInsert,
     delete: mockDelete,
     single: mockSingle,
+    maybeSingle: mockMaybeSingle,
     from: mockFrom,
   });
 
@@ -107,6 +111,7 @@ function createMockSupabaseClient(): {
   // Default return values
   mockRange.mockResolvedValue({ data: [], count: 0, error: null });
   mockSingle.mockResolvedValue({ data: null, error: null });
+  mockMaybeSingle.mockResolvedValue({ data: null, error: null });
 
   const client = {
     schema: mockSchema,
@@ -124,6 +129,7 @@ function createMockSupabaseClient(): {
       eq: mockEq,
       in: mockIn,
       single: mockSingle,
+      maybeSingle: mockMaybeSingle,
       order: mockOrder,
       range: mockRange,
     },
@@ -135,7 +141,7 @@ describe("ArticleService.validateSource", () => {
     const { client, mocks } = createMockSupabaseClient();
     const service = new ArticleService(client);
 
-    mocks.single.mockResolvedValue({
+    mocks.maybeSingle.mockResolvedValue({
       data: { id: "valid-source-id" },
       error: null,
     });
@@ -147,21 +153,22 @@ describe("ArticleService.validateSource", () => {
     expect(mocks.from).toHaveBeenCalledWith("rss_sources");
     expect(mocks.select).toHaveBeenCalledWith("id");
     expect(mocks.eq).toHaveBeenCalledWith("id", "valid-source-id");
-    expect(mocks.single).toHaveBeenCalled();
+    expect(mocks.maybeSingle).toHaveBeenCalled();
   });
 
   test("should return false for invalid source ID", async () => {
     const { client, mocks } = createMockSupabaseClient();
     const service = new ArticleService(client);
 
-    mocks.single.mockResolvedValue({
+    mocks.maybeSingle.mockResolvedValue({
       data: null,
-      error: { code: "PGRST116", message: "No rows found", details: "", hint: "", name: "PostgrestError" },
+      error: null, // maybeSingle returns null data, not error for not found
     });
 
     const result = await service.validateSource("invalid-source-id");
 
     expect(result).toBe(false);
+    expect(mocks.maybeSingle).toHaveBeenCalled();
   });
 
   test("should return false when database query fails", async () => {
@@ -294,15 +301,14 @@ describe("ArticleService.createArticle", () => {
       updated_at: new Date().toISOString(),
     };
 
-    mocks.single
-      .mockResolvedValueOnce({
-        data: { id: command.sourceId },
-        error: null,
-      })
-      .mockResolvedValueOnce({
-        data: mockArticle,
-        error: null,
-      });
+    mocks.maybeSingle.mockResolvedValueOnce({
+      data: { id: command.sourceId },
+      error: null,
+    });
+    mocks.single.mockResolvedValueOnce({
+      data: mockArticle,
+      error: null,
+    });
 
     const result = await service.createArticle(command);
 
@@ -352,16 +358,16 @@ describe("ArticleService.createArticle", () => {
     } as any);
     mocks.eq.mockReturnValue({
       single: mocks.single,
+      maybeSingle: mocks.maybeSingle,
     } as any);
-    mocks.single
-      .mockResolvedValueOnce({
-        data: { id: command.sourceId },
-        error: null,
-      })
-      .mockResolvedValueOnce({
-        data: mockArticle,
-        error: null,
-      });
+    mocks.maybeSingle.mockResolvedValueOnce({
+      data: { id: command.sourceId },
+      error: null,
+    });
+    mocks.single.mockResolvedValueOnce({
+      data: mockArticle,
+      error: null,
+    });
 
     // Mock validateTopics
     mocks.in.mockResolvedValue({
@@ -409,11 +415,11 @@ describe("ArticleService.createArticle", () => {
       eq: mocks.eq,
     } as any);
     mocks.eq.mockReturnValue({
-      single: mocks.single,
+      maybeSingle: mocks.maybeSingle,
     } as any);
-    mocks.single.mockResolvedValue({
+    mocks.maybeSingle.mockResolvedValue({
       data: null,
-      error: { code: "PGRST116", message: "No rows found", details: "", hint: "", name: "PostgrestError" },
+      error: null, // maybeSingle returns null data, not error for not found
     });
 
     await expect(service.createArticle(command)).rejects.toThrow("RSS_SOURCE_NOT_FOUND");
@@ -436,9 +442,9 @@ describe("ArticleService.createArticle", () => {
       in: mocks.in,
     } as any);
     mocks.eq.mockReturnValue({
-      single: mocks.single,
+      maybeSingle: mocks.maybeSingle,
     } as any);
-    mocks.single.mockResolvedValue({
+    mocks.maybeSingle.mockResolvedValue({
       data: { id: command.sourceId },
       error: null,
     });
@@ -457,7 +463,7 @@ describe("ArticleService.createArticle", () => {
     const command = createValidCommand();
 
     // First call: validateSource (returns valid source)
-    mocks.single.mockResolvedValueOnce({
+    mocks.maybeSingle.mockResolvedValueOnce({
       data: { id: command.sourceId },
       error: null,
     });
@@ -495,7 +501,7 @@ describe("ArticleService.createArticle", () => {
     };
 
     // validateSource call
-    mocks.single.mockResolvedValueOnce({
+    mocks.maybeSingle.mockResolvedValueOnce({
       data: { id: command.sourceId },
       error: null,
     });
@@ -556,15 +562,14 @@ describe("ArticleService.createArticle", () => {
       updated_at: "2024-01-01T00:00:00Z",
     };
 
-    mocks.single
-      .mockResolvedValueOnce({
-        data: { id: command.sourceId },
-        error: null,
-      })
-      .mockResolvedValueOnce({
-        data: mockArticle,
-        error: null,
-      });
+    mocks.maybeSingle.mockResolvedValueOnce({
+      data: { id: command.sourceId },
+      error: null,
+    });
+    mocks.single.mockResolvedValueOnce({
+      data: mockArticle,
+      error: null,
+    });
 
     const result = await service.createArticle(command);
 
@@ -603,15 +608,14 @@ describe("ArticleService.createArticle", () => {
       updated_at: new Date().toISOString(),
     };
 
-    mocks.single
-      .mockResolvedValueOnce({
-        data: { id: command.sourceId },
-        error: null,
-      })
-      .mockResolvedValueOnce({
-        data: mockArticle,
-        error: null,
-      });
+    mocks.maybeSingle.mockResolvedValueOnce({
+      data: { id: command.sourceId },
+      error: null,
+    });
+    mocks.single.mockResolvedValueOnce({
+      data: mockArticle,
+      error: null,
+    });
 
     const result = await service.createArticle(command);
 

@@ -2,16 +2,21 @@ name: RSS Feed Fetcher
 
 on:
   workflow_dispatch: # Allow manual trigger
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
 
 jobs:
   fetch-rss:
     name: Fetch RSS Feeds
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch RSS Feeds
+      - name: Fetch All RSS Feeds (with retries)
         env:
           APP_URL: ${{ secrets.APP_URL }}
           SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RETRY_DELAY_MS: ${RETRY_DELAY_MS:-2000}
+          MAX_RETRIES: ${MAX_RETRIES:-50}
         run: |
           if [ -z "$APP_URL" ]; then
             echo "Error: APP_URL secret is not set"
@@ -23,22 +28,92 @@ jobs:
             exit 1
           fi
 
-          echo "Calling RSS fetch endpoint: $APP_URL/api/cron/fetch-rss"
+          echo "🚀 RSS Fetch All - Processing All Sources"
+          echo "============================================================"
+          echo "📍 Endpoint: $APP_URL/api/cron/fetch-rss"
+          echo "⏱️  Retry Delay: ${RETRY_DELAY_MS}ms"
+          echo "🔄 Max Retries: ${MAX_RETRIES}"
+          echo "============================================================"
 
-          response=$(curl -s -w "\n%{http_code}" -X POST "$APP_URL/api/cron/fetch-rss" \
-            -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-            -H "Content-Type: application/json")
+          batch_number=1
+          total_processed=0
+          total_succeeded=0
+          total_failed=0
+          total_articles=0
 
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | sed '$d')
+          while [ $batch_number -le $MAX_RETRIES ]; do
+            echo ""
+            echo "============================================================"
+            echo "🔄 Batch $batch_number: Fetching RSS feeds..."
+            echo "============================================================"
 
-          echo "HTTP Status: $http_code"
-          echo "Response: $body"
+            response=$(curl -s -w "\n%{http_code}" -X POST "$APP_URL/api/cron/fetch-rss" \
+              -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+              -H "Content-Type: application/json")
 
-          # Exit with error if status code is not 2xx
-          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
-            echo "Error: RSS fetch failed with HTTP $http_code"
-            exit 1
-          fi
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
 
-          echo "RSS fetch completed successfully"
+            if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+              echo "❌ Batch $batch_number failed with HTTP $http_code"
+              echo "Response: $body"
+              exit 1
+            fi
+
+            # Parse JSON response to check if there's more work
+            # Using grep/sed as a simple way to extract hasMoreWork (jq would be better but not always available)
+            has_more_work=$(echo "$body" | grep -o '"hasMoreWork":[^,}]*' | grep -o 'true\|false' || echo "false")
+            
+            # Extract stats from JSON (simple parsing)
+            processed=$(echo "$body" | grep -o '"processed":[0-9]*' | grep -o '[0-9]*' || echo "0")
+            succeeded=$(echo "$body" | grep -o '"succeeded":[0-9]*' | grep -o '[0-9]*' || echo "0")
+            failed=$(echo "$body" | grep -o '"failed":[0-9]*' | grep -o '[0-9]*' || echo "0")
+            articles=$(echo "$body" | grep -o '"articlesCreated":[0-9]*' | grep -o '[0-9]*' || echo "0")
+
+            echo "📊 Batch $batch_number Results:"
+            echo "   ✅ Status: $http_code"
+            echo "   📰 Sources Processed: $processed"
+            echo "   ✅ Sources Succeeded: $succeeded"
+            echo "   ❌ Sources Failed: $failed"
+            echo "   📄 Articles Created: $articles"
+            echo "   🔄 Has More Work: $has_more_work"
+
+            total_processed=$((total_processed + processed))
+            total_succeeded=$((total_succeeded + succeeded))
+            total_failed=$((total_failed + failed))
+            total_articles=$((total_articles + articles))
+
+            # If no more work, we're done
+            if [ "$has_more_work" != "true" ]; then
+              echo ""
+              echo "✅ All sources processed!"
+              break
+            fi
+
+            # If we've reached max retries, stop
+            if [ $batch_number -ge $MAX_RETRIES ]; then
+              echo ""
+              echo "⚠️  Reached max retries ($MAX_RETRIES). Stopping."
+              echo "   There may still be more sources to process."
+              break
+            fi
+
+            # Wait before next batch
+            echo ""
+            echo "⏳ Waiting ${RETRY_DELAY_MS}ms before next batch..."
+            sleep $(($RETRY_DELAY_MS / 1000))
+            
+            batch_number=$((batch_number + 1))
+          done
+
+          echo ""
+          echo "============================================================"
+          echo "📊 Final Summary"
+          echo "============================================================"
+          echo "   🔄 Total Batches: $batch_number"
+          echo "   📰 Total Sources Processed: $total_processed"
+          echo "   ✅ Total Sources Succeeded: $total_succeeded"
+          echo "   ❌ Total Sources Failed: $total_failed"
+          echo "   📄 Total Articles Created: $total_articles"
+          echo ""
+          echo "✅ RSS fetch all completed!"

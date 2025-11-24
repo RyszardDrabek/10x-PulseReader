@@ -154,4 +154,3 @@ if (require.main === module) {
 }
 
 module.exports = { testRssFetch, makeRequest };
-

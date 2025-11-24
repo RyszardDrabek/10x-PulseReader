@@ -218,7 +218,9 @@ export class RssSourceService {
       .eq("is_active", true)
       // Order by last_fetched_at (nulls first) to prioritize sources that haven't been fetched recently
       // This ensures round-robin processing so all sources get processed eventually
-      .order("last_fetched_at", { ascending: true, nullsFirst: true });
+      // Add secondary sort by created_at for deterministic ordering when timestamps are equal
+      .order("last_fetched_at", { ascending: true, nullsFirst: true })
+      .order("created_at", { ascending: true });
 
     if (error) {
       throw new DatabaseError(`Failed to fetch active RSS sources: ${error.message}`, error);

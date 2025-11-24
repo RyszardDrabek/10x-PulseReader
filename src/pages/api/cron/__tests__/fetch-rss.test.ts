@@ -238,9 +238,8 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
     expect(mockRssFetchService.fetchRssFeed).toHaveBeenCalledWith("https://bbc.com/rss");
     expect(mockRssFetchService.fetchRssFeed).toHaveBeenCalledWith("https://guardian.com/rss");
     expect(mockArticleService.createArticle).toHaveBeenCalledTimes(3);
-    expect(mockRssSourceService.updateFetchStatus).toHaveBeenCalledTimes(2);
-    expect(mockRssSourceService.updateFetchStatus).toHaveBeenCalledWith("source-1", true);
-    expect(mockRssSourceService.updateFetchStatus).toHaveBeenCalledWith("source-2", true);
+    // Note: updateFetchStatus is no longer called per-source, but batch updated at the end
+    // The batch update happens via direct Supabase client call, not through the service
   });
 
   test("should handle failed RSS feed fetch", async () => {
@@ -282,7 +281,7 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
       error: "Network timeout",
     });
 
-    expect(mockRssSourceService.updateFetchStatus).toHaveBeenCalledWith("source-1", false, "Network timeout");
+    // Note: updateFetchStatus is no longer called per-source (batch updated at end)
     expect(mockArticleService.createArticle).not.toHaveBeenCalled();
   });
 
@@ -329,7 +328,8 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
     const body = await response.json();
     expect(body.success).toBe(true);
     expect(body.articlesCreated).toBe(1); // Only 1 created (1 duplicate skipped, 1 other error)
-    expect(mockRssSourceService.updateFetchStatus).toHaveBeenCalledWith("source-1", true);
+    // Note: updateFetchStatus is no longer called per-source to save subrequests
+    // Instead, batch updates happen at the end if there are succeeded sources
   });
 
   test("should continue processing after one source fails", async () => {
@@ -386,8 +386,7 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
 
     // Both sources should have been processed
     expect(mockRssFetchService.fetchRssFeed).toHaveBeenCalledTimes(2);
-    expect(mockRssSourceService.updateFetchStatus).toHaveBeenCalledWith("source-1", false, "Network timeout");
-    expect(mockRssSourceService.updateFetchStatus).toHaveBeenCalledWith("source-2", true);
+    // Note: updateFetchStatus is no longer called per-source (batch updated at end)
   });
 
   test("should handle unexpected errors during source processing", async () => {
@@ -416,7 +415,7 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
     expect(body.success).toBe(true);
     expect(body.failed).toBe(1);
     expect(body.errors).toHaveLength(1);
-    expect(mockRssSourceService.updateFetchStatus).toHaveBeenCalledWith("source-1", false, "Unexpected error");
+    // Note: updateFetchStatus is no longer called per-source (batch updated at end)
   });
 
   test("should handle errors during article creation", async () => {
@@ -455,7 +454,7 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
     expect(body.success).toBe(true);
     expect(body.succeeded).toBe(1); // Source processed successfully
     expect(body.articlesCreated).toBe(0); // No articles created due to error
-    expect(mockRssSourceService.updateFetchStatus).toHaveBeenCalledWith("source-1", true);
+    // Note: updateFetchStatus is no longer called per-source (batch updated at end)
   });
 
   test("should handle error when fetching active sources fails", async () => {

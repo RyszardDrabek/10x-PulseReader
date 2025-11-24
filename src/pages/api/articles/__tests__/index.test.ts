@@ -15,7 +15,11 @@ import { POST } from "../index.ts";
 import { ArticleService } from "../../../../lib/services/article.service.ts";
 
 // Mock ArticleService
-vi.mock("../../../../lib/services/article.service.ts");
+vi.mock("../../../../lib/services/article.service.ts", () => {
+  return {
+    ArticleService: vi.fn(),
+  };
+});
 vi.mock("../../../../lib/utils/logger.ts", () => ({
   logger: {
     info: vi.fn(),
@@ -567,7 +571,8 @@ describe("POST /api/articles - Business Logic", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCreateArticle = vi.fn();
-    vi.mocked(ArticleService).mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ArticleService as any).mockImplementation(
       () =>
         ({
           createArticle: mockCreateArticle,
@@ -705,7 +710,8 @@ describe("POST /api/articles - Success Cases", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCreateArticle = vi.fn();
-    vi.mocked(ArticleService).mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ArticleService as any).mockImplementation(
       () =>
         ({
           createArticle: mockCreateArticle,
@@ -1130,7 +1136,8 @@ describe("POST /api/articles - Performance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCreateArticle = vi.fn();
-    vi.mocked(ArticleService).mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ArticleService as any).mockImplementation(
       () =>
         ({
           createArticle: mockCreateArticle,
@@ -1299,7 +1306,8 @@ describe("POST /api/articles - Edge Cases", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCreateArticle = vi.fn();
-    vi.mocked(ArticleService).mockImplementation(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ArticleService as any).mockImplementation(
       () =>
         ({
           createArticle: mockCreateArticle,

@@ -9,6 +9,7 @@
 //   npm run seed:reset  (clears all data first)
 // =====================================================================================
 
+/* eslint-disable no-console */
 import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../src/db/database.types.ts";

@@ -67,23 +67,14 @@ export class ArticleService {
       .eq("id", sourceId)
       .maybeSingle();
 
-    // Log validation attempt for debugging
+    // If there's an error (other than "not found"), return false
     if (error) {
-      console.error("Source validation error:", {
-        sourceId,
-        errorCode: error.code,
-        errorMessage: error.message,
-        errorDetails: error.details,
-        errorHint: error.hint,
-      });
+      // PGRST116 = no rows returned (expected for non-existent sources)
+      // Other errors indicate a real problem
       return false;
     }
 
-    const exists = data !== null;
-    if (!exists) {
-      console.warn("Source not found during validation:", { sourceId });
-    }
-    return exists;
+    return data !== null;
   }
 
   /**
@@ -250,11 +241,6 @@ export class ArticleService {
     // Step 1: Validate source exists
     const sourceExists = await this.validateSource(command.sourceId);
     if (!sourceExists) {
-      // Log detailed error for debugging
-      console.error("Source validation failed:", {
-        sourceId: command.sourceId,
-        sourceExists,
-      });
       throw new Error("RSS_SOURCE_NOT_FOUND");
     }
 

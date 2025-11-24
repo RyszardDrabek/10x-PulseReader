@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-env node */
 
 /**
  * RSS Fetch All Script for PulseReader
@@ -237,4 +238,3 @@ if (require.main === module) {
 }
 
 module.exports = { fetchAllRss, fetchRssBatch };
-
