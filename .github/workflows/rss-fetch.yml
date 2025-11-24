@@ -6,10 +6,17 @@ on:
     # Run every 15 minutes
     - cron: '*/15 * * * *'
 
+# Prevent multiple concurrent runs
+concurrency:
+  group: rss-fetch
+  cancel-in-progress: false
+
 jobs:
   fetch-rss:
     name: Fetch RSS Feeds
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # Prevent workflow from running indefinitely
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,11 +31,13 @@ jobs:
         run: npm ci
 
       - name: Fetch All RSS Feeds (with retries)
+        id: fetch-rss
         env:
           DEPLOYMENT_URL: ${{ secrets.APP_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RETRY_DELAY_MS: ${{ vars.RETRY_DELAY_MS || '2000' }}
           MAX_RETRIES: ${{ vars.MAX_RETRIES || '50' }}
+        continue-on-error: true # Continue even if this step fails to allow summary generation
         run: |
           if [ -z "$DEPLOYMENT_URL" ]; then
             echo "❌ Error: APP_URL secret is not set"
@@ -51,4 +60,57 @@ jobs:
           echo "🔄 Max Retries: ${MAX_RETRIES}"
           echo "============================================================"
 
-          npm run fetch:all-rss
+          # Run fetch and capture output
+          npm run fetch:all-rss 2>&1 | tee fetch-rss.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          
+          # Extract summary from log (handle both formats)
+          if [ -f fetch-rss.log ]; then
+            ARTICLES_CREATED=$(grep -E 'Total Articles Created:|📄 Total Articles Created:' fetch-rss.log | grep -oE '[0-9]+' | head -1 || echo "0")
+            SOURCES_PROCESSED=$(grep -E 'Total Sources Processed:|📰 Total Sources Processed:' fetch-rss.log | grep -oE '[0-9]+' | head -1 || echo "0")
+            SOURCES_SUCCEEDED=$(grep -E 'Total Sources Succeeded:|✅ Total Sources Succeeded:' fetch-rss.log | grep -oE '[0-9]+' | head -1 || echo "0")
+            SOURCES_FAILED=$(grep -E 'Total Sources Failed:|❌ Total Sources Failed:' fetch-rss.log | grep -oE '[0-9]+' | head -1 || echo "0")
+            
+            echo "articles_created=$ARTICLES_CREATED" >> $GITHUB_OUTPUT
+            echo "sources_processed=$SOURCES_PROCESSED" >> $GITHUB_OUTPUT
+            echo "sources_succeeded=$SOURCES_SUCCEEDED" >> $GITHUB_OUTPUT
+            echo "sources_failed=$SOURCES_FAILED" >> $GITHUB_OUTPUT
+          fi
+          
+          exit ${EXIT_CODE:-0}
+
+      - name: Upload fetch logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rss-fetch-logs-${{ github.run_id }}
+          path: fetch-rss.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Generate job summary
+        if: always()
+        run: |
+          echo "## 📊 RSS Fetch Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 📄 Articles Created | ${{ steps.fetch-rss.outputs.articles_created || '0' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📰 Sources Processed | ${{ steps.fetch-rss.outputs.sources_processed || '0' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ✅ Sources Succeeded | ${{ steps.fetch-rss.outputs.sources_succeeded || '0' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ❌ Sources Failed | ${{ steps.fetch-rss.outputs.sources_failed || '0' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.fetch-rss.outcome }}" != "success" ]; then
+            echo "### ⚠️ Workflow Status" >> $GITHUB_STEP_SUMMARY
+            echo "The RSS fetch completed with errors. Check the logs for details." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ✅ Workflow Status" >> $GITHUB_STEP_SUMMARY
+            echo "RSS fetch completed successfully!" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Fail workflow if fetch failed
+        if: steps.fetch-rss.outcome != 'success'
+        run: |
+          echo "❌ RSS fetch failed. Check logs for details."
+          exit 1

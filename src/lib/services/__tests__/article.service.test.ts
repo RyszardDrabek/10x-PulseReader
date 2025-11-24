@@ -15,6 +15,7 @@ import type { CreateArticleCommand, GetArticlesQueryParams, ProfileEntity } from
 interface MockQueryBuilder {
   select: (columns?: string | { count: string }) => MockQueryBuilder;
   insert: (data: unknown) => MockQueryBuilder;
+  upsert: (data: unknown, options?: { onConflict?: string; ignoreDuplicates?: boolean }) => MockQueryBuilder;
   update: (data: unknown) => MockQueryBuilder;
   delete: () => MockQueryBuilder;
   eq: (column: string, value: unknown) => MockQueryBuilder;
@@ -36,6 +37,9 @@ function createMockSupabaseClient(): {
     from: MockedFunction<(table: string) => MockQueryBuilder>;
     select: MockedFunction<(columns?: string | { count: string }) => MockQueryBuilder>;
     insert: MockedFunction<(data: unknown) => MockQueryBuilder>;
+    upsert: MockedFunction<
+      (data: unknown, options?: { onConflict?: string; ignoreDuplicates?: boolean }) => MockQueryBuilder
+    >;
     delete: MockedFunction<() => MockQueryBuilder>;
     eq: MockedFunction<(column: string, value: unknown) => MockQueryBuilder>;
     in: MockedFunction<(column: string, values: unknown[]) => MockQueryBuilder>;
@@ -59,6 +63,7 @@ function createMockSupabaseClient(): {
   const mockOrder = vi.fn();
   const mockSelect = vi.fn();
   const mockInsert = vi.fn();
+  const mockUpsert = vi.fn();
   const mockDelete = vi.fn();
   const mockFrom = vi.fn();
   const mockSchema = vi.fn();
@@ -71,6 +76,7 @@ function createMockSupabaseClient(): {
     range: mockRange,
     select: mockSelect,
     insert: mockInsert,
+    upsert: mockUpsert,
     delete: mockDelete,
     single: mockSingle,
     maybeSingle: mockMaybeSingle,
@@ -104,6 +110,7 @@ function createMockSupabaseClient(): {
   mockOrder.mockImplementation(() => createChainObject());
   mockSelect.mockImplementation(() => createChainObject());
   mockInsert.mockImplementation(() => createChainObject());
+  mockUpsert.mockImplementation(() => createChainObject());
   mockDelete.mockImplementation(() => createChainObject());
   mockFrom.mockImplementation(() => createChainObject());
   mockSchema.mockImplementation(() => createChainObject());
@@ -125,6 +132,7 @@ function createMockSupabaseClient(): {
       from: mockFrom,
       select: mockSelect,
       insert: mockInsert,
+      upsert: mockUpsert,
       delete: mockDelete,
       eq: mockEq,
       in: mockIn,
@@ -621,6 +629,347 @@ describe("ArticleService.createArticle", () => {
 
     expect(result.description).toBeNull();
     expect(result.sentiment).toBeNull();
+  });
+});
+
+describe("ArticleService.createArticlesBatch", () => {
+  const createValidCommand = (overrides?: Partial<CreateArticleCommand>): CreateArticleCommand => ({
+    sourceId: "valid-source-id",
+    title: "Test Article",
+    description: "Test description",
+    link: "https://example.com/article",
+    publicationDate: new Date().toISOString(),
+    sentiment: "neutral",
+    ...overrides,
+  });
+
+  test("should return empty arrays for empty batch", async () => {
+    const { client } = createMockSupabaseClient();
+    const service = new ArticleService(client);
+
+    const result = await service.createArticlesBatch([], true);
+
+    expect(result.articles).toEqual([]);
+    expect(result.duplicatesSkipped).toBe(0);
+  });
+
+  test("should batch create multiple articles successfully", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new ArticleService(client);
+
+    const commands = [
+      createValidCommand({ link: "https://example.com/article1", title: "Article 1" }),
+      createValidCommand({ link: "https://example.com/article2", title: "Article 2" }),
+      createValidCommand({ link: "https://example.com/article3", title: "Article 3" }),
+    ];
+
+    const mockArticles = commands.map((cmd, index) => ({
+      id: `article-id-${index + 1}`,
+      source_id: cmd.sourceId,
+      title: cmd.title,
+      description: cmd.description,
+      link: cmd.link,
+      publication_date: cmd.publicationDate,
+      sentiment: cmd.sentiment,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+
+    // Mock upsert chain: schema -> from -> upsert -> select
+    mocks.schema.mockReturnValue({
+      from: mocks.from,
+    } as any);
+    mocks.from.mockReturnValue({
+      upsert: mocks.upsert,
+    } as any);
+    mocks.upsert.mockReturnValue({
+      select: mocks.select,
+    } as any);
+    mocks.select.mockResolvedValue({
+      data: mockArticles,
+      error: null,
+    });
+
+    const result = await service.createArticlesBatch(commands, true);
+
+    expect(result.articles).toHaveLength(3);
+    expect(result.duplicatesSkipped).toBe(0);
+    expect(result.articles[0].title).toBe("Article 1");
+    expect(result.articles[1].title).toBe("Article 2");
+    expect(result.articles[2].title).toBe("Article 3");
+    expect(mocks.upsert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source_id: "valid-source-id",
+          title: "Article 1",
+          link: "https://example.com/article1",
+        }),
+      ]),
+      { onConflict: "link", ignoreDuplicates: true }
+    );
+  });
+
+  test("should skip source validation when skipSourceValidation is true", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new ArticleService(client);
+
+    const commands = [createValidCommand()];
+    const mockArticle = {
+      id: "article-id",
+      source_id: commands[0].sourceId,
+      title: commands[0].title,
+      description: commands[0].description,
+      link: commands[0].link,
+      publication_date: commands[0].publicationDate,
+      sentiment: commands[0].sentiment,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    mocks.schema.mockReturnValue({
+      from: mocks.from,
+    } as any);
+    mocks.from.mockReturnValue({
+      upsert: mocks.upsert,
+    } as any);
+    mocks.upsert.mockReturnValue({
+      select: mocks.select,
+    } as any);
+    mocks.select.mockResolvedValue({
+      data: [mockArticle],
+      error: null,
+    });
+
+    await service.createArticlesBatch(commands, true);
+
+    // Should not call validateSource (maybeSingle should not be called)
+    expect(mocks.maybeSingle).not.toHaveBeenCalled();
+  });
+
+  test("should validate source when skipSourceValidation is false", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new ArticleService(client);
+
+    const commands = [createValidCommand()];
+    const mockArticle = {
+      id: "article-id",
+      source_id: commands[0].sourceId,
+      title: commands[0].title,
+      description: commands[0].description,
+      link: commands[0].link,
+      publication_date: commands[0].publicationDate,
+      sentiment: commands[0].sentiment,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Mock source validation (first call)
+    mocks.schema.mockReturnValueOnce({
+      from: mocks.from,
+    } as any);
+    mocks.from.mockReturnValueOnce({
+      select: mocks.select,
+    } as any);
+    mocks.select.mockReturnValueOnce({
+      eq: mocks.eq,
+    } as any);
+    mocks.eq.mockReturnValueOnce({
+      maybeSingle: mocks.maybeSingle,
+    } as any);
+    mocks.maybeSingle.mockResolvedValueOnce({
+      data: { id: commands[0].sourceId },
+      error: null,
+    });
+
+    // Mock upsert (second call)
+    mocks.schema.mockReturnValueOnce({
+      from: mocks.from,
+    } as any);
+    mocks.from.mockReturnValueOnce({
+      upsert: mocks.upsert,
+    } as any);
+    mocks.upsert.mockReturnValueOnce({
+      select: mocks.select,
+    } as any);
+    mocks.select.mockResolvedValueOnce({
+      data: [mockArticle],
+      error: null,
+    });
+
+    await service.createArticlesBatch(commands, false);
+
+    expect(mocks.maybeSingle).toHaveBeenCalled();
+  });
+
+  test("should throw error if articles have different sourceIds", async () => {
+    const { client } = createMockSupabaseClient();
+    const service = new ArticleService(client);
+
+    const commands = [
+      createValidCommand({ sourceId: "source-1", link: "https://example.com/article1" }),
+      createValidCommand({ sourceId: "source-2", link: "https://example.com/article2" }),
+    ];
+
+    await expect(service.createArticlesBatch(commands, true)).rejects.toThrow(
+      "All articles in batch must have the same sourceId"
+    );
+  });
+
+  test("should throw RSS_SOURCE_NOT_FOUND for invalid source when validation is enabled", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new ArticleService(client);
+
+    const commands = [createValidCommand()];
+
+    mocks.schema.mockReturnValue({
+      from: mocks.from,
+    } as any);
+    mocks.from.mockReturnValue({
+      select: mocks.select,
+    } as any);
+    mocks.select.mockReturnValue({
+      eq: mocks.eq,
+    } as any);
+    mocks.eq.mockReturnValue({
+      maybeSingle: mocks.maybeSingle,
+    } as any);
+    mocks.maybeSingle.mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    await expect(service.createArticlesBatch(commands, false)).rejects.toThrow("RSS_SOURCE_NOT_FOUND");
+  });
+
+  test("should handle duplicates correctly", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new ArticleService(client);
+
+    const commands = [
+      createValidCommand({ link: "https://example.com/article1", title: "Article 1" }),
+      createValidCommand({ link: "https://example.com/article2", title: "Article 2" }),
+      createValidCommand({ link: "https://example.com/article3", title: "Article 3" }),
+    ];
+
+    // Simulate that only 2 articles were inserted (1 duplicate skipped)
+    const mockArticles = [
+      {
+        id: "article-id-1",
+        source_id: commands[0].sourceId,
+        title: commands[0].title,
+        description: commands[0].description,
+        link: commands[0].link,
+        publication_date: commands[0].publicationDate,
+        sentiment: commands[0].sentiment,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: "article-id-2",
+        source_id: commands[1].sourceId,
+        title: commands[1].title,
+        description: commands[1].description,
+        link: commands[1].link,
+        publication_date: commands[1].publicationDate,
+        sentiment: commands[1].sentiment,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ];
+
+    mocks.schema.mockReturnValue({
+      from: mocks.from,
+    } as any);
+    mocks.from.mockReturnValue({
+      upsert: mocks.upsert,
+    } as any);
+    mocks.upsert.mockReturnValue({
+      select: mocks.select,
+    } as any);
+    mocks.select.mockResolvedValue({
+      data: mockArticles,
+      error: null,
+    });
+
+    const result = await service.createArticlesBatch(commands, true);
+
+    expect(result.articles).toHaveLength(2);
+    expect(result.duplicatesSkipped).toBe(1); // 3 commands - 2 articles = 1 duplicate
+  });
+
+  test("should handle batch insert errors", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new ArticleService(client);
+
+    const commands = [createValidCommand()];
+
+    mocks.schema.mockReturnValue({
+      from: mocks.from,
+    } as any);
+    mocks.from.mockReturnValue({
+      upsert: mocks.upsert,
+    } as any);
+    mocks.upsert.mockReturnValue({
+      select: mocks.select,
+    } as any);
+    mocks.select.mockResolvedValue({
+      data: null,
+      error: {
+        code: "PGRST301",
+        message: "Database error",
+        details: "",
+        hint: "",
+        name: "PostgrestError",
+      },
+    });
+
+    await expect(service.createArticlesBatch(commands, true)).rejects.toThrow();
+  });
+
+  test("should map database responses to ArticleEntity correctly", async () => {
+    const { client, mocks } = createMockSupabaseClient();
+    const service = new ArticleService(client);
+
+    const commands = [createValidCommand()];
+    const mockArticle = {
+      id: "article-id",
+      source_id: "valid-source-id",
+      title: "Test Article",
+      description: "Test description",
+      link: "https://example.com/article",
+      publication_date: "2024-01-01T00:00:00Z",
+      sentiment: "neutral",
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-01T00:00:00Z",
+    };
+
+    mocks.schema.mockReturnValue({
+      from: mocks.from,
+    } as any);
+    mocks.from.mockReturnValue({
+      upsert: mocks.upsert,
+    } as any);
+    mocks.upsert.mockReturnValue({
+      select: mocks.select,
+    } as any);
+    mocks.select.mockResolvedValue({
+      data: [mockArticle],
+      error: null,
+    });
+
+    const result = await service.createArticlesBatch(commands, true);
+
+    expect(result.articles[0]).toMatchObject({
+      id: "article-id",
+      sourceId: "valid-source-id",
+      title: "Test Article",
+      description: "Test description",
+      link: "https://example.com/article",
+      publicationDate: "2024-01-01T00:00:00Z",
+      sentiment: "neutral",
+      createdAt: "2024-01-01T00:00:00Z",
+      updatedAt: "2024-01-01T00:00:00Z",
+    });
   });
 });
 

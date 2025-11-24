@@ -126,7 +126,10 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
     fetchRssFeed: MockedFunction<(url: string) => Promise<unknown>>;
   };
   let mockArticleService: {
-    createArticle: MockedFunction<(command: unknown) => Promise<unknown>>;
+    createArticle: MockedFunction<(command: unknown, skipValidation?: boolean) => Promise<unknown>>;
+    createArticlesBatch: MockedFunction<
+      (commands: unknown[], skipValidation?: boolean) => Promise<{ articles: unknown[]; duplicatesSkipped: number }>
+    >;
   };
 
   beforeEach(() => {
@@ -141,6 +144,7 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
     };
     mockArticleService = {
       createArticle: vi.fn(),
+      createArticlesBatch: vi.fn(),
     };
 
     (RssSourceService as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => mockRssSourceService);
@@ -204,20 +208,19 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
       },
     ];
 
-    const feed2Items = [
-      {
-        title: "Article 3",
-        description: "Description 3",
-        link: "https://guardian.com/article3",
-        publicationDate: "2024-01-02T10:00:00Z",
-      },
-    ];
-
     mockRssSourceService.getActiveRssSources.mockResolvedValue(sources);
-    mockRssFetchService.fetchRssFeed
-      .mockResolvedValueOnce({ success: true, items: feed1Items })
-      .mockResolvedValueOnce({ success: true, items: feed2Items });
-    mockArticleService.createArticle.mockResolvedValue({ id: "article-id" });
+    mockRssFetchService.fetchRssFeed.mockResolvedValueOnce({ success: true, items: feed1Items });
+    // Mock batch creation - returns articles with same structure as feed items
+    mockArticleService.createArticlesBatch.mockResolvedValue({
+      articles: feed1Items.map((item, index) => ({
+        id: `article-id-${index + 1}`,
+        sourceId: sources[0].id,
+        ...item,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })),
+      duplicatesSkipped: 0,
+    });
 
     const serviceUser = createMockServiceRoleUser();
     const context = createMockContext(serviceUser);
@@ -226,18 +229,36 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.success).toBe(true);
-    expect(body.processed).toBe(2);
-    expect(body.succeeded).toBe(2);
+    // With MAX_SOURCES_PER_RUN = 1, only first source is processed
+    expect(body.processed).toBe(1);
+    expect(body.succeeded).toBe(1);
     expect(body.failed).toBe(0);
-    expect(body.articlesCreated).toBe(3);
+    // Only first source processed, which has 2 articles
+    expect(body.articlesCreated).toBe(2);
     expect(body.errors).toEqual([]);
 
     // Verify services were called correctly
     expect(mockRssSourceService.getActiveRssSources).toHaveBeenCalledTimes(1);
-    expect(mockRssFetchService.fetchRssFeed).toHaveBeenCalledTimes(2);
+    // Only first source processed (MAX_SOURCES_PER_RUN = 1)
+    expect(mockRssFetchService.fetchRssFeed).toHaveBeenCalledTimes(1);
     expect(mockRssFetchService.fetchRssFeed).toHaveBeenCalledWith("https://bbc.com/rss");
-    expect(mockRssFetchService.fetchRssFeed).toHaveBeenCalledWith("https://guardian.com/rss");
-    expect(mockArticleService.createArticle).toHaveBeenCalledTimes(3);
+    // With batch processing, createArticlesBatch is called instead of createArticle
+    expect(mockArticleService.createArticlesBatch).toHaveBeenCalledTimes(1);
+    expect(mockArticleService.createArticlesBatch).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceId: sources[0].id,
+          title: "Article 1",
+          link: "https://bbc.com/article1",
+        }),
+        expect.objectContaining({
+          sourceId: sources[0].id,
+          title: "Article 2",
+          link: "https://bbc.com/article2",
+        }),
+      ]),
+      true // skipSourceValidation
+    );
     // Note: updateFetchStatus is no longer called per-source, but batch updated at the end
     // The batch update happens via direct Supabase client call, not through the service
   });
@@ -316,9 +337,19 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
 
     mockRssSourceService.getActiveRssSources.mockResolvedValue(sources);
     mockRssFetchService.fetchRssFeed.mockResolvedValue({ success: true, items: feedItems });
-    mockArticleService.createArticle
-      .mockResolvedValueOnce({ id: "article-1" })
-      .mockRejectedValueOnce(new Error("ARTICLE_ALREADY_EXISTS"));
+    // Mock batch creation - first article succeeds, second is duplicate (skipped)
+    mockArticleService.createArticlesBatch.mockResolvedValue({
+      articles: [
+        {
+          id: "article-1",
+          sourceId: sources[0].id,
+          ...feedItems[0],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      duplicatesSkipped: 1, // Second article is duplicate
+    });
 
     const serviceUser = createMockServiceRoleUser();
     const context = createMockContext(serviceUser);
@@ -356,20 +387,9 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
       },
     ];
 
-    const feed2Items = [
-      {
-        title: "Article 3",
-        description: "Description 3",
-        link: "https://guardian.com/article3",
-        publicationDate: "2024-01-02T10:00:00Z",
-      },
-    ];
-
     mockRssSourceService.getActiveRssSources.mockResolvedValue(sources);
-    mockRssFetchService.fetchRssFeed
-      .mockResolvedValueOnce({ success: false, items: [], error: "Network timeout" })
-      .mockResolvedValueOnce({ success: true, items: feed2Items });
-    mockArticleService.createArticle.mockResolvedValue({ id: "article-id" });
+    mockRssFetchService.fetchRssFeed.mockResolvedValueOnce({ success: false, items: [], error: "Network timeout" });
+    // Second source won't be processed (MAX_SOURCES_PER_RUN = 1), so no need to mock it
 
     const serviceUser = createMockServiceRoleUser();
     const context = createMockContext(serviceUser);
@@ -378,14 +398,15 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.success).toBe(true);
-    expect(body.processed).toBe(2);
-    expect(body.succeeded).toBe(1);
+    // With MAX_SOURCES_PER_RUN = 1, only first source is processed
+    expect(body.processed).toBe(1);
+    expect(body.succeeded).toBe(0);
     expect(body.failed).toBe(1);
-    expect(body.articlesCreated).toBe(1);
+    expect(body.articlesCreated).toBe(0);
     expect(body.errors).toHaveLength(1);
 
-    // Both sources should have been processed
-    expect(mockRssFetchService.fetchRssFeed).toHaveBeenCalledTimes(2);
+    // Only first source should have been processed (MAX_SOURCES_PER_RUN = 1)
+    expect(mockRssFetchService.fetchRssFeed).toHaveBeenCalledTimes(1);
     // Note: updateFetchStatus is no longer called per-source (batch updated at end)
   });
 

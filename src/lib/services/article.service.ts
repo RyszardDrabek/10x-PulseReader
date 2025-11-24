@@ -309,6 +309,86 @@ export class ArticleService {
   }
 
   /**
+   * Batch creates multiple articles in a single database operation.
+   * This is much more efficient than creating articles one by one.
+   * Duplicate articles (by link) are silently skipped.
+   *
+   * @param commands - Array of article creation commands
+   * @param skipSourceValidation - Skip source validation (use when source is already validated)
+   * @returns Object with created articles and count of duplicates skipped
+   */
+  async createArticlesBatch(
+    commands: CreateArticleCommand[],
+    skipSourceValidation = false
+  ): Promise<{ articles: ArticleEntity[]; duplicatesSkipped: number }> {
+    if (commands.length === 0) {
+      return { articles: [], duplicatesSkipped: 0 };
+    }
+
+    // Validate all commands have the same sourceId (required for batch processing)
+    const sourceId = commands[0]?.sourceId;
+    if (!sourceId || commands.some((cmd) => cmd.sourceId !== sourceId)) {
+      throw new Error("All articles in batch must have the same sourceId");
+    }
+
+    // Step 1: Validate source exists (can be skipped if source was already validated)
+    if (!skipSourceValidation) {
+      const sourceExists = await this.validateSource(sourceId);
+      if (!sourceExists) {
+        throw new Error("RSS_SOURCE_NOT_FOUND");
+      }
+    }
+
+    // Step 2: Prepare batch insert data
+    const insertData = commands.map((command) => ({
+      source_id: command.sourceId,
+      title: command.title,
+      description: command.description ?? null,
+      link: command.link,
+      publication_date: command.publicationDate,
+      sentiment: command.sentiment ?? null,
+    }));
+
+    // Step 3: Batch insert articles
+    // Use upsert with ignoreDuplicates to handle duplicates gracefully
+    // This will insert new articles and skip duplicates without error
+    const { data: articles, error: insertError } = await this.supabase
+      .schema("app")
+      .from("articles")
+      .upsert(insertData, {
+        onConflict: "link",
+        ignoreDuplicates: true,
+      })
+      .select();
+
+    if (insertError) {
+      // If batch upsert fails, throw to trigger fallback
+      throw insertError;
+    }
+
+    // Step 4: Map database responses to ArticleEntity
+    const createdArticles: ArticleEntity[] =
+      articles?.map((article) => ({
+        id: article.id,
+        sourceId: article.source_id,
+        title: article.title,
+        description: article.description,
+        link: article.link,
+        publicationDate: article.publication_date,
+        sentiment: article.sentiment,
+        createdAt: article.created_at,
+        updatedAt: article.updated_at,
+      })) || [];
+
+    const duplicatesSkipped = commands.length - createdArticles.length;
+
+    return {
+      articles: createdArticles,
+      duplicatesSkipped,
+    };
+  }
+
+  /**
    * Retrieves a single article by ID with nested source and topics.
    *
    * @param id - UUID of the article to retrieve

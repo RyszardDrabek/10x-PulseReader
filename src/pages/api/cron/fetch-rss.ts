@@ -126,11 +126,11 @@ export const POST: APIRoute = async (context) => {
       }
 
       // Limit sources to prevent hitting Cloudflare's 50 subrequest limit
-      // Strategy: Process ALL articles from fewer sources to ensure completeness
-      // Each source: 1 HTTP fetch + N article creates (each = 1 DB call = 1 HTTP request)
-      // With 2 sources × 15 articles = 2 fetches + 30 creates = 32 requests (well under 50 limit)
-      // This ensures each source is fully processed before moving to the next
-      const MAX_SOURCES_PER_RUN = 2;
+      // Strategy: Process ALL articles from 1 source per run using batch inserts
+      // Each source: 1 HTTP fetch + batch inserts (20 articles per batch = 1 subrequest)
+      // With 1 source × 20 articles per batch = 1 fetch + 1-2 batch inserts = 2-3 requests
+      // This maximizes articles processed while staying well under 50 limit
+      const MAX_SOURCES_PER_RUN = 1;
       const sourcesToProcess = activeSources.slice(0, MAX_SOURCES_PER_RUN);
       const skippedSources = activeSources.length - sourcesToProcess.length;
 
@@ -221,15 +221,18 @@ export const POST: APIRoute = async (context) => {
             continue;
           }
 
-          // Process ALL articles from this source to ensure completeness
-          // Process articles until we approach the subrequest limit
+          // Process articles in batches to reduce subrequests
+          // Batch size: process up to 20 articles at a time (leaves room for other operations)
+          const BATCH_SIZE = 20;
           let articlesCreatedForSource = 0;
+          const allArticles = fetchResult.items;
 
-          // Process all articles, but stop if we're running out of requests
-          for (const item of fetchResult.items) {
-            // Check if we have enough requests left (need at least 1 for this article)
-            if (totalSubrequests >= MAX_SUBREQUESTS) {
-              const skippedCount = fetchResult.items.length - articlesCreatedForSource;
+          // Process articles in batches
+          for (let i = 0; i < allArticles.length; i += BATCH_SIZE) {
+            // Check if we have enough requests left
+            // Each batch insert = 1 subrequest, but we need buffer for other operations
+            if (totalSubrequests >= MAX_SUBREQUESTS - 5) {
+              const skippedCount = allArticles.length - articlesCreatedForSource;
               if (skippedCount > 0) {
                 logger.warn("Stopped processing articles due to subrequest limit", {
                   endpoint: "POST /api/cron/fetch-rss",
@@ -247,76 +250,99 @@ export const POST: APIRoute = async (context) => {
               break;
             }
 
+            const batch = allArticles.slice(i, i + BATCH_SIZE);
+            const batchCommands = batch.map((item) => ({
+              sourceId: source.id,
+              title: item.title,
+              description: item.description,
+              link: item.link,
+              publicationDate: item.publicationDate,
+            }));
+
             try {
-              // Add small delay between article creations to be gentle on rate limits
-              // Skip delay for first article
-              if (articlesCreatedForSource > 0) {
-                await new Promise((resolve) => setTimeout(resolve, 100)); // 100ms delay
-              }
+              totalSubrequests++; // Count batch insert as 1 subrequest
+              const batchResult = await articleService.createArticlesBatch(batchCommands, true);
 
-              totalSubrequests++; // Count this article creation
-              // Skip source validation since we already fetched the source from DB
-              await articleService.createArticle(
-                {
+              articlesCreatedForSource += batchResult.articles.length;
+              results.articlesCreated += batchResult.articles.length;
+
+              if (batchResult.duplicatesSkipped > 0) {
+                logger.info("Skipped duplicate articles in batch", {
+                  endpoint: "POST /api/cron/fetch-rss",
                   sourceId: source.id,
-                  title: item.title,
-                  description: item.description,
-                  link: item.link,
-                  publicationDate: item.publicationDate,
-                },
-                true // Skip source validation to save subrequests
-              );
-
-              articlesCreatedForSource++;
-              results.articlesCreated++;
+                  duplicatesSkipped: batchResult.duplicatesSkipped,
+                  batchSize: batch.length,
+                });
+              }
             } catch (error) {
-              // Handle duplicate articles (409 Conflict) as success
-              if (error instanceof Error && error.message === "ARTICLE_ALREADY_EXISTS") {
-                // Article already exists, treat as success (but don't count as subrequest since it failed early)
-                totalSubrequests--; // Don't count failed requests
-                continue;
-              }
-
-              // Log other errors but continue processing
-              totalSubrequests--; // Don't count failed requests
-
-              // Serialize error properly for logging
-              // Handle PostgrestError and other object errors from Supabase
-              let errorDetails: string | Record<string, unknown>;
-              if (error instanceof Error) {
-                errorDetails = {
-                  message: error.message,
-                  name: error.name,
-                  stack: error.stack,
-                };
-              } else if (typeof error === "object" && error !== null) {
-                // Handle PostgrestError and other object errors
-                const errorObj = error as Record<string, unknown>;
-                errorDetails = {
-                  message: errorObj.message || String(error),
-                  code: errorObj.code,
-                  details: errorObj.details,
-                  hint: errorObj.hint,
-                  name: errorObj.name || "UnknownError",
-                  // Include all properties for debugging
-                  ...Object.fromEntries(
-                    Object.entries(errorObj).filter(
-                      ([key]) => !["message", "code", "details", "hint", "name"].includes(key)
-                    )
-                  ),
-                };
-              } else {
-                errorDetails = String(error);
-              }
-
-              logger.warn("Failed to create article", {
+              // If batch insert fails, fall back to individual inserts for this batch
+              // This handles edge cases where batch insert might fail
+              logger.warn("Batch insert failed, falling back to individual inserts", {
                 endpoint: "POST /api/cron/fetch-rss",
                 sourceId: source.id,
-                sourceName: source.name,
-                articleLink: item.link,
-                articleTitle: item.title?.substring(0, 100), // Truncate long titles
-                error: errorDetails,
+                batchSize: batch.length,
+                error: error instanceof Error ? error.message : String(error),
               });
+
+              // Fall back to individual inserts for this batch
+              for (const item of batch) {
+                if (totalSubrequests >= MAX_SUBREQUESTS) {
+                  break;
+                }
+
+                try {
+                  totalSubrequests++;
+                  await articleService.createArticle(
+                    {
+                      sourceId: source.id,
+                      title: item.title,
+                      description: item.description,
+                      link: item.link,
+                      publicationDate: item.publicationDate,
+                    },
+                    true
+                  );
+
+                  articlesCreatedForSource++;
+                  results.articlesCreated++;
+                } catch (individualError) {
+                  totalSubrequests--; // Don't count failed requests
+                  if (individualError instanceof Error && individualError.message === "ARTICLE_ALREADY_EXISTS") {
+                    // Duplicate, skip silently
+                    continue;
+                  }
+
+                  // Log other errors
+                  let errorDetails: string | Record<string, unknown>;
+                  if (individualError instanceof Error) {
+                    errorDetails = {
+                      message: individualError.message,
+                      name: individualError.name,
+                      stack: individualError.stack,
+                    };
+                  } else if (typeof individualError === "object" && individualError !== null) {
+                    const errorObj = individualError as Record<string, unknown>;
+                    errorDetails = {
+                      message: errorObj.message || String(individualError),
+                      code: errorObj.code,
+                      details: errorObj.details,
+                      hint: errorObj.hint,
+                      name: errorObj.name || "UnknownError",
+                    };
+                  } else {
+                    errorDetails = String(individualError);
+                  }
+
+                  logger.warn("Failed to create article", {
+                    endpoint: "POST /api/cron/fetch-rss",
+                    sourceId: source.id,
+                    sourceName: source.name,
+                    articleLink: item.link,
+                    articleTitle: item.title?.substring(0, 100),
+                    error: errorDetails,
+                  });
+                }
+              }
             }
           }
 
