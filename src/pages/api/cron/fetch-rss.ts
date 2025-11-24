@@ -123,21 +123,31 @@ export const POST: APIRoute = async (context) => {
         );
       }
 
+      // Limit sources to prevent hitting Cloudflare's 50 subrequest limit
+      // Each source: 1 HTTP fetch + N article creates (each = 1 DB call = 1 HTTP request) + 1 status update
+      // With 5 sources × 5 articles = 5 fetches + 25 creates + 5 updates = 35 requests (under 50 limit)
+      const MAX_SOURCES_PER_RUN = 5;
+      const sourcesToProcess = activeSources.slice(0, MAX_SOURCES_PER_RUN);
+      const skippedSources = activeSources.length - sourcesToProcess.length;
+
       logger.info("Found active RSS sources", {
         endpoint: "POST /api/cron/fetch-rss",
-        sourceCount: activeSources.length,
+        totalSources: activeSources.length,
+        processingSources: sourcesToProcess.length,
+        skippedSources,
       });
 
       // Process each source sequentially
       const results = {
-        processed: activeSources.length,
+        processed: sourcesToProcess.length,
         succeeded: 0,
         failed: 0,
         articlesCreated: 0,
         errors: [] as { sourceId: string; sourceName: string; error: string }[],
+        skippedSources,
       };
 
-      for (const source of activeSources) {
+      for (const source of sourcesToProcess) {
         try {
           logger.info("Processing RSS source", {
             endpoint: "POST /api/cron/fetch-rss",
@@ -170,8 +180,13 @@ export const POST: APIRoute = async (context) => {
           }
 
           // Process each article from the feed
+          // Limit articles per source to prevent hitting Cloudflare's 50 subrequest limit
+          // Each article creation = 1 database call = 1 HTTP subrequest
+          const MAX_ARTICLES_PER_SOURCE = 5;
+          const itemsToProcess = fetchResult.items.slice(0, MAX_ARTICLES_PER_SOURCE);
+          
           let articlesCreatedForSource = 0;
-          for (const item of fetchResult.items) {
+          for (const item of itemsToProcess) {
             try {
               await articleService.createArticle({
                 sourceId: source.id,
@@ -198,6 +213,15 @@ export const POST: APIRoute = async (context) => {
                 error: error instanceof Error ? error.message : String(error),
               });
             }
+          }
+          
+          if (fetchResult.items.length > MAX_ARTICLES_PER_SOURCE) {
+            logger.info("Limited articles processed per source", {
+              endpoint: "POST /api/cron/fetch-rss",
+              sourceId: source.id,
+              totalItems: fetchResult.items.length,
+              processedItems: MAX_ARTICLES_PER_SOURCE,
+            });
           }
 
           // Update source with success
