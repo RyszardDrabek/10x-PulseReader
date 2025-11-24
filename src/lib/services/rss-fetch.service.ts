@@ -47,7 +47,44 @@ export class RssFetchService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const xmlText = await response.text();
+      // Get response as text - ensure UTF-8 encoding
+      // First, try to detect encoding from XML declaration or Content-Type header
+      const contentType = response.headers.get("content-type") || "";
+      let xmlText: string;
+      
+      // Get as array buffer to manually decode if needed
+      const arrayBuffer = await response.arrayBuffer();
+      
+      // Try to detect encoding from XML declaration (first 100 bytes should be enough)
+      const preview = new TextDecoder("utf-8", { fatal: false }).decode(
+        arrayBuffer.slice(0, Math.min(100, arrayBuffer.byteLength))
+      );
+      
+      // Check XML declaration for encoding
+      const xmlEncodingMatch = preview.match(/<\?xml[^>]*encoding=["']([^"']+)["']/i);
+      const xmlEncoding = xmlEncodingMatch?.[1]?.toLowerCase();
+      
+      // Determine encoding: XML declaration > Content-Type header > UTF-8 default
+      let encoding = "utf-8";
+      if (xmlEncoding) {
+        encoding = xmlEncoding;
+      } else if (contentType.includes("charset")) {
+        const charsetMatch = contentType.match(/charset=([^;]+)/i);
+        if (charsetMatch?.[1]) {
+          encoding = charsetMatch[1].trim().toLowerCase();
+        }
+      }
+      
+      // Decode with detected encoding, fallback to UTF-8
+      try {
+        const decoder = new TextDecoder(encoding, { fatal: false });
+        xmlText = decoder.decode(arrayBuffer);
+      } catch {
+        // Fallback to UTF-8 if encoding detection fails
+        const decoder = new TextDecoder("utf-8", { fatal: false });
+        xmlText = decoder.decode(arrayBuffer);
+      }
+      
       const items = this.parseRssXml(xmlText);
 
       logger.info("RSS feed fetched successfully", {

@@ -129,7 +129,7 @@ export const GET: APIRoute = async (context) => {
     // Return success response
     return new Response(JSON.stringify(result), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json; charset=utf-8" },
     });
   } catch (error) {
     // Handle specific business logic errors
