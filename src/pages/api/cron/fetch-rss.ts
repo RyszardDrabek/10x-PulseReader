@@ -279,11 +279,41 @@ export const POST: APIRoute = async (context) => {
 
               // Log other errors but continue processing
               totalSubrequests--; // Don't count failed requests
+              
+              // Serialize error properly for logging
+              // Handle PostgrestError and other object errors from Supabase
+              let errorDetails: string | Record<string, unknown>;
+              if (error instanceof Error) {
+                errorDetails = {
+                  message: error.message,
+                  name: error.name,
+                  stack: error.stack,
+                };
+              } else if (typeof error === "object" && error !== null) {
+                // Handle PostgrestError and other object errors
+                const errorObj = error as Record<string, unknown>;
+                errorDetails = {
+                  message: errorObj.message || String(error),
+                  code: errorObj.code,
+                  details: errorObj.details,
+                  hint: errorObj.hint,
+                  name: errorObj.name || "UnknownError",
+                  // Include all properties for debugging
+                  ...Object.fromEntries(
+                    Object.entries(errorObj).filter(([key]) => !["message", "code", "details", "hint", "name"].includes(key))
+                  ),
+                };
+              } else {
+                errorDetails = String(error);
+              }
+              
               logger.warn("Failed to create article", {
                 endpoint: "POST /api/cron/fetch-rss",
                 sourceId: source.id,
+                sourceName: source.name,
                 articleLink: item.link,
-                error: error instanceof Error ? error.message : String(error),
+                articleTitle: item.title?.substring(0, 100), // Truncate long titles
+                error: errorDetails,
               });
             }
           }
