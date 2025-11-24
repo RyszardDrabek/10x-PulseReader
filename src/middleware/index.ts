@@ -208,10 +208,17 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
 
             // Handle service_role JWT tokens
             if (isServiceRoleToken && tokenPayload) {
-              const serviceRoleKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-              if (serviceRoleKey) {
+              // Use already resolved serviceRoleKey from above, or fallback to token itself
+              // Note: The token IS the service role key (JWT format), so we can use it directly
+              const keyToUse = serviceRoleKey || token;
+
+              if (keyToUse && supabaseUrl) {
+                cfLogger.trace("AUTH_SERVICE_ROLE_JWT_USING_TOKEN", {
+                  usingEnvVar: !!serviceRoleKey,
+                  usingToken: !serviceRoleKey,
+                });
                 const { createClient } = await import("@supabase/supabase-js");
-                const serviceSupabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
+                const serviceSupabase = createClient<Database>(supabaseUrl, keyToUse, {
                   auth: {
                     autoRefreshToken: false,
                     persistSession: false,
