@@ -58,14 +58,32 @@ export class ArticleService {
    * @returns true if source exists, false otherwise
    */
   async validateSource(sourceId: string): Promise<boolean> {
+    // Use .maybeSingle() instead of .single() to avoid errors when source doesn't exist
+    // .maybeSingle() returns null data instead of error when no rows found
     const { data, error } = await this.supabase
       .schema("app")
       .from("rss_sources")
       .select("id")
       .eq("id", sourceId)
-      .single();
+      .maybeSingle();
 
-    return !error && data !== null;
+    // Log validation attempt for debugging
+    if (error) {
+      console.error("Source validation error:", {
+        sourceId,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorDetails: error.details,
+        errorHint: error.hint,
+      });
+      return false;
+    }
+
+    const exists = data !== null;
+    if (!exists) {
+      console.warn("Source not found during validation:", { sourceId });
+    }
+    return exists;
   }
 
   /**
@@ -232,6 +250,11 @@ export class ArticleService {
     // Step 1: Validate source exists
     const sourceExists = await this.validateSource(command.sourceId);
     if (!sourceExists) {
+      // Log detailed error for debugging
+      console.error("Source validation failed:", {
+        sourceId: command.sourceId,
+        sourceExists,
+      });
       throw new Error("RSS_SOURCE_NOT_FOUND");
     }
 

@@ -309,6 +309,47 @@ export const POST: APIRoute = async (context) => {
       results.skippedSources = activeSources.length - results.processed;
       results.hasMoreWork = results.skippedSources > 0 || results.stoppedEarly;
 
+      // Update last_fetched_at for successfully processed sources to enable round-robin
+      // Do this in batch at the end to save subrequests (1 update call instead of N)
+      if (results.succeeded > 0 && totalSubrequests < MAX_SUBREQUESTS - 1) {
+        const succeededSourceIds = sourcesToProcess
+          .slice(0, results.processed)
+          .filter((source, index) => {
+            // Check if this source succeeded (not in errors array)
+            return !results.errors.some((err) => err.sourceId === source.id);
+          })
+          .map((source) => source.id);
+
+        if (succeededSourceIds.length > 0) {
+          try {
+            totalSubrequests++; // Count batch update as 1 subrequest
+            // Update all succeeded sources in a single batch update
+            const { error: batchUpdateError } = await supabase
+              .schema("app")
+              .from("rss_sources")
+              .update({ last_fetched_at: new Date().toISOString() })
+              .in("id", succeededSourceIds);
+
+            if (batchUpdateError) {
+              logger.warn("Failed to batch update source fetch status", {
+                endpoint: "POST /api/cron/fetch-rss",
+                error: batchUpdateError.message,
+              });
+            } else {
+              logger.info("Batch updated source fetch status", {
+                endpoint: "POST /api/cron/fetch-rss",
+                updatedCount: succeededSourceIds.length,
+              });
+            }
+          } catch (error) {
+            logger.warn("Error during batch status update", {
+              endpoint: "POST /api/cron/fetch-rss",
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+      }
+
       logger.info("RSS feed fetch job completed", {
         endpoint: "POST /api/cron/fetch-rss",
         ...results,
@@ -320,6 +361,7 @@ export const POST: APIRoute = async (context) => {
         JSON.stringify({
           success: true,
           ...results,
+          totalSubrequests, // Include subrequest count in response
         }),
         {
           status: 200,
