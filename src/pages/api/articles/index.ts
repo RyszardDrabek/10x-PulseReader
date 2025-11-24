@@ -260,7 +260,16 @@ export const POST: APIRoute = async (context) => {
   try {
     // Parse request body
     try {
-      body = await context.request.json();
+      // Debug: Log raw body for troubleshooting
+      const rawBody = await context.request.text();
+      logger.debug("Raw request body received", {
+        endpoint: "POST /api/articles",
+        bodyLength: rawBody.length,
+        bodyPreview: rawBody.substring(0, 200),
+      });
+      
+      // Try to parse as JSON
+      body = JSON.parse(rawBody);
     } catch (error) {
       if (error instanceof SyntaxError) {
         logger.warn("Invalid JSON in request body", {
