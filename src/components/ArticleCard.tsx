@@ -48,9 +48,24 @@ export default function ArticleCard({ article }: ArticleCardProps) {
   const sanitizedTitle = DOMPurify.sanitize(article.title);
   const sanitizedDescription = DOMPurify.sanitize(truncateDescription(article.description));
 
+  // Clean and validate the link - strip any CDATA tags that might have been missed
+  const cleanLink = article.link
+    ? article.link.replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim()
+    : "#";
+
+  // Ensure link is a valid URL, otherwise use "#" to prevent navigation errors
+  let href = cleanLink;
+  try {
+    // Try to create a URL object to validate
+    new URL(cleanLink);
+  } catch {
+    // If invalid URL, use "#" to prevent navigation
+    href = "#";
+  }
+
   return (
     <a
-      href={article.link}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="block border rounded-lg p-4 md:p-6 hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"

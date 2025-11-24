@@ -224,8 +224,11 @@ export class RssFetchService {
       itemXml.match(/<link[^>]*>(.*?)<\/link>/i) ||
       itemXml.match(/<guid[^>]*>(.*?)<\/guid>/i) ||
       itemXml.match(/<link[^>]*href=["']([^"']+)["'][^>]*\/?>/i);
-    const link = linkMatch?.[1]?.trim();
+    let link = linkMatch?.[1]?.trim();
     if (!link) return null;
+    
+    // Strip CDATA tags from link (same as title)
+    link = link.replace(/<!\[CDATA\[(.*?)\]\]>/gi, "$1").trim();
 
     // Extract description
     const descMatch =
