@@ -73,25 +73,48 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
   // Always set up Supabase client for all routes (both public and protected)
   try {
     // Debug: Log all environment variables (for debugging Cloudflare Pages env vars)
+    // In Cloudflare Pages, non-PUBLIC vars are accessible via process.env, not import.meta.env
     const allEnvKeys = Object.keys(import.meta.env).filter((key) => key.includes("SUPABASE") || key.includes("PUBLIC"));
+    const processEnvKeys =
+      typeof process !== "undefined" && process.env
+        ? Object.keys(process.env).filter((key) => key.includes("SUPABASE") || key.includes("PUBLIC"))
+        : [];
+
+    // Try both import.meta.env and process.env for non-PUBLIC variables
+    const serviceRoleKey =
+      (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
+      import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl =
+      (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
+      import.meta.env.SUPABASE_URL ||
+      import.meta.env.PUBLIC_SUPABASE_URL;
+    const supabaseKey =
+      (typeof process !== "undefined" && process.env?.SUPABASE_KEY) ||
+      import.meta.env.SUPABASE_KEY ||
+      import.meta.env.PUBLIC_SUPABASE_KEY;
     cfLogger.trace("ENV_VARS_AVAILABLE", {
-      envKeys: allEnvKeys,
-      hasServiceRoleKey: !!import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
-      serviceRoleKeyLength: import.meta.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
-      hasSupabaseUrl: !!import.meta.env.SUPABASE_URL,
-      hasSupabaseKey: !!import.meta.env.SUPABASE_KEY,
+      importMetaEnvKeys: allEnvKeys,
+      processEnvKeys,
+      hasServiceRoleKey: !!serviceRoleKey,
+      serviceRoleKeyLength: serviceRoleKey?.length || 0,
+      serviceRoleKeySource:
+        typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY ? "process.env" : "import.meta.env",
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseKey: !!supabaseKey,
       hasPublicSupabaseUrl: !!import.meta.env.PUBLIC_SUPABASE_URL,
       hasPublicSupabaseKey: !!import.meta.env.PUBLIC_SUPABASE_KEY,
     });
     reqLogger.debug("Environment variables check", {
-      availableKeys: allEnvKeys,
-      serviceRoleKeyPresent: !!import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
-      serviceRoleKeyLength: import.meta.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
+      importMetaEnvKeys: allEnvKeys,
+      processEnvKeys,
+      serviceRoleKeyPresent: !!serviceRoleKey,
+      serviceRoleKeyLength: serviceRoleKey?.length || 0,
+      serviceRoleKeySource:
+        typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY ? "process.env" : "import.meta.env",
     });
 
     // Check for service role authentication first
     const authHeader = request.headers.get("Authorization");
-    const serviceRoleKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
     // Debug logging for authorization header
     if (authHeader) {
@@ -113,7 +136,6 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
       if (serviceRoleKey && token === serviceRoleKey) {
         cfLogger.trace("AUTH_SERVICE_ROLE_SUCCESS");
         reqLogger.info("Service role authentication successful");
-        const supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
 
         if (supabaseUrl) {
           // Create service role client using @supabase/supabase-js directly
@@ -143,8 +165,7 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
         }
       } else {
         // Try to verify as JWT token (for API requests with Bearer tokens)
-        const supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
-        const supabaseKey = import.meta.env.SUPABASE_KEY || import.meta.env.PUBLIC_SUPABASE_KEY;
+        // Use already resolved values from above
 
         if (supabaseUrl && supabaseKey) {
           try {
