@@ -279,7 +279,7 @@ export const POST: APIRoute = async (context) => {
 
               // Log other errors but continue processing
               totalSubrequests--; // Don't count failed requests
-              
+
               // Serialize error properly for logging
               // Handle PostgrestError and other object errors from Supabase
               let errorDetails: string | Record<string, unknown>;
@@ -300,13 +300,15 @@ export const POST: APIRoute = async (context) => {
                   name: errorObj.name || "UnknownError",
                   // Include all properties for debugging
                   ...Object.fromEntries(
-                    Object.entries(errorObj).filter(([key]) => !["message", "code", "details", "hint", "name"].includes(key))
+                    Object.entries(errorObj).filter(
+                      ([key]) => !["message", "code", "details", "hint", "name"].includes(key)
+                    )
                   ),
                 };
               } else {
                 errorDetails = String(error);
               }
-              
+
               logger.warn("Failed to create article", {
                 endpoint: "POST /api/cron/fetch-rss",
                 sourceId: source.id,
