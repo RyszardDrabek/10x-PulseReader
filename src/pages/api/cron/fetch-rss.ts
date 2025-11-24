@@ -255,13 +255,17 @@ export const POST: APIRoute = async (context) => {
               }
 
               totalSubrequests++; // Count this article creation
-              await articleService.createArticle({
-                sourceId: source.id,
-                title: item.title,
-                description: item.description,
-                link: item.link,
-                publicationDate: item.publicationDate,
-              });
+              // Skip source validation since we already fetched the source from DB
+              await articleService.createArticle(
+                {
+                  sourceId: source.id,
+                  title: item.title,
+                  description: item.description,
+                  link: item.link,
+                  publicationDate: item.publicationDate,
+                },
+                true // Skip source validation to save subrequests
+              );
 
               articlesCreatedForSource++;
               results.articlesCreated++;

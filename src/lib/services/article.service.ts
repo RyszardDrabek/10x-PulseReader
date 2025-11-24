@@ -237,11 +237,13 @@ export class ArticleService {
    *   - ARTICLE_ALREADY_EXISTS: duplicate article link
    *   - TOPIC_ASSOCIATION_FAILED: failed to create topic associations
    */
-  async createArticle(command: CreateArticleCommand): Promise<ArticleEntity> {
-    // Step 1: Validate source exists
-    const sourceExists = await this.validateSource(command.sourceId);
-    if (!sourceExists) {
-      throw new Error("RSS_SOURCE_NOT_FOUND");
+  async createArticle(command: CreateArticleCommand, skipSourceValidation = false): Promise<ArticleEntity> {
+    // Step 1: Validate source exists (can be skipped if source was already validated)
+    if (!skipSourceValidation) {
+      const sourceExists = await this.validateSource(command.sourceId);
+      if (!sourceExists) {
+        throw new Error("RSS_SOURCE_NOT_FOUND");
+      }
     }
 
     // Step 2: Validate topics exist (if provided)
