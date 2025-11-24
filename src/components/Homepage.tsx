@@ -18,6 +18,8 @@ export default function Homepage({ initialData }: HomepageProps) {
   const [queryParams] = useState<GetArticlesQueryParams>({
     limit: 20,
     offset: 0,
+    sortBy: "publication_date",
+    sortOrder: "desc",
   });
 
   const fetchProfile = useCallback(async () => {

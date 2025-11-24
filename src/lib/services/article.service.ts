@@ -164,8 +164,8 @@ export class ArticleService {
     // Apply filters
     query = this.applyFilters(query, params, userProfile, articleIdsForTopic);
 
-    // Apply sorting
-    const sortField = params.sortBy === "publication_date" ? "publication_date" : "created_at";
+    // Apply sorting - default to publication_date desc (newest first)
+    const sortField = params.sortBy || "publication_date";
     const ascending = params.sortOrder === "asc";
     query = query.order(sortField, { ascending });
 

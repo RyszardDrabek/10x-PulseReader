@@ -12,7 +12,7 @@ interface ArticleListProps {
 }
 
 export default function ArticleList({
-  queryParams = { limit: 20, offset: 0 },
+  queryParams = { limit: 20, offset: 0, sortBy: "publication_date", sortOrder: "desc" },
   initialData,
   isPersonalized = false,
 }: ArticleListProps) {
@@ -25,31 +25,91 @@ export default function ArticleList({
   const [loading, setLoading] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(initialData?.pagination.hasMore || false);
-  const [currentOffset, setCurrentOffset] = useState(initialData?.pagination.offset || 0);
+  const [currentOffset, setCurrentOffset] = useState(
+    initialData ? initialData.pagination.offset + initialData.pagination.limit : 0
+  );
   const [usePersonalization, setUsePersonalization] = useState(isPersonalized);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const prevPersonalizationRef = useRef<boolean | undefined>(undefined);
+  const hasMoreRef = useRef(hasMore);
+  const loadingRef = useRef(loading);
+  const currentOffsetRef = useRef(currentOffset);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  useEffect(() => {
+    currentOffsetRef.current = currentOffset;
+  }, [currentOffset]);
+
+  // Cleanup observer when component unmounts
+  useEffect(() => {
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+    };
+  }, []);
 
   const fetchArticles = useCallback(
     async (offset = 0, append = false) => {
+      // Prevent duplicate fetches
+      if (loadingRef.current) {
+        return;
+      }
+
       setLoading(true);
       setError(null);
       try {
-        const params = new URLSearchParams({
-          ...queryParams,
-          offset: offset.toString(),
-          applyPersonalization: usePersonalization.toString(),
-        });
+        // Build URLSearchParams with proper string conversion
+        const params = new URLSearchParams();
+        if (queryParams.limit !== undefined) {
+          params.set("limit", queryParams.limit.toString());
+        }
+        // Use the offset parameter, not queryParams.offset
+        params.set("offset", offset.toString());
+        if (queryParams.sentiment) {
+          params.set("sentiment", queryParams.sentiment);
+        }
+        if (queryParams.topicId) {
+          params.set("topicId", queryParams.topicId);
+        }
+        if (queryParams.sourceId) {
+          params.set("sourceId", queryParams.sourceId);
+        }
+        if (queryParams.sortBy) {
+          params.set("sortBy", queryParams.sortBy);
+        }
+        if (queryParams.sortOrder) {
+          params.set("sortOrder", queryParams.sortOrder);
+        }
+        params.set("applyPersonalization", usePersonalization.toString());
 
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
         };
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          headers.Authorization = `Bearer ${session.access_token}`;
+        // Only try to get session if supabase client is available
+        if (supabase) {
+          try {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            if (session?.access_token) {
+              headers.Authorization = `Bearer ${session.access_token}`;
+            }
+          } catch (authError) {
+            // If auth fails, continue without auth header
+            // eslint-disable-next-line no-console
+            console.warn("[ArticleList] Failed to get session:", authError);
+          }
         }
 
         const response = await fetch(`/api/articles?${params}`, { headers });
@@ -58,11 +118,27 @@ export default function ArticleList({
         }
 
         const data: ArticleListResponse = await response.json();
-        setArticles((prev) => (append ? [...prev, ...data.data] : data.data));
+        setArticles((prev) => {
+          if (append) {
+            // Only append if we have new data
+            if (data.data && data.data.length > 0) {
+              return [...prev, ...data.data];
+            }
+            // If no new data but append was requested, keep previous articles
+            return prev;
+          }
+          // Replace articles only if we have data
+          return data.data && data.data.length > 0 ? data.data : prev;
+        });
         setHasMore(data.pagination.hasMore);
         setCurrentOffset(data.pagination.offset + data.pagination.limit);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load articles");
+        const errorMessage = err instanceof Error ? err.message : "Failed to load articles";
+        setError(errorMessage);
+        // Don't clear articles on error when appending - preserve existing articles
+        if (!append) {
+          setArticles([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -79,47 +155,57 @@ export default function ArticleList({
 
   useEffect(() => {
     const prevPersonalization = prevPersonalizationRef.current;
-    setUsePersonalization(isPersonalized);
+    
+    // Only update if personalization actually changed
+    if (prevPersonalization !== isPersonalized) {
+      setUsePersonalization(isPersonalized);
 
-    // Only refetch if personalization actually changed from a previous value
-    // Don't refetch on initial render when prevPersonalization is the same as current
-    if (prevPersonalization !== undefined && prevPersonalization !== isPersonalized) {
-      setArticles([]);
-      fetchArticles(0, false);
+      // Only refetch if personalization actually changed from a previous value
+      // Don't refetch on initial render when prevPersonalization is undefined
+      if (prevPersonalization !== undefined) {
+        setArticles([]);
+        fetchArticles(0, false);
+      }
     }
 
     prevPersonalizationRef.current = isPersonalized;
   }, [isPersonalized, fetchArticles]);
 
   const lastArticleRef = useCallback(
-    (node: HTMLDivElement) => {
-      if (loading || !hasMore) return;
-      if (observerRef.current) observerRef.current.disconnect();
-      observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasMore) {
-          fetchArticles(currentOffset, true);
-        }
-      });
-      if (node) observerRef.current.observe(node);
+    (node: HTMLDivElement | null) => {
+      // Disconnect previous observer
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+
+      // Always set up observer if we have a node
+      // The observer callback will check hasMore internally
+      if (node) {
+        observerRef.current = new IntersectionObserver(
+          (entries) => {
+            // Check conditions using refs to get latest values
+            if (
+              entries[0].isIntersecting &&
+              hasMoreRef.current &&
+              !loadingRef.current
+            ) {
+              fetchArticles(currentOffsetRef.current, true);
+            }
+          },
+          {
+            rootMargin: "100px", // Start loading 100px before the element is visible
+            threshold: 0.1, // Trigger when 10% of element is visible
+          }
+        );
+        observerRef.current.observe(node);
+      }
     },
-    [loading, hasMore, fetchArticles, currentOffset]
+    [fetchArticles]
   );
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-destructive mb-4">Failed to load articles</p>
-        <button
-          onClick={() => fetchArticles(0, false)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
 
-  const isEmpty = articles.length === 0 && !loading;
+  const isEmpty = articles.length === 0 && !loading && !error;
   if (isEmpty) {
     return (
       <NoResultsPlaceholder
@@ -133,11 +219,23 @@ export default function ArticleList({
     );
   }
 
-  // Ensure we display articles if we have initialData, even if state gets confused
-  const displayArticles = initialData?.data || articles;
+  // Use articles state directly - it's initialized with initialData on mount
+  const displayArticles = articles;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 md:py-6">
+      {/* Show error banner if there's an error but keep articles visible */}
+      {error && (
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+          <p className="text-destructive mb-2">{error}</p>
+          <button
+            onClick={() => fetchArticles(0, false)}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
       <div
         className="space-y-4 md:space-y-6"
         role="feed"
@@ -162,9 +260,6 @@ export default function ArticleList({
       )}
       {displayArticles.length === 0 && !loading && !error && (
         <div className="text-center py-8 text-muted-foreground">No articles found</div>
-      )}
-      {error && displayArticles.length === 0 && (
-        <div className="text-center py-8 text-red-600">Error loading articles: {error}</div>
       )}
     </div>
   );

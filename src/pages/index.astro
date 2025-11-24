@@ -11,7 +11,12 @@ let initialArticles;
 if (supabase) {
   try {
     const articleService = new ArticleService(supabase);
-    initialArticles = await articleService.getArticles({ limit: 20, offset: 0 });
+    initialArticles = await articleService.getArticles({ 
+      limit: 20, 
+      offset: 0,
+      sortBy: "publication_date",
+      sortOrder: "desc",
+    });
   } catch (error) {
     // If server-side fetch fails, provide empty data - client will fetch
     // eslint-disable-next-line no-console
