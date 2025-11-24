@@ -250,17 +250,21 @@ export const POST: APIRoute = async (context) => {
         endpoint: "POST /api/cron/fetch-rss",
       });
 
-      // Include error details in development mode for debugging
-      const isDevelopment = import.meta.env.DEV;
-      const errorDetails =
-        isDevelopment && error instanceof Error ? { message: error.message, stack: error.stack } : undefined;
+      // Include error details for debugging (even in production for this endpoint)
+      const errorDetails = error instanceof Error 
+        ? { 
+            message: error.message, 
+            stack: error.stack?.split('\n').slice(0, 5).join('\n'), // First 5 lines of stack
+            name: error.name,
+          } 
+        : { message: String(error) };
 
       return new Response(
         JSON.stringify({
           error: "Internal server error",
           code: "INTERNAL_ERROR",
           timestamp: new Date().toISOString(),
-          ...(errorDetails && { details: errorDetails }),
+          details: errorDetails,
         }),
         {
           status: 500,
@@ -274,12 +278,20 @@ export const POST: APIRoute = async (context) => {
       endpoint: "POST /api/cron/fetch-rss",
     });
 
+    const errorDetails = outerError instanceof Error 
+      ? { 
+          message: outerError.message, 
+          stack: outerError.stack?.split('\n').slice(0, 5).join('\n'),
+          name: outerError.name,
+        } 
+      : { message: String(outerError) };
+
     return new Response(
       JSON.stringify({
         error: "Critical server error",
         code: "CRITICAL_ERROR",
         timestamp: new Date().toISOString(),
-        message: outerError instanceof Error ? outerError.message : String(outerError),
+        details: errorDetails,
       }),
       {
         status: 500,
