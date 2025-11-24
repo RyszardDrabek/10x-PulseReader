@@ -72,6 +72,23 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
 
   // Always set up Supabase client for all routes (both public and protected)
   try {
+    // Debug: Log all environment variables (for debugging Cloudflare Pages env vars)
+    const allEnvKeys = Object.keys(import.meta.env).filter((key) => key.includes("SUPABASE") || key.includes("PUBLIC"));
+    cfLogger.trace("ENV_VARS_AVAILABLE", {
+      envKeys: allEnvKeys,
+      hasServiceRoleKey: !!import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
+      serviceRoleKeyLength: import.meta.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
+      hasSupabaseUrl: !!import.meta.env.SUPABASE_URL,
+      hasSupabaseKey: !!import.meta.env.SUPABASE_KEY,
+      hasPublicSupabaseUrl: !!import.meta.env.PUBLIC_SUPABASE_URL,
+      hasPublicSupabaseKey: !!import.meta.env.PUBLIC_SUPABASE_KEY,
+    });
+    reqLogger.debug("Environment variables check", {
+      availableKeys: allEnvKeys,
+      serviceRoleKeyPresent: !!import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
+      serviceRoleKeyLength: import.meta.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
+    });
+
     // Check for service role authentication first
     const authHeader = request.headers.get("Authorization");
     const serviceRoleKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -139,23 +156,25 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
               const tokenParts = token.split(".");
               if (tokenParts.length === 3) {
                 tokenPayload = JSON.parse(decodeBase64Url(tokenParts[1]));
-                isServiceRoleToken = tokenPayload.role === "service_role";
+                if (tokenPayload) {
+                  isServiceRoleToken = tokenPayload.role === "service_role";
 
-                // Check token expiration
-                if (tokenPayload.exp) {
-                  const expirationTime = tokenPayload.exp * 1000; // Convert to milliseconds
-                  if (Date.now() > expirationTime) {
-                    cfLogger.trace("AUTH_JWT_EXPIRED");
-                    reqLogger.debug("JWT token has expired");
-                    throw new Error("Token expired");
+                  // Check token expiration
+                  if (tokenPayload.exp) {
+                    const expirationTime = tokenPayload.exp * 1000; // Convert to milliseconds
+                    if (Date.now() > expirationTime) {
+                      cfLogger.trace("AUTH_JWT_EXPIRED");
+                      reqLogger.debug("JWT token has expired");
+                      throw new Error("Token expired");
+                    }
                   }
-                }
 
-                // Verify issuer matches Supabase
-                if (tokenPayload.iss && !tokenPayload.iss.includes("supabase")) {
-                  cfLogger.trace("AUTH_JWT_INVALID_ISSUER");
-                  reqLogger.debug("JWT token has invalid issuer");
-                  throw new Error("Invalid token issuer");
+                  // Verify issuer matches Supabase
+                  if (tokenPayload.iss && !tokenPayload.iss.includes("supabase")) {
+                    cfLogger.trace("AUTH_JWT_INVALID_ISSUER");
+                    reqLogger.debug("JWT token has invalid issuer");
+                    throw new Error("Invalid token issuer");
+                  }
                 }
               }
             } catch (decodeError) {
