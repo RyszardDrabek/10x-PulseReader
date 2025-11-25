@@ -133,7 +133,9 @@ export default function ArticleCard({ article }: ArticleCardProps) {
                   setTagsExpanded(!tagsExpanded);
                 }}
                 className="inline-flex items-center justify-center px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                aria-label={tagsExpanded ? "Show fewer tags" : `Show ${sortedTopics.length - initialTagCount} more tags`}
+                aria-label={
+                  tagsExpanded ? "Show fewer tags" : `Show ${sortedTopics.length - initialTagCount} more tags`
+                }
                 aria-expanded={tagsExpanded}
               >
                 <MoreHorizontal className="h-3 w-3" />

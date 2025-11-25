@@ -158,8 +158,11 @@ export class ArticleService {
     }
 
     // Build base query with joins for source and topics
-    let query = this.supabase.schema("app").from("articles").select(
-      `
+    let query = this.supabase
+      .schema("app")
+      .from("articles")
+      .select(
+        `
       id,
       title,
       description,
@@ -180,8 +183,8 @@ export class ArticleService {
         )
       )
     `,
-      { count: "exact" }
-    );
+        { count: "exact" }
+      );
 
     // Apply filters
     query = this.applyFilters(query, params, userProfile, articleIdsForTopic);
