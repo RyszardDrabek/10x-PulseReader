@@ -232,7 +232,7 @@ export default function ArticleList({
         </div>
       )}
       <div
-        className="space-y-4 md:space-y-6"
+        className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"
         role="feed"
         aria-label="Article feed"
         aria-busy={loading}
