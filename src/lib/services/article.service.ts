@@ -158,8 +158,30 @@ export class ArticleService {
     }
 
     // Build base query with joins for source and topics
-    // First try a simple query to test if the table exists and is accessible
-    let query = this.supabase.schema("app").from("articles").select("*", { count: "exact" });
+    let query = this.supabase.schema("app").from("articles").select(
+      `
+      id,
+      title,
+      description,
+      link,
+      publication_date,
+      sentiment,
+      created_at,
+      updated_at,
+      rss_sources!articles_source_id_fkey (
+        id,
+        name,
+        url
+      ),
+      article_topics (
+        topics (
+          id,
+          name
+        )
+      )
+    `,
+      { count: "exact" }
+    );
 
     // Apply filters
     query = this.applyFilters(query, params, userProfile, articleIdsForTopic);
@@ -183,8 +205,8 @@ export class ArticleService {
 
     // Apply blocklist filtering if personalization is enabled
     let blockedCount = 0;
-    // For now, handle both simple and joined article structures
-    let filteredData: (Database["app"]["Tables"]["articles"]["Row"] | JoinedArticle)[] = data || [];
+    // Data now includes joined relationships
+    let filteredData: JoinedArticle[] = (data as JoinedArticle[]) || [];
 
     if (params.applyPersonalization && userProfile?.blocklist && userProfile.blocklist.length > 0) {
       const beforeFilterCount = filteredData.length;

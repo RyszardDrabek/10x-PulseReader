@@ -218,7 +218,7 @@ export default function ArticleList({
   const displayArticles = articles;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-4 md:py-6">
+    <div className="max-w-6xl mx-auto px-4 py-4 md:py-6">
       {/* Show error banner if there's an error but keep articles visible */}
       {error && (
         <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md">
@@ -244,6 +244,7 @@ export default function ArticleList({
             ref={index === displayArticles.length - 1 ? lastArticleRef : undefined}
             aria-posinset={index + 1}
             aria-setsize={displayArticles.length}
+            className="h-full"
           >
             <ArticleCard article={article} />
           </article>

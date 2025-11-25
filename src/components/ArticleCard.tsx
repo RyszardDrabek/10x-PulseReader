@@ -1,6 +1,7 @@
 import { Badge } from "./ui/badge";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, MoreHorizontal } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
+import { useState } from "react";
 import type { ArticleDto } from "../types";
 
 interface ArticleCardProps {
@@ -8,6 +9,8 @@ interface ArticleCardProps {
 }
 
 export default function ArticleCard({ article }: ArticleCardProps) {
+  const [tagsExpanded, setTagsExpanded] = useState(false);
+
   const getSentimentColor = (sentiment: string | null) => {
     switch (sentiment) {
       case "positive":
@@ -51,6 +54,14 @@ export default function ArticleCard({ article }: ArticleCardProps) {
     return description.substring(0, maxLength) + "...";
   };
 
+  // Sort topics alphabetically for consistent display
+  const sortedTopics = [...article.topics].sort((a, b) => a.name.localeCompare(b.name));
+
+  // Show 3 tags initially, expand to show all when clicked
+  const initialTagCount = 3;
+  const visibleTopics = tagsExpanded ? sortedTopics : sortedTopics.slice(0, initialTagCount);
+  const hasMoreTopics = sortedTopics.length > initialTagCount;
+
   const sanitizedTitle = DOMPurify.sanitize(article.title);
   const sanitizedDescription = DOMPurify.sanitize(truncateDescription(article.description));
 
@@ -72,7 +83,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="block border rounded-lg p-4 md:p-6 hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+      className="flex flex-col border rounded-lg p-4 md:p-6 hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 h-full"
       aria-label={`Open article: ${article.title}. Published by ${article.source.name} on ${formatDate(article.publicationDate)}.`}
       data-testid="article-card"
     >
@@ -84,31 +95,58 @@ export default function ArticleCard({ article }: ArticleCardProps) {
         <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
       </div>
 
-      {article.description && (
-        <p
-          className="text-muted-foreground mb-4 leading-relaxed text-sm md:text-base"
-          dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
-        />
-      )}
+      {/* Description - flexible to grow and fill space */}
+      <div className="flex-grow">
+        {article.description && (
+          <p
+            className="text-muted-foreground leading-relaxed text-sm md:text-base"
+            dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+          />
+        )}
+      </div>
 
-      <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
-        <div className="flex items-center flex-wrap gap-2">
+      {/* Bottom section - always at bottom */}
+      <div className="mt-4">
+        {/* Source and Sentiment line */}
+        <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-muted-foreground">{article.source.name}</span>
-
           {article.sentiment && (
             <Badge variant="secondary" className={getSentimentColor(article.sentiment)}>
               {article.sentiment}
             </Badge>
           )}
-
-          {article.topics.map((topic) => (
-            <Badge key={topic.id} variant="outline" className="text-xs">
-              {topic.name}
-            </Badge>
-          ))}
         </div>
 
-        <span className="text-xs text-muted-foreground md:text-right">{formatDate(article.publicationDate)}</span>
+        {/* Tags/Topics line */}
+        {sortedTopics.length > 0 && (
+          <div className="flex items-center flex-wrap gap-2 mb-2">
+            {visibleTopics.map((topic) => (
+              <Badge key={topic.id} variant="outline" className="text-xs">
+                {topic.name}
+              </Badge>
+            ))}
+
+            {hasMoreTopics && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  setTagsExpanded(!tagsExpanded);
+                }}
+                className="inline-flex items-center justify-center px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                aria-label={tagsExpanded ? "Show fewer tags" : `Show ${sortedTopics.length - initialTagCount} more tags`}
+                aria-expanded={tagsExpanded}
+              >
+                <MoreHorizontal className="h-3 w-3" />
+                {!tagsExpanded && <span className="ml-1">+{sortedTopics.length - initialTagCount}</span>}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Publication date line */}
+        <div className="flex justify-end">
+          <span className="text-xs text-muted-foreground">{formatDate(article.publicationDate)}</span>
+        </div>
       </div>
     </a>
   );
