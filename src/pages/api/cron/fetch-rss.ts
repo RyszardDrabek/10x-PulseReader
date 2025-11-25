@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 
 import { ArticleService } from "../../../lib/services/article.service.ts";
+import { ArticleAnalysisService } from "../../../lib/services/article-analysis.service.ts";
 import { RssFetchService } from "../../../lib/services/rss-fetch.service.ts";
 import { RssSourceService } from "../../../lib/services/rss-source.service.ts";
 import { logger } from "../../../lib/utils/logger.ts";
@@ -99,6 +100,23 @@ export const POST: APIRoute = async (context) => {
       const rssFetchService = new RssFetchService();
       const articleService = new ArticleService(supabase);
 
+      // Initialize AI analysis service only if API key is available (graceful degradation)
+      let articleAnalysisService: ArticleAnalysisService | null = null;
+      try {
+        if (import.meta.env.OPENROUTER_API_KEY) {
+          articleAnalysisService = new ArticleAnalysisService(supabase);
+        } else {
+          logger.warn("OPENROUTER_API_KEY not set, skipping AI analysis", {
+            endpoint: "POST /api/cron/fetch-rss",
+          });
+        }
+      } catch (error) {
+        logger.warn("Failed to initialize AI analysis service, skipping AI analysis", {
+          endpoint: "POST /api/cron/fetch-rss",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
       // Fetch all active RSS sources (ordered by last_fetched_at ascending, nulls first)
       // This ensures sources that haven't been fetched recently are prioritized
       const activeSources = await rssSourceService.getActiveRssSources();
@@ -166,6 +184,11 @@ export const POST: APIRoute = async (context) => {
         skippedArticles: [] as { sourceId: string; sourceName: string; skippedCount: number }[],
         hasMoreWork: false,
         stoppedEarly: false,
+        aiAnalysis: {
+          attempted: 0,
+          successful: 0,
+          failed: 0,
+        },
       };
 
       for (const source of sourcesToProcess) {
@@ -274,6 +297,56 @@ export const POST: APIRoute = async (context) => {
                   batchSize: batch.length,
                 });
               }
+
+              // Analyze newly created articles with AI (skip duplicates)
+              if (batchResult.articles.length > 0 && articleAnalysisService) {
+                logger.info("Starting AI analysis for new articles", {
+                  endpoint: "POST /api/cron/fetch-rss",
+                  sourceId: source.id,
+                  articlesToAnalyze: batchResult.articles.length,
+                });
+
+                try {
+                  const analysisResults = await articleAnalysisService.analyzeArticlesBatch(batchResult.articles);
+
+                  const successfulAnalyses = analysisResults.filter(r => r.success).length;
+                  const failedAnalyses = analysisResults.filter(r => !r.success).length;
+
+                  // Update global AI analysis counters
+                  results.aiAnalysis.attempted += analysisResults.length;
+                  results.aiAnalysis.successful += successfulAnalyses;
+                  results.aiAnalysis.failed += failedAnalyses;
+
+                  logger.info("AI analysis batch completed", {
+                    endpoint: "POST /api/cron/fetch-rss",
+                    sourceId: source.id,
+                    successfulAnalyses,
+                    failedAnalyses,
+                  });
+
+                  // Log any analysis failures for monitoring
+                  if (failedAnalyses > 0) {
+                    const failureDetails = analysisResults
+                      .filter(r => !r.success)
+                      .map(r => ({ articleId: r.articleId, error: r.error }))
+                      .slice(0, 3); // Log first 3 failures
+
+                    logger.warn("Some AI analyses failed", {
+                      endpoint: "POST /api/cron/fetch-rss",
+                      sourceId: source.id,
+                      failureCount: failedAnalyses,
+                      sampleFailures: failureDetails,
+                    });
+                  }
+                } catch (analysisError) {
+                  // Log but don't fail the entire RSS fetch - graceful degradation
+                  logger.error("AI analysis batch failed completely", analysisError, {
+                    endpoint: "POST /api/cron/fetch-rss",
+                    sourceId: source.id,
+                    articlesInBatch: batchResult.articles.length,
+                  });
+                }
+              }
             } catch (error) {
               // If batch insert fails, fall back to individual inserts for this batch
               // This handles edge cases where batch insert might fail
@@ -292,7 +365,7 @@ export const POST: APIRoute = async (context) => {
 
                 try {
                   totalSubrequests++;
-                  await articleService.createArticle(
+                  const createdArticle = await articleService.createArticle(
                     {
                       sourceId: source.id,
                       title: item.title,
@@ -305,6 +378,32 @@ export const POST: APIRoute = async (context) => {
 
                   articlesCreatedForSource++;
                   results.articlesCreated++;
+
+                  // Analyze the newly created article with AI
+                  if (articleAnalysisService) {
+                    try {
+                      results.aiAnalysis.attempted++;
+                      const analysisResult = await articleAnalysisService.analyzeAndUpdateArticle(createdArticle);
+
+                      if (analysisResult.success) {
+                        results.aiAnalysis.successful++;
+                      } else {
+                        results.aiAnalysis.failed++;
+                        logger.warn("AI analysis failed for individual article", {
+                          endpoint: "POST /api/cron/fetch-rss",
+                          articleId: createdArticle.id,
+                          error: analysisResult.error,
+                        });
+                      }
+                    } catch (analysisError) {
+                      results.aiAnalysis.failed++;
+                      logger.warn("AI analysis threw exception for individual article", {
+                        endpoint: "POST /api/cron/fetch-rss",
+                        articleId: createdArticle.id,
+                        error: analysisError instanceof Error ? analysisError.message : String(analysisError),
+                      });
+                    }
+                  }
                 } catch (individualError) {
                   totalSubrequests--; // Don't count failed requests
                   if (individualError instanceof Error && individualError.message === "ARTICLE_ALREADY_EXISTS") {
@@ -427,6 +526,7 @@ export const POST: APIRoute = async (context) => {
         endpoint: "POST /api/cron/fetch-rss",
         ...results,
         totalSubrequests,
+        aiAnalysis: results.aiAnalysis,
       });
 
       // Return summary
