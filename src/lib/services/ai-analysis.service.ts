@@ -6,7 +6,7 @@ import {
   aiAnalysisResponseSchema,
   articleAnalysisInputSchema,
   type AiAnalysisResult,
-  type ArticleAnalysisInput
+  type ArticleAnalysisInput,
 } from "../validation/ai-analysis.schema.ts";
 
 /**
@@ -43,12 +43,12 @@ export class AiAnalysisService {
       const response = await this.client.chatCompletion([
         {
           role: "system",
-          content: this.getSystemPrompt()
+          content: this.getSystemPrompt(),
         },
         {
           role: "user",
-          content: prompt
-        }
+          content: prompt,
+        },
       ]);
 
       // Extract and parse AI response
@@ -78,7 +78,6 @@ export class AiAnalysisService {
       });
 
       return analysisResult;
-
     } catch (error) {
       logger.error("AI analysis failed", {
         error: error instanceof Error ? error.message : String(error),
@@ -158,9 +157,7 @@ Remember: Return ONLY the JSON response, no additional text or explanations.`;
         combinedText = `${title}\n\n${description}`;
       } else {
         // Otherwise, combine but don't duplicate title content
-        combinedText = description.includes(title)
-          ? description
-          : `${title}\n\n${description}`;
+        combinedText = description.includes(title) ? description : `${title}\n\n${description}`;
       }
     }
 
@@ -171,7 +168,7 @@ Remember: Return ONLY the JSON response, no additional text or explanations.`;
     }
 
     // Clean up whitespace
-    combinedText = combinedText.replace(/\s+/g, ' ').trim();
+    combinedText = combinedText.replace(/\s+/g, " ").trim();
 
     return {
       title: title.trim(),

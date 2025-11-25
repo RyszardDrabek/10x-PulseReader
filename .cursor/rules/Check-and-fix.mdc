@@ -1,0 +1,6 @@
+---
+alwaysApply: false
+---
+Execute eslint checks (using npm run lint) and fix problems if needed
+Execute unit tests and fix problems if needed
+Execute e2e tests and fix problems if needed

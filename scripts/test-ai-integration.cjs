@@ -17,7 +17,7 @@ const https = require("https");
 const http = require("http");
 
 // Load environment variables
-require('dotenv').config({ path: '.dev.vars' });
+require("dotenv").config({ path: ".dev.vars" });
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -79,7 +79,7 @@ async function testOpenRouterConnectivity() {
     const response = await makeRequest("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "https://10x-pulsereader.pages.dev",
         "X-Title": "PulseReader AI Test",
@@ -89,8 +89,8 @@ async function testOpenRouterConnectivity() {
         messages: [
           {
             role: "user",
-            content: "Respond with 'OK' in JSON format: {\"status\": \"OK\"}"
-          }
+            content: 'Respond with \'OK\' in JSON format: {"status": "OK"}',
+          },
         ],
         temperature: 0.1,
         max_tokens: 50,
@@ -119,7 +119,8 @@ async function testAiService() {
     // Test the AI analysis API endpoint
     const testData = {
       title: "Poland's Economy Shows Strong Growth in Q3",
-      description: "The Polish economy expanded by 2.8% in the third quarter, driven by strong exports and domestic consumption. The European Commission forecasts continued growth for 2024.",
+      description:
+        "The Polish economy expanded by 2.8% in the third quarter, driven by strong exports and domestic consumption. The European Commission forecasts continued growth for 2024.",
     };
 
     console.log("Sending test article for analysis...");

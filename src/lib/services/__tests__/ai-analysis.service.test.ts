@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { AiAnalysisService } from "../ai-analysis.service.ts";
 import { OpenRouterClient } from "../openrouter.client.ts";
-import { aiAnalysisResponseSchema } from "../../validation/ai-analysis.schema.ts";
 
 describe("AiAnalysisService", () => {
-  let mockClient: { chatCompletion: any };
+  let mockClient: Partial<OpenRouterClient>;
   let service: AiAnalysisService;
 
   beforeEach(() => {
@@ -12,7 +11,7 @@ describe("AiAnalysisService", () => {
     mockClient = {
       chatCompletion: vi.fn(),
     };
-    service = new AiAnalysisService(mockClient as any);
+    service = new AiAnalysisService(mockClient as OpenRouterClient);
   });
 
   afterEach(() => {
@@ -66,7 +65,7 @@ describe("AiAnalysisService", () => {
         choices: [
           {
             message: {
-              content: 'invalid json {{{',
+              content: "invalid json {{{",
             },
           },
         ],
@@ -94,10 +93,7 @@ describe("AiAnalysisService", () => {
 
   describe("prepareArticleForAnalysis", () => {
     it("should combine title and description", () => {
-      const result = AiAnalysisService.prepareArticleForAnalysis(
-        "Test Title",
-        "Test description content."
-      );
+      const result = AiAnalysisService.prepareArticleForAnalysis("Test Title", "Test description content.");
 
       expect(result.title).toBe("Test Title");
       expect(result.description).toBe("Test description content.");
@@ -129,10 +125,7 @@ describe("AiAnalysisService", () => {
     });
 
     it("should clean whitespace", () => {
-      const result = AiAnalysisService.prepareArticleForAnalysis(
-        "  Test Title  ",
-        "  Test description  "
-      );
+      const result = AiAnalysisService.prepareArticleForAnalysis("  Test Title  ", "  Test description  ");
 
       expect(result.title).toBe("Test Title");
       expect(result.description).toBe("Test description");

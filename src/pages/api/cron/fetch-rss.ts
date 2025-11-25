@@ -309,8 +309,8 @@ export const POST: APIRoute = async (context) => {
                 try {
                   const analysisResults = await articleAnalysisService.analyzeArticlesBatch(batchResult.articles);
 
-                  const successfulAnalyses = analysisResults.filter(r => r.success).length;
-                  const failedAnalyses = analysisResults.filter(r => !r.success).length;
+                  const successfulAnalyses = analysisResults.filter((r) => r.success).length;
+                  const failedAnalyses = analysisResults.filter((r) => !r.success).length;
 
                   // Update global AI analysis counters
                   results.aiAnalysis.attempted += analysisResults.length;
@@ -327,8 +327,8 @@ export const POST: APIRoute = async (context) => {
                   // Log any analysis failures for monitoring
                   if (failedAnalyses > 0) {
                     const failureDetails = analysisResults
-                      .filter(r => !r.success)
-                      .map(r => ({ articleId: r.articleId, error: r.error }))
+                      .filter((r) => !r.success)
+                      .map((r) => ({ articleId: r.articleId, error: r.error }))
                       .slice(0, 3); // Log first 3 failures
 
                     logger.warn("Some AI analyses failed", {

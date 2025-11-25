@@ -93,7 +93,7 @@ describe("OpenRouterClient", () => {
       server.use(
         http.post("https://openrouter.ai/api/v1/chat/completions", async () => {
           // Simulate delay longer than timeout
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise((resolve) => setTimeout(resolve, 200));
           return HttpResponse.json(mockResponse);
         })
       );

@@ -27,7 +27,7 @@ export class OpenRouterClient {
    * @returns Parsed OpenRouter response
    */
   async chatCompletion(
-    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+    messages: { role: "system" | "user" | "assistant"; content: string }[],
     options: {
       temperature?: number;
       maxTokens?: number;
@@ -62,7 +62,7 @@ export class OpenRouterClient {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",
           "HTTP-Referer": "https://10x-pulsereader.pages.dev", // Required by OpenRouter
           "X-Title": "PulseReader AI Analysis", // Required by OpenRouter
@@ -107,7 +107,6 @@ export class OpenRouterClient {
       });
 
       return data as OpenRouterResponse;
-
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         logger.error("OpenRouter API request timeout", { timeoutMs });
@@ -115,10 +114,12 @@ export class OpenRouterClient {
       }
 
       // Re-throw known errors
-      if (error instanceof Error &&
-          (error.message === "AI_RATE_LIMIT_EXCEEDED" ||
-           error.message === "AI_INSUFFICIENT_CREDITS" ||
-           error.message === "AI_REQUEST_TIMEOUT")) {
+      if (
+        error instanceof Error &&
+        (error.message === "AI_RATE_LIMIT_EXCEEDED" ||
+          error.message === "AI_INSUFFICIENT_CREDITS" ||
+          error.message === "AI_REQUEST_TIMEOUT")
+      ) {
         throw error;
       }
 
@@ -136,9 +137,10 @@ export class OpenRouterClient {
    */
   async testConnection(): Promise<boolean> {
     try {
-      await this.chatCompletion([
-        { role: "user", content: "Respond with 'OK' in JSON format: {\"status\": \"OK\"}" }
-      ], { maxTokens: 50, timeoutMs: 5000 });
+      await this.chatCompletion([{ role: "user", content: 'Respond with \'OK\' in JSON format: {"status": "OK"}' }], {
+        maxTokens: 50,
+        timeoutMs: 5000,
+      });
 
       logger.info("OpenRouter API connection test successful");
       return true;

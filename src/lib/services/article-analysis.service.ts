@@ -42,10 +42,7 @@ export class ArticleAnalysisService {
 
     try {
       // Prepare article content for AI analysis
-      const analysisInput = AiAnalysisService.prepareArticleForAnalysis(
-        article.title,
-        article.description
-      );
+      const analysisInput = AiAnalysisService.prepareArticleForAnalysis(article.title, article.description);
 
       // Perform AI analysis
       const analysisResult = await this.aiService.analyzeArticle(analysisInput);
@@ -82,7 +79,6 @@ export class ArticleAnalysisService {
         sentimentUpdated,
         topicsUpdated,
       };
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -109,13 +105,15 @@ export class ArticleAnalysisService {
    * @param articles - Array of article entities to analyze
    * @returns Analysis results for each article
    */
-  async analyzeArticlesBatch(articles: ArticleEntity[]): Promise<Array<{
-    articleId: string;
-    success: boolean;
-    sentimentUpdated: boolean;
-    topicsUpdated: boolean;
-    error?: string;
-  }>> {
+  async analyzeArticlesBatch(articles: ArticleEntity[]): Promise<
+    {
+      articleId: string;
+      success: boolean;
+      sentimentUpdated: boolean;
+      topicsUpdated: boolean;
+      error?: string;
+    }[]
+  > {
     const results = [];
 
     logger.info("Starting batch article analysis", {
@@ -127,7 +125,7 @@ export class ArticleAnalysisService {
 
       // Add small delay between requests to be gentle on rate limits
       if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
       }
 
       const result = await this.analyzeAndUpdateArticle(article);
@@ -137,7 +135,7 @@ export class ArticleAnalysisService {
       });
     }
 
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter((r) => r.success).length;
     logger.info("Batch article analysis completed", {
       totalArticles: articles.length,
       successfulAnalyses: successCount,
@@ -152,7 +150,10 @@ export class ArticleAnalysisService {
    * @param articleId - Article ID to update
    * @param sentiment - New sentiment value
    */
-  private async updateArticleSentiment(articleId: string, sentiment: "positive" | "neutral" | "negative"): Promise<void> {
+  private async updateArticleSentiment(
+    articleId: string,
+    sentiment: "positive" | "neutral" | "negative"
+  ): Promise<void> {
     const { error } = await this.supabase
       .schema("app")
       .from("articles")
@@ -220,15 +221,12 @@ export class ArticleAnalysisService {
     }
 
     // Prepare association records
-    const associations = topicIds.map(topicId => ({
+    const associations = topicIds.map((topicId) => ({
       article_id: articleId,
       topic_id: topicId,
     }));
 
-    const { error } = await this.supabase
-      .schema("app")
-      .from("article_topics")
-      .insert(associations);
+    const { error } = await this.supabase.schema("app").from("article_topics").insert(associations);
 
     if (error) {
       throw new Error(`Failed to associate topics with article: ${error.message}`);

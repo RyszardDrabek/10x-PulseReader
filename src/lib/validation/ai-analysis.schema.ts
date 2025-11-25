@@ -4,40 +4,44 @@ import { z } from "zod";
  * Schema for AI analysis response from OpenRouter API.
  * Validates the structured JSON response containing sentiment and topics.
  */
-export const aiAnalysisResponseSchema = z.object({
-  sentiment: z.enum(["positive", "neutral", "negative"], {
-    description: "Article sentiment classification",
-  }),
-  topics: z.array(z.string().min(1).max(50)).min(1).max(5).refine(
-    (topics) => topics.length === new Set(topics.map(t => t.toLowerCase())).size,
-    {
-      message: "Topics must be unique (case-insensitive)",
-    }
-  ).refine(
-    (topics) => topics.every(topic => !/\s{2,}/.test(topic)),
-    {
-      message: "Topics should not contain multiple consecutive spaces",
-    }
-  ).refine(
-    (topics) => topics.every(topic => topic.trim() === topic),
-    {
-      message: "Topics should not have leading or trailing whitespace",
-    }
-  ),
-}, {
-  description: "AI analysis response containing sentiment and topics for an article",
-});
+export const aiAnalysisResponseSchema = z.object(
+  {
+    sentiment: z.enum(["positive", "neutral", "negative"], {
+      description: "Article sentiment classification",
+    }),
+    topics: z
+      .array(z.string().min(1).max(50))
+      .min(1)
+      .max(5)
+      .refine((topics) => topics.length === new Set(topics.map((t) => t.toLowerCase())).size, {
+        message: "Topics must be unique (case-insensitive)",
+      })
+      .refine((topics) => topics.every((topic) => !/\s{2,}/.test(topic)), {
+        message: "Topics should not contain multiple consecutive spaces",
+      })
+      .refine((topics) => topics.every((topic) => topic.trim() === topic), {
+        message: "Topics should not have leading or trailing whitespace",
+      }),
+  },
+  {
+    description: "AI analysis response containing sentiment and topics for an article",
+  }
+);
 
 /**
  * Schema for the complete OpenRouter API response wrapper.
  * This matches the expected OpenRouter response structure.
  */
 export const openRouterResponseSchema = z.object({
-  choices: z.array(z.object({
-    message: z.object({
-      content: z.string().min(1, "AI response content cannot be empty"),
-    }),
-  })).min(1),
+  choices: z
+    .array(
+      z.object({
+        message: z.object({
+          content: z.string().min(1, "AI response content cannot be empty"),
+        }),
+      })
+    )
+    .min(1),
 });
 
 /**

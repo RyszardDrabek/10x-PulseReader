@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ArticleAnalysisService } from "../article-analysis.service.ts";
-import { AiAnalysisService } from "../ai-analysis.service.ts";
-import { TopicService } from "../topic.service.ts";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../../db/database.types.ts";
+import type { AiAnalysisService } from "../ai-analysis.service.ts";
 
 describe("ArticleAnalysisService", () => {
-  let mockSupabase: any;
-  let mockAiService: any;
-  let mockTopicService: any;
+  let mockSupabase: Partial<SupabaseClient<Database>>;
+  let mockAiService: Partial<AiAnalysisService>;
+  let mockTopicService: {
+    createOrFindTopic: ReturnType<typeof vi.fn>;
+  };
   let service: ArticleAnalysisService;
 
   const mockArticle = {
@@ -50,8 +53,9 @@ describe("ArticleAnalysisService", () => {
     };
 
     // Create service with mocked TopicService
-    service = new ArticleAnalysisService(mockSupabase as any, mockAiService as any);
+    service = new ArticleAnalysisService(mockSupabase as SupabaseClient<Database>, mockAiService as AiAnalysisService);
     // Replace the topic service with our mock
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any).topicService = mockTopicService;
   });
 
@@ -201,7 +205,7 @@ describe("ArticleAnalysisService", () => {
     it("should return failure when AI service fails", async () => {
       mockAiService.testService.mockResolvedValue({
         success: false,
-        error: "AI Error"
+        error: "AI Error",
       });
 
       const result = await service.testService();
