@@ -35,6 +35,7 @@ jobs:
         env:
           DEPLOYMENT_URL: ${{ secrets.APP_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           RETRY_DELAY_MS: ${{ vars.RETRY_DELAY_MS || '2000' }}
           MAX_RETRIES: ${{ vars.MAX_RETRIES || '50' }}
         continue-on-error: true # Continue even if this step fails to allow summary generation

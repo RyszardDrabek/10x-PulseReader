@@ -9,6 +9,7 @@
  *
  * Usage:
  *   SUPABASE_SERVICE_ROLE_KEY='your-key' node scripts/fetch-all-rss.cjs
+ *   SUPABASE_SERVICE_ROLE_KEY='your-key' OPENROUTER_API_KEY='your-key' node scripts/fetch-all-rss.cjs
  *   SUPABASE_SERVICE_ROLE_KEY='your-key' DEPLOYMENT_URL='https://your-app.pages.dev' node scripts/fetch-all-rss.cjs
  */
 
@@ -18,6 +19,7 @@ const http = require("http");
 // Configuration
 const BASE_URL = (process.env.DEPLOYMENT_URL || "https://10x-pulsereader.pages.dev").replace(/\/$/, "");
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const RETRY_DELAY_MS = parseInt(process.env.RETRY_DELAY_MS || "2000", 10); // 2 seconds default
 const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || "50", 10); // Max 50 calls to prevent infinite loops
 
@@ -29,6 +31,14 @@ if (!SERVICE_ROLE_KEY) {
   console.error("\nOr pass it directly:");
   console.error("  SUPABASE_SERVICE_ROLE_KEY='your-key' node scripts/fetch-all-rss.cjs");
   process.exit(1);
+}
+
+if (!OPENROUTER_API_KEY) {
+  console.warn("⚠️  Warning: OPENROUTER_API_KEY environment variable is not set");
+  console.warn("   AI analysis will be skipped during RSS fetching.");
+  console.warn("   To enable AI analysis, set the OpenRouter API key:");
+  console.warn("     export OPENROUTER_API_KEY='your-openrouter-key'");
+  console.warn("     node scripts/fetch-all-rss.cjs");
 }
 
 function sleep(ms) {
@@ -47,6 +57,7 @@ function makeRequest(url, options = {}) {
           Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
           "Content-Type": "application/json",
           "User-Agent": "PulseReader-RSS-Fetch-All/1.0",
+          ...(OPENROUTER_API_KEY && { "X-OpenRouter-API-Key": OPENROUTER_API_KEY }),
           ...options.headers,
         },
         ...options,
