@@ -381,40 +381,36 @@ export class ArticleService {
     let duplicatesSkipped = 0;
 
     for (const item of insertData) {
-      try {
-        const { data: article, error: insertError } = await this.supabase
-          .schema("app")
-          .from("articles")
-          .insert(item)
-          .select()
-          .single();
+      const { data: article, error: insertError } = await this.supabase
+        .schema("app")
+        .from("articles")
+        .insert(item)
+        .select()
+        .single();
 
-        if (insertError) {
-          // Check if it's a duplicate key error
-          if (insertError.code === '23505') { // PostgreSQL unique violation
-            duplicatesSkipped++;
-            continue;
-          }
-          // For other errors, throw to trigger fallback
-          throw insertError;
+      if (insertError) {
+        // Check if it's a duplicate key error
+        if (insertError.code === "23505") {
+          // PostgreSQL unique violation
+          duplicatesSkipped++;
+          continue;
         }
+        // For other errors, throw to trigger fallback
+        throw insertError;
+      }
 
-        if (article) {
-          createdArticles.push({
-            id: article.id,
-            sourceId: article.source_id,
-            title: article.title,
-            description: article.description,
-            link: article.link,
-            publicationDate: article.publication_date,
-            sentiment: article.sentiment,
-            createdAt: article.created_at,
-            updatedAt: article.updated_at,
-          });
-        }
-      } catch (error) {
-        // If individual insert fails for any reason, throw to trigger fallback
-        throw error;
+      if (article) {
+        createdArticles.push({
+          id: article.id,
+          sourceId: article.source_id,
+          title: article.title,
+          description: article.description,
+          link: article.link,
+          publicationDate: article.publication_date,
+          sentiment: article.sentiment,
+          createdAt: article.created_at,
+          updatedAt: article.updated_at,
+        });
       }
     }
 
