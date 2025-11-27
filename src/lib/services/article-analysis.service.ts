@@ -24,6 +24,7 @@ export class ArticleAnalysisService {
     logger.info("ArticleAnalysisService initialized", {
       hasAiService: !!this.aiService,
       hasTopicService: !!this.topicService,
+      aiServiceType: this.aiService?.constructor?.name,
     });
   }
 

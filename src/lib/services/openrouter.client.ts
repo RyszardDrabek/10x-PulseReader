@@ -20,6 +20,10 @@ export class OpenRouterClient {
       model,
       hasProcess: typeof process !== "undefined",
       hasProcessEnv: typeof process !== "undefined" && !!process.env,
+      providedApiKey: apiKey ? "yes" : "no",
+      processEnvApiKey: typeof process !== "undefined" ? (process.env?.OPENROUTER_API_KEY ? "present" : "undefined") : "no-process",
+      importMetaEnvApiKey: import.meta.env?.OPENROUTER_API_KEY ? "present" : "undefined",
+      importMetaEnvValue: import.meta.env?.OPENROUTER_API_KEY || "undefined",
     });
 
     if (!this.apiKey) {

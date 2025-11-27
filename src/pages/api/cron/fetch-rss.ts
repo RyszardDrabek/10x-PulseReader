@@ -112,6 +112,10 @@ export const POST: APIRoute = async (context) => {
           checkedImportMetaEnv: !!import.meta.env?.OPENROUTER_API_KEY,
           checkedProcessEnvSource: typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY ? "process.env" : null,
           checkedImportMetaEnvSource: import.meta.env?.OPENROUTER_API_KEY ? "import.meta.env" : null,
+          actualProcessEnvValue: typeof process !== "undefined" ? (process.env?.OPENROUTER_API_KEY ? "present" : "undefined") : "no-process",
+          actualImportMetaEnvValue: import.meta.env?.OPENROUTER_API_KEY ? "present" : "undefined",
+          importMetaEnvKeys: Object.keys(import.meta.env),
+          processEnvKeys: typeof process !== "undefined" && process.env ? Object.keys(process.env) : [],
         });
 
         if (openRouterApiKey) {
