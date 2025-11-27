@@ -37,7 +37,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           RETRY_DELAY_MS: ${{ vars.RETRY_DELAY_MS || '2000' }}
-          MAX_RETRIES: ${{ vars.MAX_RETRIES || '50' }}
+          MAX_RETRIES: ${{ vars.MAX_RETRIES || '2' }}
         continue-on-error: true # Continue even if this step fails to allow summary generation
         run: |
           if [ -z "$DEPLOYMENT_URL" ]; then
@@ -52,7 +52,7 @@ jobs:
 
           # Set defaults if not provided (GitHub Actions vars might not be set)
           RETRY_DELAY_MS=${RETRY_DELAY_MS:-2000}
-          MAX_RETRIES=${MAX_RETRIES:-50}
+          MAX_RETRIES=${MAX_RETRIES:-2}
 
           echo "🚀 RSS Fetch All - Processing All Sources"
           echo "============================================================"
