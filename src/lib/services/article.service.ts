@@ -428,11 +428,6 @@ export class ArticleService {
       }
     }
 
-    if (insertError) {
-      // If batch upsert fails, throw to trigger fallback
-      throw insertError;
-    }
-
     return {
       articles: createdArticles,
       duplicatesSkipped,
