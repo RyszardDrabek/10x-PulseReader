@@ -31,7 +31,9 @@ export class OpenRouterClient {
     const resolvedKey =
       (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ||
       (typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>).OPENROUTER_API_KEY) ||
-      (typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>).OPENROUTER_API_KEY_new) || // Try alternate naming
+      (typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>).OPENROUTER_API_KEY_new) ||
+      (typeof globalThis !== "undefined" &&
+        (globalThis as { platform?: { env?: Record<string, string> } }).platform?.env?.OPENROUTER_API_KEY) || // Try platform.env
       (import.meta.env?.OPENROUTER_API_KEY as string);
 
     logger.info("OpenRouter API key resolution attempt", {
@@ -43,7 +45,10 @@ export class OpenRouterClient {
             ? "globalThis"
             : typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>).OPENROUTER_API_KEY_new
               ? "globalThis_alt"
-              : "import.meta.env",
+              : typeof globalThis !== "undefined" &&
+                  (globalThis as { platform?: { env?: Record<string, string> } }).platform?.env?.OPENROUTER_API_KEY
+                ? "platform.env"
+                : "import.meta.env",
       hasProcess: typeof process !== "undefined",
       hasProcessEnv: typeof process !== "undefined" && !!process.env,
       hasGlobalThis: typeof globalThis !== "undefined",
@@ -64,6 +69,14 @@ export class OpenRouterClient {
             : "undefined"
           : "no-globalThis",
       importMetaEnvKeys: Object.keys(import.meta.env).filter((k) => k.includes("OPENROUTER")),
+      // Check all possible environment access patterns
+      processEnvAllKeys: typeof process !== "undefined" && process.env ? Object.keys(process.env) : [],
+      globalThisAllKeys: typeof globalThis !== "undefined" ? Object.keys(globalThis).slice(0, 20) : [],
+      platformEnv:
+        typeof globalThis !== "undefined" &&
+        (globalThis as { platform?: { env?: Record<string, string> } }).platform?.env
+          ? Object.keys((globalThis as { platform?: { env?: Record<string, string> } }).platform?.env || {})
+          : "no-platform",
       resolvedKeyPrefix: resolvedKey ? resolvedKey.substring(0, 12) + "..." : "none",
     });
 
