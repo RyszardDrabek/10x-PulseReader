@@ -24,6 +24,11 @@ export const POST: APIRoute = async (context) => {
     const supabase = context.locals.supabase;
     const user = context.locals.user;
 
+    // Initialize services
+    const rssSourceService = new RssSourceService(supabase);
+    const rssFetchService = new RssFetchService();
+    const articleService = new ArticleService(supabase);
+
     // Validate Supabase client is available
     if (!supabase) {
       logger.error("Supabase client not initialized", {
@@ -94,14 +99,6 @@ export const POST: APIRoute = async (context) => {
       logger.info("Starting RSS feed fetch job", {
         endpoint: "POST /api/cron/fetch-rss",
       });
-
-      // Initialize services
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const rssSourceService = new RssSourceService(supabase);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const rssFetchService = new RssFetchService();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const articleService = new ArticleService(supabase);
 
       // Initialize AI analysis service only if API key is available (graceful degradation)
       let articleAnalysisService: ArticleAnalysisService | null = null;
