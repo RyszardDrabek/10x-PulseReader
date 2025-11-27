@@ -135,13 +135,6 @@ export const POST: APIRoute = async (context) => {
           error: error instanceof Error ? error.message : String(error),
         });
       }
-    } catch (error) {
-      logger.warn("Failed to initialize AI analysis service, skipping AI analysis", {
-        endpoint: "POST /api/cron/fetch-rss",
-        error: error instanceof Error ? error.message : String(error),
-        errorName: error instanceof Error ? error.name : "UnknownError",
-      });
-    }
 
     // Fetch all active RSS sources (ordered by last_fetched_at ascending, nulls first)
     // This ensures sources that haven't been fetched recently are prioritized
