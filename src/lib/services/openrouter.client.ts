@@ -11,37 +11,44 @@ export class OpenRouterClient {
   private readonly model: string;
 
   constructor(apiKey?: string, model = "x-ai/grok-4.1-fast:free") {
+    this.model = model;
+
+    // Try to resolve API key immediately, but don't fail if not found (Cloudflare runtime)
+    this.apiKey = apiKey || this.resolveApiKey();
+
+    logger.info("OpenRouterClient initialized", {
+      model,
+      hasProvidedApiKey: !!apiKey,
+      apiKeyResolved: !!this.apiKey,
+    });
+  }
+
+  /**
+   * Resolve API key from multiple sources (called at runtime)
+   */
+  private resolveApiKey(): string | undefined {
     // Try multiple sources for the API key (Cloudflare Pages environment variables)
-    this.apiKey = apiKey ||
-      (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ||
+    const resolvedKey = (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ||
       (typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY) ||
+      (typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY_new) || // Try alternate naming
       import.meta.env?.OPENROUTER_API_KEY as string;
 
-    logger.info("OpenRouterClient initialization", {
-      hasApiKey: !!this.apiKey,
-      apiKeyLength: this.apiKey?.length || 0,
-      apiKeySource: apiKey ? "provided" :
-        ((typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ? "process.env" :
-        ((typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY) ? "globalThis" : "import.meta.env")),
-      model,
+    logger.info("OpenRouter API key resolution attempt", {
+      resolved: !!resolvedKey,
+      source: (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ? "process.env" :
+        ((typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY) ? "globalThis" :
+        ((typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY_new) ? "globalThis_alt" : "import.meta.env")),
       hasProcess: typeof process !== "undefined",
       hasProcessEnv: typeof process !== "undefined" && !!process.env,
       hasGlobalThis: typeof globalThis !== "undefined",
-      globalThisApiKey: typeof globalThis !== "undefined" ? ((globalThis as any).OPENROUTER_API_KEY ? "present" : "undefined") : "no-globalThis",
-      providedApiKey: apiKey ? "yes" : "no",
-      processEnvApiKey: typeof process !== "undefined" ? (process.env?.OPENROUTER_API_KEY ? "present" : "undefined") : "no-process",
-      importMetaEnvApiKey: import.meta.env?.OPENROUTER_API_KEY ? "present" : "undefined",
+      processEnvKeys: typeof process !== "undefined" && process.env ? Object.keys(process.env).filter(k => k.includes('OPENROUTER')) : [],
+      globalThisKeys: typeof globalThis !== "undefined" ? Object.keys(globalThis).filter(k => k.includes('OPENROUTER')).slice(0, 10) : [], // Limit output
+      globalThisAlt: typeof globalThis !== "undefined" ? ((globalThis as any).OPENROUTER_API_KEY_new ? "present" : "undefined") : "no-globalThis",
+      importMetaEnvKeys: Object.keys(import.meta.env).filter(k => k.includes('OPENROUTER')),
+      resolvedKeyPrefix: resolvedKey ? resolvedKey.substring(0, 12) + "..." : "none",
     });
 
-    if (!this.apiKey) {
-      logger.error("OpenRouterClient initialization failed: API key not found", {
-        checkedProcessEnv: typeof process !== "undefined" && !!process.env?.OPENROUTER_API_KEY,
-        checkedImportMetaEnv: !!import.meta.env?.OPENROUTER_API_KEY,
-      });
-      throw new Error("OPENROUTER_API_KEY environment variable is required");
-    }
-
-    this.model = model;
+    return resolvedKey;
   }
 
   /**
@@ -58,6 +65,16 @@ export class OpenRouterClient {
       timeoutMs?: number;
     } = {}
   ): Promise<OpenRouterResponse> {
+    // Ensure API key is resolved (for Cloudflare Pages runtime)
+    if (!this.apiKey) {
+      this.apiKey = this.resolveApiKey();
+    }
+
+    if (!this.apiKey) {
+      logger.error("OpenRouter API key not available at request time");
+      throw new Error("OPENROUTER_API_KEY environment variable is required");
+    }
+
     const {
       temperature = 0.1, // Low temperature for consistent, deterministic responses
       maxTokens = 500,

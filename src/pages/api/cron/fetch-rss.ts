@@ -103,29 +103,11 @@ export const POST: APIRoute = async (context) => {
       // Initialize AI analysis service only if API key is available (graceful degradation)
       let articleAnalysisService: ArticleAnalysisService | null = null;
       try {
-        const openRouterApiKey = (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ||
-          (typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY) ||
-          import.meta.env?.OPENROUTER_API_KEY;
-        logger.info("AI analysis service initialization check", {
+        logger.info("AI analysis service initialization", {
           endpoint: "POST /api/cron/fetch-rss",
-          hasOpenRouterApiKey: !!openRouterApiKey,
-          openRouterApiKeyLength: openRouterApiKey?.length || 0,
-          checkedProcessEnv: typeof process !== "undefined" && !!process.env?.OPENROUTER_API_KEY,
-          checkedGlobalThis: typeof globalThis !== "undefined" && !!(globalThis as any).OPENROUTER_API_KEY,
-          checkedImportMetaEnv: !!import.meta.env?.OPENROUTER_API_KEY,
-          apiKeySource: (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ? "process.env" :
-            ((typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY) ? "globalThis" : "import.meta.env"),
-          actualProcessEnvValue: typeof process !== "undefined" ? (process.env?.OPENROUTER_API_KEY ? "present" : "undefined") : "no-process",
-          actualGlobalThisValue: typeof globalThis !== "undefined" ? ((globalThis as any).OPENROUTER_API_KEY ? "present" : "undefined") : "no-globalThis",
-          actualImportMetaEnvValue: import.meta.env?.OPENROUTER_API_KEY ? "present" : "undefined",
-          hasProcess: typeof process !== "undefined",
-          hasProcessEnv: typeof process !== "undefined" && !!process.env,
-          hasGlobalThis: typeof globalThis !== "undefined",
-          importMetaEnvKeys: Object.keys(import.meta.env),
-          processEnvKeys: typeof process !== "undefined" && process.env ? Object.keys(process.env) : [],
+          note: "API key resolution deferred to runtime in OpenRouterClient",
         });
 
-        if (openRouterApiKey) {
           logger.info("Initializing AI analysis service", {
             endpoint: "POST /api/cron/fetch-rss",
           });
@@ -134,19 +116,10 @@ export const POST: APIRoute = async (context) => {
             endpoint: "POST /api/cron/fetch-rss",
             hasArticleAnalysisService: !!articleAnalysisService,
           });
-        } else {
-          logger.warn("OPENROUTER_API_KEY not set, skipping AI analysis", {
+        } catch (error) {
+          logger.warn("Failed to initialize AI analysis service, skipping AI analysis", {
             endpoint: "POST /api/cron/fetch-rss",
-            checkedProcessEnv: typeof process !== "undefined" && !!process.env?.OPENROUTER_API_KEY,
-            checkedGlobalThis: typeof globalThis !== "undefined" && !!(globalThis as any).OPENROUTER_API_KEY,
-            checkedImportMetaEnv: !!import.meta.env?.OPENROUTER_API_KEY,
-            runtimeInfo: {
-              hasProcess: typeof process !== "undefined",
-              hasProcessEnv: typeof process !== "undefined" && !!process.env,
-              hasGlobalThis: typeof globalThis !== "undefined",
-              processEnvKeys: typeof process !== "undefined" && process.env ? Object.keys(process.env).filter(k => k.includes('OPENROUTER') || k.includes('SUPABASE')) : [],
-              importMetaEnvKeys: Object.keys(import.meta.env).filter(k => k.includes('OPENROUTER') || k.includes('SUPABASE')),
-            },
+            error: error instanceof Error ? error.message : String(error),
           });
         }
       } catch (error) {
