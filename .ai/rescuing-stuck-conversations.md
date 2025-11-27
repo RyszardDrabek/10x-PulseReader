@@ -14,4 +14,4 @@ What new information we discovered during experiments? Which of the original ass
 **Updated problem context:**
 Based on all the above conclusions formulate a complete problem description what I should provide in a new conversation. This description should be detailed enough that an independent developer could understand what exactly we're trying to achieve, without access to this conversation.
 
-Save summary in conversation-summary-{timestamp}.md
+Print summary in conversation

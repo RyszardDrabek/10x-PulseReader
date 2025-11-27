@@ -4,6 +4,7 @@ import type { Database } from "../../db/database.types.ts";
 import type { ArticleEntity, CreateTopicCommand } from "../../types.ts";
 import { AiAnalysisService } from "./ai-analysis.service.ts";
 import { TopicService } from "./topic.service.ts";
+import { OpenRouterClient } from "./openrouter.client.ts";
 import { logger } from "../utils/logger.ts";
 
 /**
