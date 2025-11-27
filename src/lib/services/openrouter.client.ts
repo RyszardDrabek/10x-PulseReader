@@ -33,6 +33,8 @@ export class OpenRouterClient {
       (typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>).OPENROUTER_API_KEY) ||
       (typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>).OPENROUTER_API_KEY_new) ||
       (typeof globalThis !== "undefined" &&
+        (globalThis as { __env__?: Record<string, string> }).__env__?.OPENROUTER_API_KEY) || // Try __env__
+      (typeof globalThis !== "undefined" &&
         (globalThis as { platform?: { env?: Record<string, string> } }).platform?.env?.OPENROUTER_API_KEY) || // Try platform.env
       (import.meta.env?.OPENROUTER_API_KEY as string);
 
@@ -46,9 +48,12 @@ export class OpenRouterClient {
             : typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>).OPENROUTER_API_KEY_new
               ? "globalThis_alt"
               : typeof globalThis !== "undefined" &&
-                  (globalThis as { platform?: { env?: Record<string, string> } }).platform?.env?.OPENROUTER_API_KEY
-                ? "platform.env"
-                : "import.meta.env",
+                  (globalThis as { __env__?: Record<string, string> }).__env__?.OPENROUTER_API_KEY
+                ? "__env__"
+                : typeof globalThis !== "undefined" &&
+                    (globalThis as { platform?: { env?: Record<string, string> } }).platform?.env?.OPENROUTER_API_KEY
+                  ? "platform.env"
+                  : "import.meta.env",
       hasProcess: typeof process !== "undefined",
       hasProcessEnv: typeof process !== "undefined" && !!process.env,
       hasGlobalThis: typeof globalThis !== "undefined",
@@ -72,6 +77,10 @@ export class OpenRouterClient {
       // Check all possible environment access patterns
       processEnvAllKeys: typeof process !== "undefined" && process.env ? Object.keys(process.env) : [],
       globalThisAllKeys: typeof globalThis !== "undefined" ? Object.keys(globalThis).slice(0, 20) : [],
+      envGlobal:
+        typeof globalThis !== "undefined" && (globalThis as { __env__?: Record<string, string> }).__env__
+          ? Object.keys((globalThis as { __env__?: Record<string, string> }).__env__)
+          : "no-__env__",
       platformEnv:
         typeof globalThis !== "undefined" &&
         (globalThis as { platform?: { env?: Record<string, string> } }).platform?.env
