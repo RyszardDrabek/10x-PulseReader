@@ -102,39 +102,34 @@ export const POST: APIRoute = async (context) => {
       );
     }
 
+    logger.info("Starting RSS feed fetch job", {
+      endpoint: "POST /api/cron/fetch-rss",
+    });
+
+    // Initialize AI analysis service only if API key is available (graceful degradation)
+    let articleAnalysisService: ArticleAnalysisService | null = null;
     try {
-      logger.info("Starting RSS feed fetch job", {
+      logger.info("AI analysis service initialization", {
         endpoint: "POST /api/cron/fetch-rss",
+        apiKeySource: openRouterApiKeyFromHeader ? "header" : "environment",
+        hasApiKeyFromHeader: !!openRouterApiKeyFromHeader,
+        apiKeyFromHeaderPrefix: openRouterApiKeyFromHeader
+          ? openRouterApiKeyFromHeader.substring(0, 12) + "..."
+          : "none",
       });
 
-      // Initialize AI analysis service only if API key is available (graceful degradation)
-      let articleAnalysisService: ArticleAnalysisService | null = null;
-      try {
-        logger.info("AI analysis service initialization", {
-          endpoint: "POST /api/cron/fetch-rss",
-          apiKeySource: openRouterApiKeyFromHeader ? "header" : "environment",
-          hasApiKeyFromHeader: !!openRouterApiKeyFromHeader,
-          apiKeyFromHeaderPrefix: openRouterApiKeyFromHeader
-            ? openRouterApiKeyFromHeader.substring(0, 12) + "..."
-            : "none",
-        });
-
-        articleAnalysisService = new ArticleAnalysisService(
-          supabase,
-          undefined,
-          openRouterApiKeyFromHeader || undefined
-        );
-        logger.info("AI analysis service initialized successfully", {
-          endpoint: "POST /api/cron/fetch-rss",
-          hasArticleAnalysisService: !!articleAnalysisService,
-          apiKeySource: openRouterApiKeyFromHeader ? "header" : "environment",
-        });
-      } catch (error) {
-        logger.warn("Failed to initialize AI analysis service, skipping AI analysis", {
-          endpoint: "POST /api/cron/fetch-rss",
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
+      articleAnalysisService = new ArticleAnalysisService(supabase, undefined, openRouterApiKeyFromHeader || undefined);
+      logger.info("AI analysis service initialized successfully", {
+        endpoint: "POST /api/cron/fetch-rss",
+        hasArticleAnalysisService: !!articleAnalysisService,
+        apiKeySource: openRouterApiKeyFromHeader ? "header" : "environment",
+      });
+    } catch (error) {
+      logger.warn("Failed to initialize AI analysis service, skipping AI analysis", {
+        endpoint: "POST /api/cron/fetch-rss",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     // Fetch all active RSS sources (ordered by last_fetched_at ascending, nulls first)
     // This ensures sources that haven't been fetched recently are prioritized
