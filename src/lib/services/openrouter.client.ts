@@ -13,7 +13,20 @@ export class OpenRouterClient {
   constructor(apiKey?: string, model = "x-ai/grok-4.1-fast:free") {
     this.apiKey = apiKey || ((typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) || import.meta.env?.OPENROUTER_API_KEY as string);
 
+    logger.info("OpenRouterClient initialization", {
+      hasApiKey: !!this.apiKey,
+      apiKeyLength: this.apiKey?.length || 0,
+      apiKeySource: apiKey ? "provided" : ((typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ? "process.env" : "import.meta.env"),
+      model,
+      hasProcess: typeof process !== "undefined",
+      hasProcessEnv: typeof process !== "undefined" && !!process.env,
+    });
+
     if (!this.apiKey) {
+      logger.error("OpenRouterClient initialization failed: API key not found", {
+        checkedProcessEnv: typeof process !== "undefined" && !!process.env?.OPENROUTER_API_KEY,
+        checkedImportMetaEnv: !!import.meta.env?.OPENROUTER_API_KEY,
+      });
       throw new Error("OPENROUTER_API_KEY environment variable is required");
     }
 
@@ -53,12 +66,16 @@ export class OpenRouterClient {
       messageCount: messages.length,
       temperature,
       maxTokens,
+      apiKeyPrefix: this.apiKey.substring(0, 8) + "...", // Log partial key for debugging
+      requestUrl: `${this.baseUrl}/chat/completions`,
+      userMessagePreview: messages.find(m => m.role === 'user')?.content.substring(0, 200) + "...",
     });
 
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+      const startTime = Date.now();
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
@@ -71,7 +88,15 @@ export class OpenRouterClient {
         signal: controller.signal,
       });
 
+      const requestDuration = Date.now() - startTime;
       clearTimeout(timeoutId);
+
+      logger.info("OpenRouter API response received", {
+        status: response.status,
+        statusText: response.statusText,
+        durationMs: requestDuration,
+        ok: response.ok,
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -96,14 +121,28 @@ export class OpenRouterClient {
 
       const data = await response.json();
 
+      logger.debug("OpenRouter API raw response data", {
+        hasChoices: !!data.choices,
+        choicesLength: data.choices?.length,
+        hasUsage: !!data.usage,
+        model: data.model,
+        responseContentPreview: data.choices?.[0]?.message?.content?.substring(0, 200) + "...",
+      });
+
       // Validate response structure
       if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        logger.error("Invalid OpenRouter response structure", {
+          choices: data.choices,
+          dataKeys: Object.keys(data),
+        });
         throw new Error("Invalid OpenRouter response structure");
       }
 
       logger.info("OpenRouter API request successful", {
         usage: data.usage,
         model: data.model,
+        responseTokens: data.usage?.total_tokens,
+        contentLength: data.choices[0]?.message?.content?.length,
       });
 
       return data as OpenRouterResponse;

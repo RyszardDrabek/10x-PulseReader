@@ -20,6 +20,11 @@ export class ArticleAnalysisService {
   ) {
     this.aiService = aiService || new AiAnalysisService();
     this.topicService = new TopicService(supabase);
+
+    logger.info("ArticleAnalysisService initialized", {
+      hasAiService: !!this.aiService,
+      hasTopicService: !!this.topicService,
+    });
   }
 
   /**
@@ -38,19 +43,33 @@ export class ArticleAnalysisService {
     logger.info("Starting article analysis", {
       articleId: article.id,
       title: article.title.substring(0, 100),
+      hasDescription: !!article.description,
+      descriptionLength: article.description?.length || 0,
     });
 
     try {
       // Prepare article content for AI analysis
       const analysisInput = AiAnalysisService.prepareArticleForAnalysis(article.title, article.description);
 
+      logger.debug("Prepared analysis input", {
+        articleId: article.id,
+        inputTitleLength: analysisInput.title.length,
+        inputCombinedTextLength: analysisInput.combinedText.length,
+      });
+
       // Perform AI analysis
+      logger.info("Calling AI service for analysis", {
+        articleId: article.id,
+        inputTextPreview: analysisInput.combinedText.substring(0, 200) + "...",
+      });
+
       const analysisResult = await this.aiService.analyzeArticle(analysisInput);
 
-      logger.debug("AI analysis successful", {
+      logger.info("AI analysis completed successfully", {
         articleId: article.id,
         sentiment: analysisResult.sentiment,
         topicsCount: analysisResult.topics.length,
+        topics: analysisResult.topics,
       });
 
       // Update article with sentiment
@@ -81,11 +100,16 @@ export class ArticleAnalysisService {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorName = error instanceof Error ? error.name : "UnknownError";
 
       logger.error("Article analysis failed", {
         articleId: article.id,
         error: errorMessage,
+        errorName,
         title: article.title.substring(0, 100),
+        errorType: typeof error,
+        isErrorInstance: error instanceof Error,
+        stack: error instanceof Error ? error.stack?.substring(0, 500) : undefined,
       });
 
       // Return failure but don't throw - graceful degradation

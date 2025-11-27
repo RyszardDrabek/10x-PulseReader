@@ -104,19 +104,43 @@ export const POST: APIRoute = async (context) => {
       let articleAnalysisService: ArticleAnalysisService | null = null;
       try {
         const openRouterApiKey = (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) || import.meta.env?.OPENROUTER_API_KEY;
+        logger.info("AI analysis service initialization check", {
+          endpoint: "POST /api/cron/fetch-rss",
+          hasOpenRouterApiKey: !!openRouterApiKey,
+          openRouterApiKeyLength: openRouterApiKey?.length || 0,
+          checkedProcessEnv: typeof process !== "undefined" && !!process.env?.OPENROUTER_API_KEY,
+          checkedImportMetaEnv: !!import.meta.env?.OPENROUTER_API_KEY,
+          checkedProcessEnvSource: typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY ? "process.env" : null,
+          checkedImportMetaEnvSource: import.meta.env?.OPENROUTER_API_KEY ? "import.meta.env" : null,
+        });
+
         if (openRouterApiKey) {
+          logger.info("Initializing AI analysis service", {
+            endpoint: "POST /api/cron/fetch-rss",
+          });
           articleAnalysisService = new ArticleAnalysisService(supabase);
+          logger.info("AI analysis service initialized successfully", {
+            endpoint: "POST /api/cron/fetch-rss",
+            hasArticleAnalysisService: !!articleAnalysisService,
+          });
         } else {
           logger.warn("OPENROUTER_API_KEY not set, skipping AI analysis", {
             endpoint: "POST /api/cron/fetch-rss",
             checkedProcessEnv: typeof process !== "undefined" && !!process.env?.OPENROUTER_API_KEY,
             checkedImportMetaEnv: !!import.meta.env?.OPENROUTER_API_KEY,
+            runtimeInfo: {
+              hasProcess: typeof process !== "undefined",
+              hasProcessEnv: typeof process !== "undefined" && !!process.env,
+              processEnvKeys: typeof process !== "undefined" && process.env ? Object.keys(process.env).filter(k => k.includes('OPENROUTER') || k.includes('SUPABASE')) : [],
+              importMetaEnvKeys: Object.keys(import.meta.env).filter(k => k.includes('OPENROUTER') || k.includes('SUPABASE')),
+            },
           });
         }
       } catch (error) {
         logger.warn("Failed to initialize AI analysis service, skipping AI analysis", {
           endpoint: "POST /api/cron/fetch-rss",
           error: error instanceof Error ? error.message : String(error),
+          errorName: error instanceof Error ? error.name : "UnknownError",
         });
       }
 
@@ -306,10 +330,19 @@ export const POST: APIRoute = async (context) => {
                 logger.info("Starting AI analysis for new articles", {
                   endpoint: "POST /api/cron/fetch-rss",
                   sourceId: source.id,
+                  sourceName: source.name,
                   articlesToAnalyze: batchResult.articles.length,
+                  articleIds: batchResult.articles.map(a => a.id),
+                  hasArticleAnalysisService: !!articleAnalysisService,
                 });
 
                 try {
+                  logger.info("Calling analyzeArticlesBatch", {
+                    endpoint: "POST /api/cron/fetch-rss",
+                    sourceId: source.id,
+                    batchSize: batchResult.articles.length,
+                  });
+
                   const analysisResults = await articleAnalysisService.analyzeArticlesBatch(batchResult.articles);
 
                   const successfulAnalyses = analysisResults.filter((r) => r.success).length;
@@ -384,6 +417,13 @@ export const POST: APIRoute = async (context) => {
 
                   // Analyze the newly created article with AI
                   if (articleAnalysisService) {
+                    logger.info("Starting individual AI analysis for article", {
+                      endpoint: "POST /api/cron/fetch-rss",
+                      sourceId: source.id,
+                      articleId: createdArticle.id,
+                      articleTitle: createdArticle.title.substring(0, 100),
+                    });
+
                     try {
                       results.aiAnalysis.attempted++;
                       const analysisResult = await articleAnalysisService.analyzeAndUpdateArticle(createdArticle);
