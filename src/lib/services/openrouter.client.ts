@@ -28,23 +28,42 @@ export class OpenRouterClient {
    */
   private resolveApiKey(): string | undefined {
     // Try multiple sources for the API key (Cloudflare Pages environment variables)
-    const resolvedKey = (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ||
-      (typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY) ||
-      (typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY_new) || // Try alternate naming
-      import.meta.env?.OPENROUTER_API_KEY as string;
+    const resolvedKey =
+      (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ||
+      (typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>).OPENROUTER_API_KEY) ||
+      (typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>).OPENROUTER_API_KEY_new) || // Try alternate naming
+      (import.meta.env?.OPENROUTER_API_KEY as string);
 
     logger.info("OpenRouter API key resolution attempt", {
       resolved: !!resolvedKey,
-      source: (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ? "process.env" :
-        ((typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY) ? "globalThis" :
-        ((typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY_new) ? "globalThis_alt" : "import.meta.env")),
+      source:
+        typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY
+          ? "process.env"
+          : typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>).OPENROUTER_API_KEY
+            ? "globalThis"
+            : typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>).OPENROUTER_API_KEY_new
+              ? "globalThis_alt"
+              : "import.meta.env",
       hasProcess: typeof process !== "undefined",
       hasProcessEnv: typeof process !== "undefined" && !!process.env,
       hasGlobalThis: typeof globalThis !== "undefined",
-      processEnvKeys: typeof process !== "undefined" && process.env ? Object.keys(process.env).filter(k => k.includes('OPENROUTER')) : [],
-      globalThisKeys: typeof globalThis !== "undefined" ? Object.keys(globalThis).filter(k => k.includes('OPENROUTER')).slice(0, 10) : [], // Limit output
-      globalThisAlt: typeof globalThis !== "undefined" ? ((globalThis as any).OPENROUTER_API_KEY_new ? "present" : "undefined") : "no-globalThis",
-      importMetaEnvKeys: Object.keys(import.meta.env).filter(k => k.includes('OPENROUTER')),
+      processEnvKeys:
+        typeof process !== "undefined" && process.env
+          ? Object.keys(process.env).filter((k) => k.includes("OPENROUTER"))
+          : [],
+      globalThisKeys:
+        typeof globalThis !== "undefined"
+          ? Object.keys(globalThis)
+              .filter((k) => k.includes("OPENROUTER"))
+              .slice(0, 10)
+          : [], // Limit output
+      globalThisAlt:
+        typeof globalThis !== "undefined"
+          ? (globalThis as Record<string, unknown>).OPENROUTER_API_KEY_new
+            ? "present"
+            : "undefined"
+          : "no-globalThis",
+      importMetaEnvKeys: Object.keys(import.meta.env).filter((k) => k.includes("OPENROUTER")),
       resolvedKeyPrefix: resolvedKey ? resolvedKey.substring(0, 12) + "..." : "none",
     });
 
@@ -96,7 +115,7 @@ export class OpenRouterClient {
       maxTokens,
       apiKeyPrefix: this.apiKey.substring(0, 8) + "...", // Log partial key for debugging
       requestUrl: `${this.baseUrl}/chat/completions`,
-      userMessagePreview: messages.find(m => m.role === 'user')?.content.substring(0, 200) + "...",
+      userMessagePreview: messages.find((m) => m.role === "user")?.content.substring(0, 200) + "...",
     });
 
     try {

@@ -17,13 +17,22 @@ describe("OpenRouterClient", () => {
   });
 
   describe("constructor", () => {
-    it("should throw error if API key is not provided", () => {
-      expect(() => new OpenRouterClient()).toThrow("OPENROUTER_API_KEY environment variable is required");
+    it("should initialize without throwing when API key is not provided", () => {
+      expect(() => new OpenRouterClient()).not.toThrow();
+      const client = new OpenRouterClient();
+      expect(client).toBeInstanceOf(OpenRouterClient);
     });
 
     it("should use provided API key", () => {
       const client = new OpenRouterClient("custom-key");
       expect(client).toBeInstanceOf(OpenRouterClient);
+    });
+
+    it("should throw error when making request without API key", async () => {
+      const client = new OpenRouterClient(); // No API key provided
+      await expect(client.chatCompletion([{ role: "user", content: "test" }])).rejects.toThrow(
+        "OPENROUTER_API_KEY environment variable is required"
+      );
     });
   });
 

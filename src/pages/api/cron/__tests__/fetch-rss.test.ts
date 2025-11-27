@@ -31,7 +31,7 @@ vi.mock("../../../../lib/utils/logger.ts", () => ({
  * Creates a mock Astro API context
  */
 function createMockContext(user: User | null = null, supabase: SupabaseClient<Database> | null = null): APIContext {
-  const mockSupabase = supabase || ({} as SupabaseClient<Database>);
+  const mockSupabase = supabase || ({ notEmpty: true } as unknown as SupabaseClient<Database>);
 
   return {
     request: new Request("http://localhost:3000/api/cron/fetch-rss", {
@@ -42,7 +42,7 @@ function createMockContext(user: User | null = null, supabase: SupabaseClient<Da
     props: {},
     locals: {
       supabase: mockSupabase,
-      user,
+      user: user ? { role: "service_role" } : null,
     },
     url: new URL("http://localhost:3000/api/cron/fetch-rss"),
     site: undefined,
@@ -68,7 +68,7 @@ function createMockServiceRoleUser(overrides: Partial<User> = {}): User {
     aud: "service_role",
     role: "service_role",
     ...overrides,
-  } as User;
+  } as User & { role: string };
 }
 
 describe("POST /api/cron/fetch-rss - Authentication", () => {
