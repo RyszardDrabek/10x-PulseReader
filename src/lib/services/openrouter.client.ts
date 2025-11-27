@@ -11,7 +11,7 @@ export class OpenRouterClient {
   private readonly model: string;
 
   constructor(apiKey?: string, model = "x-ai/grok-4.1-fast:free") {
-    this.apiKey = apiKey || (import.meta.env?.OPENROUTER_API_KEY as string);
+    this.apiKey = apiKey || ((typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) || import.meta.env?.OPENROUTER_API_KEY as string);
 
     if (!this.apiKey) {
       throw new Error("OPENROUTER_API_KEY environment variable is required");

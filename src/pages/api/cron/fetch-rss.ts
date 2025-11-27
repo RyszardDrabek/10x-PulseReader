@@ -103,11 +103,14 @@ export const POST: APIRoute = async (context) => {
       // Initialize AI analysis service only if API key is available (graceful degradation)
       let articleAnalysisService: ArticleAnalysisService | null = null;
       try {
-        if (import.meta.env.OPENROUTER_API_KEY) {
+        const openRouterApiKey = (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) || import.meta.env?.OPENROUTER_API_KEY;
+        if (openRouterApiKey) {
           articleAnalysisService = new ArticleAnalysisService(supabase);
         } else {
           logger.warn("OPENROUTER_API_KEY not set, skipping AI analysis", {
             endpoint: "POST /api/cron/fetch-rss",
+            checkedProcessEnv: typeof process !== "undefined" && !!process.env?.OPENROUTER_API_KEY,
+            checkedImportMetaEnv: !!import.meta.env?.OPENROUTER_API_KEY,
           });
         }
       } catch (error) {

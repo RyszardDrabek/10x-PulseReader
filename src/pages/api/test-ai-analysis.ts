@@ -32,7 +32,8 @@ export const POST: APIRoute = async (context) => {
     }
 
     // Check if OpenRouter API key is available
-    if (!import.meta.env.OPENROUTER_API_KEY) {
+    const openRouterApiKey = (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) || import.meta.env?.OPENROUTER_API_KEY;
+    if (!openRouterApiKey) {
       return new Response(
         JSON.stringify({
           error: "OPENROUTER_API_KEY not configured",
