@@ -375,37 +375,53 @@ export class ArticleService {
     }));
 
     // Step 3: Batch insert articles
-    // Use upsert with ignoreDuplicates to handle duplicates gracefully
-    // This will insert new articles and skip duplicates without error
-    const { data: articles, error: insertError } = await this.supabase
-      .schema("app")
-      .from("articles")
-      .upsert(insertData, {
-        onConflict: "link",
-        ignoreDuplicates: true,
-      })
-      .select();
+    // Use individual inserts to handle duplicates gracefully
+    // This ensures we can count duplicates vs successful inserts
+    const createdArticles: ArticleEntity[] = [];
+    let duplicatesSkipped = 0;
+
+    for (const item of insertData) {
+      try {
+        const { data: article, error: insertError } = await this.supabase
+          .schema("app")
+          .from("articles")
+          .insert(item)
+          .select()
+          .single();
+
+        if (insertError) {
+          // Check if it's a duplicate key error
+          if (insertError.code === '23505') { // PostgreSQL unique violation
+            duplicatesSkipped++;
+            continue;
+          }
+          // For other errors, throw to trigger fallback
+          throw insertError;
+        }
+
+        if (article) {
+          createdArticles.push({
+            id: article.id,
+            sourceId: article.source_id,
+            title: article.title,
+            description: article.description,
+            link: article.link,
+            publicationDate: article.publication_date,
+            sentiment: article.sentiment,
+            createdAt: article.created_at,
+            updatedAt: article.updated_at,
+          });
+        }
+      } catch (error) {
+        // If individual insert fails for any reason, throw to trigger fallback
+        throw error;
+      }
+    }
 
     if (insertError) {
       // If batch upsert fails, throw to trigger fallback
       throw insertError;
     }
-
-    // Step 4: Map database responses to ArticleEntity
-    const createdArticles: ArticleEntity[] =
-      articles?.map((article) => ({
-        id: article.id,
-        sourceId: article.source_id,
-        title: article.title,
-        description: article.description,
-        link: article.link,
-        publicationDate: article.publication_date,
-        sentiment: article.sentiment,
-        createdAt: article.created_at,
-        updatedAt: article.updated_at,
-      })) || [];
-
-    const duplicatesSkipped = commands.length - createdArticles.length;
 
     return {
       articles: createdArticles,
