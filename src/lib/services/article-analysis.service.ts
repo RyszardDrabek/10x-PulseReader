@@ -16,9 +16,11 @@ export class ArticleAnalysisService {
 
   constructor(
     private supabase: SupabaseClient<Database>,
-    aiService?: AiAnalysisService
+    aiService?: AiAnalysisService,
+    openRouterApiKey?: string
   ) {
-    this.aiService = aiService || new AiAnalysisService();
+    this.aiService =
+      aiService || new AiAnalysisService(openRouterApiKey ? new OpenRouterClient(openRouterApiKey) : undefined);
     this.topicService = new TopicService(supabase);
 
     logger.info("ArticleAnalysisService initialized", {

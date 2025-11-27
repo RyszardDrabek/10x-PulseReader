@@ -24,6 +24,13 @@ export const POST: APIRoute = async (context) => {
     const supabase = context.locals.supabase;
     const user = context.locals.user;
 
+    // Check for OpenRouter API key in headers (fallback for env vars)
+    const openRouterApiKeyFromHeader =
+      context.request.headers.get("X-OpenRouter-API-Key") ||
+      context.request.headers.get("x-openrouter-api-key") ||
+      context.request.headers.get("Authorization")?.replace("Bearer ", "") ||
+      context.request.headers.get("x-api-key");
+
     // Initialize services
     const rssSourceService = new RssSourceService(supabase);
     const rssFetchService = new RssFetchService();
@@ -105,16 +112,22 @@ export const POST: APIRoute = async (context) => {
       try {
         logger.info("AI analysis service initialization", {
           endpoint: "POST /api/cron/fetch-rss",
-          note: "API key resolution deferred to runtime in OpenRouterClient",
+          apiKeySource: openRouterApiKeyFromHeader ? "header" : "environment",
+          hasApiKeyFromHeader: !!openRouterApiKeyFromHeader,
+          apiKeyFromHeaderPrefix: openRouterApiKeyFromHeader
+            ? openRouterApiKeyFromHeader.substring(0, 12) + "..."
+            : "none",
         });
 
-        logger.info("Initializing AI analysis service", {
-          endpoint: "POST /api/cron/fetch-rss",
-        });
-        articleAnalysisService = new ArticleAnalysisService(supabase);
+        articleAnalysisService = new ArticleAnalysisService(
+          supabase,
+          undefined,
+          openRouterApiKeyFromHeader || undefined
+        );
         logger.info("AI analysis service initialized successfully", {
           endpoint: "POST /api/cron/fetch-rss",
           hasArticleAnalysisService: !!articleAnalysisService,
+          apiKeySource: openRouterApiKeyFromHeader ? "header" : "environment",
         });
       } catch (error) {
         logger.warn("Failed to initialize AI analysis service, skipping AI analysis", {
