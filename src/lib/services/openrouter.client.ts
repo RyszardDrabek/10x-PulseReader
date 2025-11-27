@@ -11,19 +11,26 @@ export class OpenRouterClient {
   private readonly model: string;
 
   constructor(apiKey?: string, model = "x-ai/grok-4.1-fast:free") {
-    this.apiKey = apiKey || ((typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) || import.meta.env?.OPENROUTER_API_KEY as string);
+    // Try multiple sources for the API key (Cloudflare Pages environment variables)
+    this.apiKey = apiKey ||
+      (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ||
+      (typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY) ||
+      import.meta.env?.OPENROUTER_API_KEY as string;
 
     logger.info("OpenRouterClient initialization", {
       hasApiKey: !!this.apiKey,
       apiKeyLength: this.apiKey?.length || 0,
-      apiKeySource: apiKey ? "provided" : ((typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ? "process.env" : "import.meta.env"),
+      apiKeySource: apiKey ? "provided" :
+        ((typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ? "process.env" :
+        ((typeof globalThis !== "undefined" && (globalThis as any).OPENROUTER_API_KEY) ? "globalThis" : "import.meta.env")),
       model,
       hasProcess: typeof process !== "undefined",
       hasProcessEnv: typeof process !== "undefined" && !!process.env,
+      hasGlobalThis: typeof globalThis !== "undefined",
+      globalThisApiKey: typeof globalThis !== "undefined" ? ((globalThis as any).OPENROUTER_API_KEY ? "present" : "undefined") : "no-globalThis",
       providedApiKey: apiKey ? "yes" : "no",
       processEnvApiKey: typeof process !== "undefined" ? (process.env?.OPENROUTER_API_KEY ? "present" : "undefined") : "no-process",
       importMetaEnvApiKey: import.meta.env?.OPENROUTER_API_KEY ? "present" : "undefined",
-      importMetaEnvValue: import.meta.env?.OPENROUTER_API_KEY || "undefined",
     });
 
     if (!this.apiKey) {
