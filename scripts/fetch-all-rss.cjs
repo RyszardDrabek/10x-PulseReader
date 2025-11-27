@@ -21,7 +21,7 @@ const BASE_URL = (process.env.DEPLOYMENT_URL || "https://10x-pulsereader.pages.d
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const RETRY_DELAY_MS = parseInt(process.env.RETRY_DELAY_MS || "2000", 10); // 2 seconds default
-const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || "2", 10); // Max 50 calls to prevent infinite loops
+const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || "50", 10); // Max 50 calls to prevent infinite loops
 
 if (!SERVICE_ROLE_KEY) {
   console.error("❌ Error: SUPABASE_SERVICE_ROLE_KEY environment variable is not set");
