@@ -381,36 +381,50 @@ export class ArticleService {
     let duplicatesSkipped = 0;
 
     for (const item of insertData) {
-      const { data: article, error: insertError } = await this.supabase
-        .schema("app")
-        .from("articles")
-        .insert(item)
-        .select()
-        .single();
+      try {
+        // Try to insert the article
+        const { data: article, error: insertError } = await this.supabase
+          .schema("app")
+          .from("articles")
+          .insert(item)
+          .select();
 
-      if (insertError) {
-        // Check if it's a duplicate key error
-        if (insertError.code === "23505") {
-          // PostgreSQL unique violation
+        // If there's an error, check if it's a duplicate
+        if (insertError) {
+          if (insertError.code === "23505" || (insertError.message && insertError.message.includes("duplicate key"))) {
+            duplicatesSkipped++;
+            continue;
+          }
+          // For other errors, throw to trigger fallback
+          throw new Error(`Database error: ${insertError.message || JSON.stringify(insertError)}`);
+        }
+
+        // If successful, add to created articles
+        if (article) {
+          const articleData = Array.isArray(article) ? article[0] : article;
+          if (articleData) {
+            createdArticles.push({
+              id: articleData.id,
+              sourceId: articleData.source_id,
+              title: articleData.title,
+              description: articleData.description,
+              link: articleData.link,
+              publicationDate: articleData.publication_date,
+              sentiment: articleData.sentiment,
+              createdAt: articleData.created_at,
+              updatedAt: articleData.updated_at,
+            });
+          }
+        }
+      } catch (error: unknown) {
+        // Check if the caught error is a duplicate key error
+        const errorMessage = error?.message || String(error);
+        if (errorMessage.includes("duplicate key") || errorMessage.includes("23505") || error?.code === "23505") {
           duplicatesSkipped++;
           continue;
         }
         // For other errors, throw to trigger fallback
-        throw insertError;
-      }
-
-      if (article) {
-        createdArticles.push({
-          id: article.id,
-          sourceId: article.source_id,
-          title: article.title,
-          description: article.description,
-          link: article.link,
-          publicationDate: article.publication_date,
-          sentiment: article.sentiment,
-          createdAt: article.created_at,
-          updatedAt: article.updated_at,
-        });
+        throw new Error(`Insert failed: ${errorMessage}`);
       }
     }
 
