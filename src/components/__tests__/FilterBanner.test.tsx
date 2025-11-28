@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "../../test/test-utils";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from "../../test/test-utils";
 import FilterBanner from "../FilterBanner";
 import type { ArticleFiltersApplied, ProfileDto } from "../../types";
 
@@ -46,10 +45,7 @@ describe("FilterBanner", () => {
     filteredArticles: 5,
   };
 
-  let user: ReturnType<typeof userEvent.setup>;
-
   beforeEach(() => {
-    user = userEvent.setup();
     vi.clearAllMocks();
     mockFetch.mockReset();
   });

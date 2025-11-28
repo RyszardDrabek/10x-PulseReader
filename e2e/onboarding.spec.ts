@@ -32,7 +32,7 @@ test.describe("User Onboarding Flow", () => {
 
     // Check if onboarding modal appears (it may not for existing users)
     const onboardingModal = page.locator('[role="dialog"]').filter({
-      hasText: "Welcome to PulseReader"
+      hasText: "Welcome to PulseReader",
     });
 
     try {
@@ -47,7 +47,6 @@ test.describe("User Onboarding Flow", () => {
 
       // Modal should close
       await expect(onboardingModal).not.toBeVisible();
-
     } catch {
       // Modal didn't appear - this is expected for users who already have preferences
       // Just verify the page loaded correctly

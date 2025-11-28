@@ -68,11 +68,7 @@ export default function MoodSelector({
         </p>
       </div>
 
-      <div
-        className="grid grid-cols-1 gap-3 sm:grid-cols-3"
-        role="radiogroup"
-        aria-labelledby="mood-selector-heading"
-      >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" role="radiogroup" aria-labelledby="mood-selector-heading">
         {moodOptions.map((option) => {
           const isSelected = currentMood === option.value;
           const isHovered = hoveredMood === option.value;
@@ -82,11 +78,7 @@ export default function MoodSelector({
               key={option.value}
               variant={isSelected ? "default" : "outline"}
               className={`h-auto p-4 flex flex-col items-center space-y-2 transition-all duration-200 ${
-                isSelected
-                  ? "ring-2 ring-primary ring-offset-2"
-                  : isHovered
-                  ? "border-primary/50 bg-primary/5"
-                  : ""
+                isSelected ? "ring-2 ring-primary ring-offset-2" : isHovered ? "border-primary/50 bg-primary/5" : ""
               } ${disabled ? "opacity-50 cursor-not-allowed" : "hover:scale-105"}`}
               onClick={() => handleMoodSelect(option.value)}
               onMouseEnter={() => setHoveredMood(option.value)}
@@ -113,9 +105,7 @@ export default function MoodSelector({
           </p>
         )}
         {!currentMood && (
-          <p className="text-sm text-muted-foreground">
-            No mood selected - you'll see articles of all sentiments
-          </p>
+          <p className="text-sm text-muted-foreground">No mood selected - you&apos;ll see articles of all sentiments</p>
         )}
       </div>
     </div>

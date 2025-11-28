@@ -27,7 +27,7 @@ export default function SettingsForm() {
     if (user?.id) {
       fetchProfile();
     }
-  }, [user?.id]);
+  }, [user?.id, fetchProfile]);
 
   // Update local state when profile changes
   useEffect(() => {
@@ -177,29 +177,17 @@ export default function SettingsForm() {
     <div className="space-y-8">
       {/* Mood Selection */}
       <div className="space-y-6">
-        <MoodSelector
-          currentMood={localMood}
-          onMoodChange={handleMoodChange}
-          disabled={saving}
-        />
+        <MoodSelector currentMood={localMood} onMoodChange={handleMoodChange} disabled={saving} />
       </div>
 
       {/* Blocklist Management */}
       <div className="space-y-6">
-        <BlocklistManager
-          blocklist={localBlocklist}
-          onBlocklistChange={handleBlocklistChange}
-          disabled={saving}
-        />
+        <BlocklistManager blocklist={localBlocklist} onBlocklistChange={handleBlocklistChange} disabled={saving} />
       </div>
 
       {/* Action Buttons */}
       <div className="flex gap-4 pt-6 border-t">
-        <Button
-          onClick={handleSave}
-          disabled={!hasUnsavedChanges || saving}
-          className="flex-1 sm:flex-none"
-        >
+        <Button onClick={handleSave} disabled={!hasUnsavedChanges || saving} className="flex-1 sm:flex-none">
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -221,17 +209,9 @@ export default function SettingsForm() {
       </div>
 
       {/* Status Messages */}
-      {error && (
-        <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-          {error}
-        </div>
-      )}
+      {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
 
-      {!hasUnsavedChanges && !saving && (
-        <div className="text-sm text-muted-foreground">
-          All changes saved.
-        </div>
-      )}
+      {!hasUnsavedChanges && !saving && <div className="text-sm text-muted-foreground">All changes saved.</div>}
     </div>
   );
 }

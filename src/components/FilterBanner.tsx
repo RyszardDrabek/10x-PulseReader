@@ -24,7 +24,7 @@ export default function FilterBanner({
   profile,
   onProfileUpdate,
   totalArticles,
-  filteredArticles
+  filteredArticles,
 }: FilterBannerProps) {
   const { user } = useSupabase();
   const isAuthenticated = !!user;
@@ -95,7 +95,7 @@ export default function FilterBanner({
     const currentBlocklist = profile.blocklist || [];
 
     // Validate item
-    if (currentBlocklist.some(existing => existing.toLowerCase() === item.toLowerCase())) {
+    if (currentBlocklist.some((existing) => existing.toLowerCase() === item.toLowerCase())) {
       toast.error("This item is already in your blocklist");
       return;
     }
@@ -243,9 +243,7 @@ export default function FilterBanner({
                       variant={isSelected ? "default" : "ghost"}
                       size="sm"
                       className={`h-7 px-2 transition-all duration-200 ${
-                        isSelected
-                          ? getMoodColor(mood)
-                          : "hover:bg-muted"
+                        isSelected ? getMoodColor(mood) : "hover:bg-muted"
                       } ${isUpdating ? "opacity-50 cursor-not-allowed" : ""}`}
                       onClick={() => handleMoodChange(mood)}
                       disabled={isUpdating}
@@ -253,11 +251,7 @@ export default function FilterBanner({
                       aria-pressed={isSelected}
                       data-testid={`mood-toggle-${mood}`}
                     >
-                      {isUpdating ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        getMoodIcon(mood)
-                      )}
+                      {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : getMoodIcon(mood)}
                     </Button>
                   );
                 })}
@@ -323,11 +317,7 @@ export default function FilterBanner({
                     disabled={updatingBlocklist || !newBlocklistItem.trim()}
                     data-testid="add-blocklist-inline"
                   >
-                    {updatingBlocklist ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Plus className="h-3 w-3" />
-                    )}
+                    {updatingBlocklist ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
                   </Button>
                   <Button
                     variant="ghost"
@@ -350,9 +340,7 @@ export default function FilterBanner({
           {/* Add blocklist button when no items exist */}
           {isAuthenticated && isPersonalized && (!profile?.blocklist || profile.blocklist.length === 0) && (
             <div className="flex items-center space-x-2" data-testid="active-filter">
-              <span className="text-sm text-muted-foreground">
-                Blocklist:
-              </span>
+              <span className="text-sm text-muted-foreground">Blocklist:</span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -388,20 +376,21 @@ export default function FilterBanner({
         </div>
 
         {/* Filter statistics */}
-        {isPersonalized && (totalArticles !== undefined || filteredArticles !== undefined || currentFilters?.blockedItemsCount !== undefined) && (
-          <div className="flex items-center space-x-4 text-xs text-muted-foreground" data-testid="filter-stats">
-            {totalArticles !== undefined && filteredArticles !== undefined && (
-              <span>
-                Showing {totalArticles} of {totalArticles + filteredArticles} articles
-              </span>
-            )}
-            {currentFilters?.blockedItemsCount !== undefined && currentFilters.blockedItemsCount > 0 && (
-              <span>
-                {currentFilters.blockedItemsCount} blocked by keywords
-              </span>
-            )}
-          </div>
-        )}
+        {isPersonalized &&
+          (totalArticles !== undefined ||
+            filteredArticles !== undefined ||
+            currentFilters?.blockedItemsCount !== undefined) && (
+            <div className="flex items-center space-x-4 text-xs text-muted-foreground" data-testid="filter-stats">
+              {totalArticles !== undefined && filteredArticles !== undefined && (
+                <span>
+                  Showing {totalArticles} of {totalArticles + filteredArticles} articles
+                </span>
+              )}
+              {currentFilters?.blockedItemsCount !== undefined && currentFilters.blockedItemsCount > 0 && (
+                <span>{currentFilters.blockedItemsCount} blocked by keywords</span>
+              )}
+            </div>
+          )}
 
         <div
           className="flex items-center justify-between md:justify-end md:space-x-2"
@@ -435,32 +424,34 @@ export default function FilterBanner({
       </div>
 
       {/* Quick blocklist item removal - shown when personalization is enabled and items exist */}
-      {isAuthenticated && isPersonalized && profile?.blocklist && profile.blocklist.length > 0 && !showBlocklistInput && (
-        <div className="flex items-center space-x-1 ml-4" role="group" aria-label="Quick blocklist management">
-          <span className="text-xs text-muted-foreground hidden sm:inline">Quick remove:</span>
-          {profile.blocklist.slice(0, 3).map((item, index) => (
-            <Button
-              key={`${item}-${index}`}
-              variant="ghost"
-              size="sm"
-              className="h-5 px-1 text-xs hover:bg-destructive hover:text-destructive-foreground"
-              onClick={() => handleRemoveBlocklistItem(index)}
-              disabled={updatingBlocklist}
-              aria-label={`Remove "${item}" from blocklist`}
-              title={`Remove "${item}"`}
-              data-testid={`quick-remove-blocklist-${index}`}
-            >
-              {item.length > 10 ? `${item.substring(0, 10)}...` : item}
-              <X className="h-3 w-3 ml-1" />
-            </Button>
-          ))}
-          {profile.blocklist.length > 3 && (
-            <span className="text-xs text-muted-foreground">
-              +{profile.blocklist.length - 3} more
-            </span>
-          )}
-        </div>
-      )}
+      {isAuthenticated &&
+        isPersonalized &&
+        profile?.blocklist &&
+        profile.blocklist.length > 0 &&
+        !showBlocklistInput && (
+          <div className="flex items-center space-x-1 ml-4" role="group" aria-label="Quick blocklist management">
+            <span className="text-xs text-muted-foreground hidden sm:inline">Quick remove:</span>
+            {profile.blocklist.slice(0, 3).map((item, index) => (
+              <Button
+                key={`${item}-${index}`}
+                variant="ghost"
+                size="sm"
+                className="h-5 px-1 text-xs hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => handleRemoveBlocklistItem(index)}
+                disabled={updatingBlocklist}
+                aria-label={`Remove "${item}" from blocklist`}
+                title={`Remove "${item}"`}
+                data-testid={`quick-remove-blocklist-${index}`}
+              >
+                {item.length > 10 ? `${item.substring(0, 10)}...` : item}
+                <X className="h-3 w-3 ml-1" />
+              </Button>
+            ))}
+            {profile.blocklist.length > 3 && (
+              <span className="text-xs text-muted-foreground">+{profile.blocklist.length - 3} more</span>
+            )}
+          </div>
+        )}
 
       {/* Live region for filter changes */}
       <div aria-live="polite" aria-atomic="true" className="sr-only" role="status">

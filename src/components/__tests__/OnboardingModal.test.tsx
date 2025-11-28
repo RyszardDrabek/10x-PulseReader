@@ -31,5 +31,4 @@ describe("OnboardingModal", () => {
       expect(screen.queryByText("Welcome to PulseReader!")).not.toBeInTheDocument();
     });
   });
-
 });

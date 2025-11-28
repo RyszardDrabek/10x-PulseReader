@@ -42,7 +42,7 @@ export default function BlocklistManager({
       return "Item cannot be longer than 100 characters";
     }
 
-    if (blocklist.some(existing => existing.toLowerCase() === trimmed.toLowerCase())) {
+    if (blocklist.some((existing) => existing.toLowerCase() === trimmed.toLowerCase())) {
       return "This item is already in your blocklist";
     }
 
@@ -151,11 +151,7 @@ export default function BlocklistManager({
             </Label>
           </div>
 
-          <div
-            className="flex flex-wrap gap-2"
-            role="list"
-            aria-label="Current blocklist items"
-          >
+          <div className="flex flex-wrap gap-2" role="list" aria-label="Current blocklist items">
             {blocklist.map((item, index) => (
               <Badge
                 key={`${item}-${index}`}

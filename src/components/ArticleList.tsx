@@ -158,7 +158,7 @@ export default function ArticleList({
         setLoading(false);
       }
     },
-    [queryParams, usePersonalization, supabase]
+    [queryParams, usePersonalization, supabase, onStatsUpdate]
   );
 
   // Initial fetch if no valid initialData (empty or missing)
