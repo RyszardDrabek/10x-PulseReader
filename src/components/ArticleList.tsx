@@ -9,12 +9,14 @@ interface ArticleListProps {
   queryParams?: GetArticlesQueryParams;
   initialData?: ArticleListResponse;
   isPersonalized?: boolean;
+  onStatsUpdate?: (stats: { totalArticles?: number; filteredArticles?: number; blockedItemsCount?: number }) => void;
 }
 
 export default function ArticleList({
   queryParams = { limit: 20, offset: 0, sortBy: "publication_date", sortOrder: "desc" },
   initialData,
   isPersonalized = false,
+  onStatsUpdate,
 }: ArticleListProps) {
   const { supabase } = useSupabase();
 
@@ -118,6 +120,12 @@ export default function ArticleList({
         }
 
         const data: ArticleListResponse = await response.json();
+
+        // Calculate filtered articles count (total - shown articles)
+        const shownArticles = data.data?.length || 0;
+        const totalArticles = data.pagination.total;
+        const filteredArticles = Math.max(0, totalArticles - shownArticles);
+
         setArticles((prev) => {
           if (append) {
             // Only append if we have new data
@@ -132,6 +140,13 @@ export default function ArticleList({
         });
         setHasMore(data.pagination.hasMore);
         setCurrentOffset(data.pagination.offset + data.pagination.limit);
+
+        // Update stats for parent component
+        onStatsUpdate?.({
+          totalArticles: shownArticles,
+          filteredArticles,
+          blockedItemsCount: data.filtersApplied?.blockedItemsCount,
+        });
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to load articles";
         setError(errorMessage);

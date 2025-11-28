@@ -3,7 +3,14 @@ import { useSupabase } from "./SupabaseProvider";
 import { logger } from "../lib/utils/logger";
 import FilterBanner from "./FilterBanner";
 import ArticleList from "./ArticleList";
-import type { ArticleFiltersApplied, ProfileDto, GetArticlesQueryParams, ArticleListResponse } from "../types";
+import OnboardingModal from "./OnboardingModal";
+import type {
+  ArticleFiltersApplied,
+  ProfileDto,
+  GetArticlesQueryParams,
+  ArticleListResponse,
+  UserMood,
+} from "../types";
 
 interface HomepageProps {
   initialData?: ArticleListResponse;
@@ -15,6 +22,12 @@ export default function Homepage({ initialData }: HomepageProps) {
 
   const [isPersonalized, setIsPersonalized] = useState(false);
   const [profile, setProfile] = useState<ProfileDto | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [articleStats, setArticleStats] = useState<{
+    totalArticles?: number;
+    filteredArticles?: number;
+    blockedItemsCount?: number;
+  }>({});
   const [queryParams] = useState<GetArticlesQueryParams>({
     limit: 20,
     offset: 0,
@@ -48,11 +61,79 @@ export default function Homepage({ initialData }: HomepageProps) {
     }
   }, [isAuthenticated, user?.id, fetchProfile]);
 
+  // Show onboarding modal for new users without preferences
+  useEffect(() => {
+    if (isAuthenticated && profile && !showOnboarding) {
+      // Check if user needs onboarding (no mood set and empty blocklist)
+      const needsOnboarding = profile.mood === null && (!profile.blocklist || profile.blocklist.length === 0);
+
+      if (needsOnboarding) {
+        // Small delay to allow the page to render first
+        setTimeout(() => setShowOnboarding(true), 1000);
+      }
+    }
+  }, [isAuthenticated, profile, showOnboarding]);
+
+  // Refresh profile data when window regains focus (e.g., returning from settings page)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isAuthenticated && user?.id) {
+        fetchProfile();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [isAuthenticated, user?.id, fetchProfile]);
+
   const handleTogglePersonalization = (enabled: boolean) => {
     setIsPersonalized(enabled);
     // The ArticleList component will re-render with the new personalization setting
     // and useArticles hook will handle the query invalidation
   };
+
+  const handleOnboardingComplete = useCallback(
+    async (preferences: { mood?: UserMood; blocklist?: string[] }) => {
+      if (!user?.id) return;
+
+      try {
+        // Update profile with onboarding preferences
+        const updateData = {
+          mood: preferences.mood || null,
+          blocklist: preferences.blocklist || [],
+        };
+
+        const response = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to update profile: ${response.status}`);
+        }
+
+        const updatedProfile: ProfileDto = await response.json;
+        setProfile(updatedProfile);
+        setShowOnboarding(false);
+
+        // Enable personalization automatically
+        setIsPersonalized(true);
+
+        logger.info("Onboarding completed successfully", {
+          userId: user.id,
+          mood: preferences.mood,
+          blocklistCount: preferences.blocklist?.length || 0,
+        });
+      } catch (error) {
+        logger.error("Failed to complete onboarding", error);
+        throw error; // Re-throw to let the modal handle the error
+      }
+    },
+    [user?.id]
+  );
 
   const getCurrentFilters = (): ArticleFiltersApplied => {
     if (!isPersonalized) {
@@ -70,11 +151,28 @@ export default function Homepage({ initialData }: HomepageProps) {
   return (
     <div className="min-h-screen">
       <FilterBanner
-        currentFilters={getCurrentFilters()}
+        currentFilters={{
+          ...getCurrentFilters(),
+          blockedItemsCount: articleStats.blockedItemsCount,
+        }}
         onTogglePersonalization={handleTogglePersonalization}
         profile={profile}
+        onProfileUpdate={setProfile}
+        totalArticles={articleStats.totalArticles}
+        filteredArticles={articleStats.filteredArticles}
       />
-      <ArticleList queryParams={queryParams} isPersonalized={isPersonalized} initialData={initialData} />
+      <ArticleList
+        queryParams={queryParams}
+        isPersonalized={isPersonalized}
+        initialData={initialData}
+        onStatsUpdate={setArticleStats}
+      />
+
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onComplete={handleOnboardingComplete}
+      />
     </div>
   );
 }
