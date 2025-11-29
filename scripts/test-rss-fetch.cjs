@@ -13,6 +13,7 @@ const http = require("http");
 // Configuration
 const BASE_URL = (process.env.DEPLOYMENT_URL || "https://10x-pulsereader.pages.dev").replace(/\/$/, "");
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 if (!SERVICE_ROLE_KEY) {
   console.error("❌ Error: SUPABASE_SERVICE_ROLE_KEY environment variable is not set");
@@ -36,6 +37,7 @@ function makeRequest(url, options = {}) {
           Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
           "Content-Type": "application/json",
           "User-Agent": "PulseReader-RSS-Fetch-Test/1.0",
+          ...(OPENROUTER_API_KEY && { "X-OpenRouter-API-Key": OPENROUTER_API_KEY }),
           ...options.headers,
         },
         ...options,

@@ -145,6 +145,13 @@ export class OpenRouterClient {
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       const startTime = Date.now();
+      logger.info("About to make fetch request", {
+        url: `${this.baseUrl}/chat/completions`,
+        hasApiKey: !!this.apiKey,
+        requestBodySize: JSON.stringify(requestBody).length,
+        timeoutMs,
+      });
+
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
@@ -173,6 +180,8 @@ export class OpenRouterClient {
           status: response.status,
           statusText: response.statusText,
           error: errorText,
+          errorTextLength: errorText.length,
+          errorTextPreview: errorText.substring(0, 200),
         });
 
         // Handle rate limiting

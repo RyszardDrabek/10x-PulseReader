@@ -312,16 +312,47 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
     // Normal authentication flow (cookie-based or no auth header)
     reqLogger.debug("Starting normal authentication flow");
 
-    const supabase = createSupabaseServerInstance({
-      cookies,
-      headers: request.headers,
-    });
+    // For local development, use simple client if SSR client fails
+    let supabase;
+    try {
+      supabase = createSupabaseServerInstance({
+        cookies,
+        headers: request.headers,
+      });
+    } catch (clientError) {
+      reqLogger.warn("SSR Supabase client creation failed, using fallback client", {
+        error: clientError instanceof Error ? clientError.message : String(clientError)
+      });
+
+      // Fallback: create simple client for local development
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+      const supabaseKey = import.meta.env.SUPABASE_KEY || import.meta.env.PUBLIC_SUPABASE_KEY;
+
+      if (supabaseUrl && supabaseKey) {
+        supabase = createClient(supabaseUrl, supabaseKey);
+      } else {
+        throw new Error("Supabase environment variables not available for fallback client");
+      }
+    }
     locals.supabase = supabase;
 
     // IMPORTANT: Always get user session first before any other operations
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    let user = null;
+    try {
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+      user = authUser;
+    } catch (authError) {
+      // In local development, Supabase connection might fail - allow request to continue
+      cfLogger.trace("AUTH_CONNECTION_FAILED", {
+        error: authError instanceof Error ? authError.message : String(authError)
+      });
+      reqLogger.warn("Supabase auth connection failed, continuing without authentication", {
+        error: authError instanceof Error ? authError.message : String(authError)
+      });
+    }
 
     if (user) {
       locals.user = user;

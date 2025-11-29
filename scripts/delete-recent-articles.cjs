@@ -38,7 +38,7 @@ console.log(`🗑️  Deleting articles from the last ${daysToDelete} days...`);
 console.log(`📅 Cutoff date: ${cutoffISOString}`);
 
 // Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL || "http://127.0.0.1:54321";
+const supabaseUrl = process.env.SUPABASE_URL || "http://127.0.0.1:18785";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseKey) {

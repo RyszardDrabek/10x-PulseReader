@@ -112,8 +112,17 @@ export class ArticleService {
    *   - PROFILE_NOT_FOUND: User profile not found when personalization requested
    */
   async getArticles(params: GetArticlesQueryParams, userId?: string): Promise<ArticleListResponse> {
+    // For debugging - ensure personalization is disabled for guests
+    if (!userId && params.applyPersonalization) {
+      console.warn('Personalization requested for guest user, disabling');
+      params.applyPersonalization = false;
+    }
+
     // Calculate fetch limit (over-fetch for blocklist filtering if needed)
-    const userProfile = params.applyPersonalization && userId ? await this.getProfile(userId) : null;
+    let userProfile = null;
+    if (params.applyPersonalization && userId) {
+      userProfile = await this.getProfile(userId);
+    }
 
     if (params.applyPersonalization && userId && !userProfile) {
       throw new Error("PROFILE_NOT_FOUND");

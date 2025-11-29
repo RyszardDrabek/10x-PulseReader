@@ -7,7 +7,7 @@ Ten katalog zawiera skrypty do wypełniania bazy danych danymi testowymi dla roz
 - Supabase uruchomiony lokalnie (`supabase start`)
 - Zmienne środowiskowe skonfigurowane w pliku `.env`:
   ```env
-  SUPABASE_URL=http://127.0.0.1:54321
+  SUPABASE_URL=http://127.0.0.1:18785
   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
   ```
 

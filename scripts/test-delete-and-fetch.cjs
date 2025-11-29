@@ -21,7 +21,7 @@ const http = require("http");
 // Configuration
 const BASE_URL = (process.env.DEPLOYMENT_URL || "http://localhost:3000").replace(/\/$/, "");
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.SUPABASE_URL || "http://127.0.0.1:54321";
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.SUPABASE_URL || "http://127.0.0.1:18785";
 
 // Parse command line arguments
 const args = process.argv.slice(2);
