@@ -112,8 +112,20 @@ export class ArticleService {
    *   - PROFILE_NOT_FOUND: User profile not found when personalization requested
    */
   async getArticles(params: GetArticlesQueryParams, userId?: string): Promise<ArticleListResponse> {
+    console.log("[ArticleService.getArticles] Starting with params:", {
+      limit: params.limit,
+      offset: params.offset,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+      applyPersonalization: params.applyPersonalization,
+      topicId: params.topicId,
+      sentiment: params.sentiment,
+      userId: userId || "none",
+    });
+
     // Temporarily disable personalization entirely
     params.applyPersonalization = false;
+    console.log("[ArticleService.getArticles] Personalization disabled, proceeding with query");
 
     // Calculate fetch limit (over-fetch for blocklist filtering if needed)
     let userProfile = null;
@@ -164,6 +176,7 @@ export class ArticleService {
     }
 
     // Build base query with joins for source and topics
+    console.log("[ArticleService.getArticles] Building database query");
     let query = this.supabase
       .schema("app")
       .from("articles")
@@ -204,11 +217,20 @@ export class ArticleService {
     query = query.range(offset, offset + fetchLimit - 1);
 
     // Execute query
+    console.log("[ArticleService.getArticles] Executing database query");
     const { data, count, error } = await query;
+    console.log("[ArticleService.getArticles] Query result:", {
+      hasData: !!data,
+      dataLength: data?.length || 0,
+      count: count,
+      hasError: !!error,
+      errorMessage: error?.message,
+    });
 
     if (error) {
       // Wrap Supabase error in DatabaseError for better error handling
       const errorMessage = error.message || JSON.stringify(error);
+      console.error("[ArticleService.getArticles] Database error:", error);
       throw new DatabaseError(`Database query failed: ${errorMessage}`, error);
     }
 
@@ -239,7 +261,15 @@ export class ArticleService {
     }
 
     // Build response
-    return {
+    console.log("[ArticleService.getArticles] Building response:", {
+      articlesCount: articles.length,
+      totalCount: count || 0,
+      hasMore: offset + limit < (count || 0),
+      sentiment: params.sentiment,
+      personalization: params.applyPersonalization,
+    });
+
+    const result = {
       data: articles,
       pagination: {
         limit,
@@ -253,6 +283,9 @@ export class ArticleService {
         blockedItemsCount: blockedCount > 0 ? blockedCount : undefined,
       },
     };
+
+    console.log("[ArticleService.getArticles] Method completed successfully");
+    return result;
   }
 
   /**

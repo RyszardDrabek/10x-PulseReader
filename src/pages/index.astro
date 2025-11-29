@@ -16,19 +16,36 @@ if (supabaseUrl && supabaseKey) {
 let initialArticles;
 
 // Fetch articles server-side if Supabase is available
+console.log("[index.astro] Starting server-side article fetch");
+console.log("[index.astro] Supabase available:", !!supabase);
+
 if (supabase) {
   try {
+    console.log("[index.astro] Creating ArticleService");
     const articleService = new ArticleService(supabase);
+    console.log("[index.astro] Calling getArticles");
+
     initialArticles = await articleService.getArticles({
       limit: 20,
       offset: 0,
       sortBy: "publication_date",
       sortOrder: "desc",
     });
+
+    console.log("[index.astro] Articles fetched successfully:", {
+      count: initialArticles?.data?.length || 0,
+      total: initialArticles?.pagination?.total || 0,
+      hasMore: initialArticles?.pagination?.hasMore || false,
+    });
   } catch (error) {
     // If server-side fetch fails, provide empty data - client will fetch
     // eslint-disable-next-line no-console
     console.error("[index.astro] Failed to load articles server-side:", error);
+    console.error("[index.astro] Error details:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
     initialArticles = {
       data: [],
       pagination: { limit: 20, offset: 0, total: 0, hasMore: false },
@@ -36,6 +53,7 @@ if (supabase) {
     };
   }
 } else {
+  console.log("[index.astro] Supabase not available, using empty data");
   // If Supabase is not available, provide empty data - client will fetch
   initialArticles = {
     data: [],
@@ -43,6 +61,12 @@ if (supabase) {
     filtersApplied: { sentiment: undefined, personalization: false },
   };
 }
+
+console.log("[index.astro] Final initialArticles:", {
+  hasData: !!initialArticles,
+  dataLength: initialArticles?.data?.length || 0,
+  total: initialArticles?.pagination?.total || 0,
+});
 
 // Pass environment variables to client components
 const supabaseConfig = {
