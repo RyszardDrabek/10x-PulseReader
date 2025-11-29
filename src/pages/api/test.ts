@@ -2,12 +2,26 @@ import type { APIRoute } from "astro";
 
 export const GET: APIRoute = async () => {
   try {
-    // Try to create a direct Supabase client with known working URLs
+    // Use environment variables for Supabase client
     const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(
-      "http://127.0.0.1:18785",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
-    );
+    const supabaseUrl = import.meta.env.SUPABASE_URL;
+    const supabaseKey = import.meta.env.SUPABASE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return new Response(
+        JSON.stringify({
+          error: "Server configuration error: Supabase credentials not available",
+          code: "CONFIGURATION_ERROR",
+          timestamp: new Date().toISOString(),
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Simple test query - using the app schema
     const { data, error } = await supabase.schema("app").from("profiles").select("count").limit(1);

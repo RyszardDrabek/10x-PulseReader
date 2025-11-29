@@ -28,6 +28,10 @@ vi.mock("../../../../lib/utils/logger.ts", () => ({
   },
 }));
 
+// Mock environment variables
+vi.stubEnv("SUPABASE_URL", "http://127.0.0.1:54321");
+vi.stubEnv("SUPABASE_KEY", "test-anon-key");
+
 /**
  * Creates a mock Astro API context
  */
