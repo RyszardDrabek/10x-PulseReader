@@ -102,7 +102,6 @@ describe("POST /api/cron/fetch-rss - Authentication", () => {
     expect(body.error).toBe("Service role required for this endpoint");
     expect(body.code).toBe("FORBIDDEN");
   });
-
 });
 
 describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {

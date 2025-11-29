@@ -130,7 +130,7 @@ describe("GET /api/rss-sources", () => {
   test("should create its own Supabase client and work independently", async () => {
     const context = createMockContext("http://localhost:3000/api/rss-sources", "GET");
     // This endpoint creates its own Supabase client, so context.locals.supabase can be null
-    context.locals.supabase = null as any;
+    context.locals.supabase = null as unknown as SupabaseClient<Database>;
 
     const response = await GET(context);
 
