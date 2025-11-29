@@ -23,7 +23,10 @@ export const prerender = false;
 export const GET: APIRoute = async (context) => {
   // Use direct Supabase client creation like the working articles endpoint
   const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient("http://127.0.0.1:18785", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0");
+  const supabase = createClient(
+    "http://127.0.0.1:18785",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+  );
 
   // Validate Supabase client is available
   if (!supabase) {
@@ -132,7 +135,10 @@ export const GET: APIRoute = async (context) => {
 export const POST: APIRoute = async (context) => {
   // Use direct Supabase client creation like the working articles endpoint
   const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient("http://127.0.0.1:18785", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0");
+  const supabase = createClient(
+    "http://127.0.0.1:18785",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+  );
   const user = context.locals.user;
 
   // Validate Supabase client is available

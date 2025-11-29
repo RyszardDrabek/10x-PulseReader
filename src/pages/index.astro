@@ -6,7 +6,10 @@ import { ArticleService } from "../lib/services/article.service";
 
 // Temporarily use direct client creation like the test endpoint
 const { createClient } = await import("@supabase/supabase-js");
-const supabase = createClient("http://127.0.0.1:18785", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0");
+const supabase = createClient(
+  "http://127.0.0.1:18785",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+);
 let initialArticles;
 
 // Fetch articles server-side if Supabase is available

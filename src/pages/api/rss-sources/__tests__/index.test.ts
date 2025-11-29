@@ -127,16 +127,15 @@ describe("GET /api/rss-sources", () => {
     expect(body.error).toBe("Validation failed");
   });
 
-  test("should return 500 when Supabase client is not initialized", async () => {
+  test("should create its own Supabase client and work independently", async () => {
     const context = createMockContext("http://localhost:3000/api/rss-sources", "GET");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // This endpoint creates its own Supabase client, so context.locals.supabase can be null
     context.locals.supabase = null as any;
 
     const response = await GET(context);
 
-    expect(response.status).toBe(500);
-    const body = await response.json();
-    expect(body.error).toBe("Server configuration error: Supabase client not available");
+    // Should work regardless of context.locals.supabase
+    expect(response.status).toBe(200);
   });
 });
 

@@ -7,6 +7,15 @@
 // =====================================================================================
 
 import type { Database } from "./db/database.types";
+import type { User } from "@supabase/supabase-js";
+
+/**
+ * User with role information for service role authentication.
+ * Extends Supabase User type with role field.
+ */
+export interface UserWithRole extends Partial<User> {
+  role: "service_role" | "user";
+}
 
 // =====================================================================================
 // Database Entity Types (Foundation)

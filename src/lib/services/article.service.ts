@@ -114,7 +114,7 @@ export class ArticleService {
   async getArticles(params: GetArticlesQueryParams, userId?: string): Promise<ArticleListResponse> {
     // For debugging - ensure personalization is disabled for guests
     if (!userId && params.applyPersonalization) {
-      console.warn('Personalization requested for guest user, disabling');
+      console.warn("Personalization requested for guest user, disabling");
       params.applyPersonalization = false;
     }
 

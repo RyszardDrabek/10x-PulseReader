@@ -321,7 +321,7 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
       });
     } catch (clientError) {
       reqLogger.warn("SSR Supabase client creation failed, using fallback client", {
-        error: clientError instanceof Error ? clientError.message : String(clientError)
+        error: clientError instanceof Error ? clientError.message : String(clientError),
       });
 
       // Fallback: create simple client for local development
@@ -347,10 +347,10 @@ export const onRequest = defineMiddleware(async ({ locals, cookies, url, request
     } catch (authError) {
       // In local development, Supabase connection might fail - allow request to continue
       cfLogger.trace("AUTH_CONNECTION_FAILED", {
-        error: authError instanceof Error ? authError.message : String(authError)
+        error: authError instanceof Error ? authError.message : String(authError),
       });
       reqLogger.warn("Supabase auth connection failed, continuing without authentication", {
-        error: authError instanceof Error ? authError.message : String(authError)
+        error: authError instanceof Error ? authError.message : String(authError),
       });
     }
 

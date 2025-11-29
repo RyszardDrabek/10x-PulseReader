@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 
+import type { UserWithRole } from "../../../types.ts";
 import { ArticleService } from "../../../lib/services/article.service.ts";
 import { ArticleAnalysisService } from "../../../lib/services/article-analysis.service.ts";
 import { RssFetchService } from "../../../lib/services/rss-fetch.service.ts";
@@ -23,12 +24,13 @@ export const POST: APIRoute = async (context) => {
   try {
     // Check for service role authentication
     const authHeader = context.request.headers.get("Authorization");
-    let user = context.locals.user;
+    let user: UserWithRole | null = context.locals.user;
     let supabase;
 
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
-      const expectedServiceRoleKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
+      const expectedServiceRoleKey =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
       // Allow any token that looks like a service role key (contains "service_role")
       if (token === expectedServiceRoleKey || token.includes("service_role")) {
@@ -40,14 +42,17 @@ export const POST: APIRoute = async (context) => {
             persistSession: false,
           },
         });
-        user = { role: "service_role" } as any;
+        user = { role: "service_role" };
       }
     }
 
     // Fallback to regular client creation if no service role auth
     if (!supabase) {
       const { createClient } = await import("@supabase/supabase-js");
-      supabase = createClient("http://127.0.0.1:18785", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0");
+      supabase = createClient(
+        "http://127.0.0.1:18785",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+      );
     }
 
     // Check for OpenRouter API key in headers (fallback for env vars)

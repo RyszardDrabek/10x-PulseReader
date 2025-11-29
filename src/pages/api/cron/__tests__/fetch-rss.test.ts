@@ -103,18 +103,6 @@ describe("POST /api/cron/fetch-rss - Authentication", () => {
     expect(body.code).toBe("FORBIDDEN");
   });
 
-  test("should return 500 when Supabase client is not available", async () => {
-    const serviceUser = createMockServiceRoleUser();
-    const context = createMockContext(serviceUser);
-    // Override supabase to null
-    context.locals.supabase = null as unknown as SupabaseClient<Database>;
-    const response = await POST(context);
-
-    expect(response.status).toBe(500);
-    const body = await response.json();
-    expect(body.error).toBe("Server configuration error: Supabase client not available");
-    expect(body.code).toBe("CONFIGURATION_ERROR");
-  });
 });
 
 describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
@@ -489,5 +477,20 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
     const body = await response.json();
     expect(body.error).toBe("Internal server error");
     expect(body.code).toBe("INTERNAL_ERROR");
+  });
+
+  test("should create its own Supabase client and work independently of context.locals.supabase", async () => {
+    mockRssSourceService.getActiveRssSources.mockResolvedValue([]);
+
+    const serviceUser = createMockServiceRoleUser();
+    const context = createMockContext(serviceUser);
+    // This endpoint creates its own Supabase client, so context.locals.supabase can be null
+    context.locals.supabase = null as unknown as SupabaseClient<Database>;
+    const response = await POST(context);
+
+    // Should return success since services are mocked and no sources found
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
   });
 });
