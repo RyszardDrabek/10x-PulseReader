@@ -23,8 +23,8 @@ export const prerender = false;
 export const GET: APIRoute = async (context) => {
   // Use environment variables for Supabase client
   const { createClient } = await import("@supabase/supabase-js");
-  const supabaseUrl = import.meta.env.SUPABASE_URL;
-  const supabaseKey = import.meta.env.SUPABASE_KEY;
+  const supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+  const supabaseKey = import.meta.env.SUPABASE_KEY || import.meta.env.PUBLIC_SUPABASE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     return new Response(
@@ -149,8 +149,8 @@ export const GET: APIRoute = async (context) => {
 export const POST: APIRoute = async (context) => {
   // Use environment variables for Supabase client
   const { createClient } = await import("@supabase/supabase-js");
-  const supabaseUrl = import.meta.env.SUPABASE_URL;
-  const supabaseKey = import.meta.env.SUPABASE_KEY;
+  const supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+  const supabaseKey = import.meta.env.SUPABASE_KEY || import.meta.env.PUBLIC_SUPABASE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     return new Response(

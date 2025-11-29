@@ -6,12 +6,24 @@ import { ArticleService } from "../lib/services/article.service";
 
 // Use environment variables for Supabase client
 const { createClient } = await import("@supabase/supabase-js");
-const supabaseUrl = import.meta.env.SUPABASE_URL;
-const supabaseKey = import.meta.env.SUPABASE_KEY;
+const supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseKey = import.meta.env.SUPABASE_KEY || import.meta.env.PUBLIC_SUPABASE_KEY;
+
+console.log("[index.astro] Environment variables check:", {
+  SUPABASE_URL: !!import.meta.env.SUPABASE_URL,
+  PUBLIC_SUPABASE_URL: !!import.meta.env.PUBLIC_SUPABASE_URL,
+  SUPABASE_KEY: !!import.meta.env.SUPABASE_KEY,
+  PUBLIC_SUPABASE_KEY: !!import.meta.env.PUBLIC_SUPABASE_KEY,
+  supabaseUrl: supabaseUrl ? "present" : "missing",
+  supabaseKey: supabaseKey ? "present" : "missing",
+});
 
 let supabase = null;
 if (supabaseUrl && supabaseKey) {
+  console.log("[index.astro] Creating Supabase client with URL:", supabaseUrl.substring(0, 20) + "...");
   supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+  console.log("[index.astro] Cannot create Supabase client - missing credentials");
 }
 let initialArticles;
 
