@@ -19,7 +19,30 @@ export const prerender = false;
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const GET: APIRoute = async (context) => {
-  const supabase = context.locals.supabase;
+  // Fallback to environment variables if context.locals.supabase is not available
+  // For production, use environment variables
+  // For local development, use the known working local Supabase instance
+  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
+  let supabaseUrl: string;
+  let supabaseKey: string;
+
+  if (isProduction) {
+    // In production, use environment variables
+    supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+    supabaseKey = import.meta.env.SUPABASE_KEY || import.meta.env.PUBLIC_SUPABASE_KEY;
+  } else {
+    // In local development, use known working local instance
+    supabaseUrl = "http://127.0.0.1:18785";
+    supabaseKey =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+  }
+
+  let supabase = context.locals.supabase;
+  if (!supabase && supabaseUrl && supabaseKey) {
+    const { createClient } = await import("@supabase/supabase-js");
+    supabase = createClient(supabaseUrl, supabaseKey);
+  }
+
   const user = context.locals.user;
 
   // Validate Supabase client is available
@@ -136,7 +159,30 @@ export const GET: APIRoute = async (context) => {
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const POST: APIRoute = async (context) => {
-  const supabase = context.locals.supabase;
+  // Fallback to environment variables if context.locals.supabase is not available
+  // For production, use environment variables
+  // For local development, use the known working local Supabase instance
+  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
+  let supabaseUrl: string;
+  let supabaseKey: string;
+
+  if (isProduction) {
+    // In production, use environment variables
+    supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+    supabaseKey = import.meta.env.SUPABASE_KEY || import.meta.env.PUBLIC_SUPABASE_KEY;
+  } else {
+    // In local development, use known working local instance
+    supabaseUrl = "http://127.0.0.1:18785";
+    supabaseKey =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+  }
+
+  let supabase = context.locals.supabase;
+  if (!supabase && supabaseUrl && supabaseKey) {
+    const { createClient } = await import("@supabase/supabase-js");
+    supabase = createClient(supabaseUrl, supabaseKey);
+  }
+
   const user = context.locals.user;
 
   // Validate Supabase client is available
@@ -313,7 +359,30 @@ export const POST: APIRoute = async (context) => {
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const PATCH: APIRoute = async (context) => {
-  const supabase = context.locals.supabase;
+  // Fallback to environment variables if context.locals.supabase is not available
+  // For production, use environment variables
+  // For local development, use the known working local Supabase instance
+  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
+  let supabaseUrl: string;
+  let supabaseKey: string;
+
+  if (isProduction) {
+    // In production, use environment variables
+    supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+    supabaseKey = import.meta.env.SUPABASE_KEY || import.meta.env.PUBLIC_SUPABASE_KEY;
+  } else {
+    // In local development, use known working local instance
+    supabaseUrl = "http://127.0.0.1:18785";
+    supabaseKey =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+  }
+
+  let supabase = context.locals.supabase;
+  if (!supabase && supabaseUrl && supabaseKey) {
+    const { createClient } = await import("@supabase/supabase-js");
+    supabase = createClient(supabaseUrl, supabaseKey);
+  }
+
   const user = context.locals.user;
 
   // Validate Supabase client is available
@@ -488,7 +557,30 @@ export const PATCH: APIRoute = async (context) => {
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const DELETE: APIRoute = async (context) => {
-  const supabase = context.locals.supabase;
+  // Fallback to environment variables if context.locals.supabase is not available
+  // For production, use environment variables
+  // For local development, use the known working local Supabase instance
+  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
+  let supabaseUrl: string;
+  let supabaseKey: string;
+
+  if (isProduction) {
+    // In production, use environment variables
+    supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+    supabaseKey = import.meta.env.SUPABASE_KEY || import.meta.env.PUBLIC_SUPABASE_KEY;
+  } else {
+    // In local development, use known working local instance
+    supabaseUrl = "http://127.0.0.1:18785";
+    supabaseKey =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+  }
+
+  let supabase = context.locals.supabase;
+  if (!supabase && supabaseUrl && supabaseKey) {
+    const { createClient } = await import("@supabase/supabase-js");
+    supabase = createClient(supabaseUrl, supabaseKey);
+  }
+
   const user = context.locals.user;
 
   // Validate Supabase client is available

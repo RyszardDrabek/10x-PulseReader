@@ -112,8 +112,11 @@ export class ArticleService {
    *   - PROFILE_NOT_FOUND: User profile not found when personalization requested
    */
   async getArticles(params: GetArticlesQueryParams, userId?: string): Promise<ArticleListResponse> {
-    // Temporarily disable personalization entirely
-    params.applyPersonalization = false;
+    // For debugging - ensure personalization is disabled for guests
+    if (!userId && params.applyPersonalization) {
+      console.warn("Personalization requested for guest user, disabling");
+      params.applyPersonalization = false;
+    }
 
     // Calculate fetch limit (over-fetch for blocklist filtering if needed)
     let userProfile = null;

@@ -22,30 +22,6 @@ export default function SettingsForm() {
   // Track if there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Fetch profile on mount
-  useEffect(() => {
-    if (user?.id) {
-      fetchProfile();
-    }
-  }, [user?.id, fetchProfile]);
-
-  // Update local state when profile changes
-  useEffect(() => {
-    if (profile) {
-      setLocalMood(profile.mood);
-      setLocalBlocklist([...profile.blocklist]);
-    }
-  }, [profile]);
-
-  // Check for unsaved changes
-  useEffect(() => {
-    if (profile) {
-      const moodChanged = localMood !== profile.mood;
-      const blocklistChanged = JSON.stringify(localBlocklist.sort()) !== JSON.stringify(profile.blocklist.sort());
-      setHasUnsavedChanges(moodChanged || blocklistChanged);
-    }
-  }, [localMood, localBlocklist, profile]);
-
   const fetchProfile = useCallback(async () => {
     if (!user?.id) return;
 
@@ -75,7 +51,33 @@ export default function SettingsForm() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user]);
+
+  // Fetch profile on mount
+  useEffect(() => {
+    if (user?.id) {
+      fetchProfile();
+    } else {
+      setLoading(false); // Stop loading if no user
+    }
+  }, [user?.id, fetchProfile]);
+
+  // Update local state when profile changes
+  useEffect(() => {
+    if (profile) {
+      setLocalMood(profile.mood);
+      setLocalBlocklist([...profile.blocklist]);
+    }
+  }, [profile]);
+
+  // Check for unsaved changes
+  useEffect(() => {
+    if (profile) {
+      const moodChanged = localMood !== profile.mood;
+      const blocklistChanged = JSON.stringify(localBlocklist.sort()) !== JSON.stringify(profile.blocklist.sort());
+      setHasUnsavedChanges(moodChanged || blocklistChanged);
+    }
+  }, [localMood, localBlocklist, profile]);
 
   const saveProfile = useCallback(async () => {
     if (!user?.id) return;
