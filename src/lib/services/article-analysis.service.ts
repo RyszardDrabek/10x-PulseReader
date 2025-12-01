@@ -86,19 +86,30 @@ export class ArticleAnalysisService {
 
       // Create/find topics and associate them with the article
       if (analysisResult.topics.length > 0) {
-        const topicIds = await this.createOrFindTopics(analysisResult.topics);
-        await this.associateTopicsWithArticle(article.id, topicIds);
-        topicsUpdated = true;
+        try {
+          const topicIds = await this.createOrFindTopics(analysisResult.topics);
+          await this.associateTopicsWithArticle(article.id, topicIds);
+          topicsUpdated = true;
+        } catch (topicError) {
+          logger.warn("Failed to create/associate topics, but sentiment was updated successfully", {
+            articleId: article.id,
+            sentiment: analysisResult.sentiment,
+            topicError: topicError instanceof Error ? topicError.message : String(topicError),
+          });
+          // Don't fail the whole analysis if topics fail - sentiment is still valuable
+        }
       }
 
       logger.info("Article analysis completed successfully", {
         articleId: article.id,
         sentiment: analysisResult.sentiment,
         topicsCreated: analysisResult.topics.length,
+        sentimentUpdated,
+        topicsUpdated,
       });
 
       return {
-        success: true,
+        success: sentimentUpdated, // Success if at least sentiment was updated
         sentimentUpdated,
         topicsUpdated,
       };

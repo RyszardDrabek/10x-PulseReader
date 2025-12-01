@@ -131,5 +131,6 @@ export default function SupabaseProvider({ children, initialSession = null, conf
     loading,
   };
 
+  console.log("SupabaseProvider rendering with value:", value);
   return <SupabaseContext.Provider value={value}>{children}</SupabaseContext.Provider>;
 }

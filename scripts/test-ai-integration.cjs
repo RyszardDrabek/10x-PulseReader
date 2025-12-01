@@ -127,7 +127,7 @@ async function testAiService() {
     console.log("Title:", testData.title);
     console.log("Description:", testData.description.substring(0, 100) + "...");
 
-    const response = await makeRequest("http://localhost:4321/api/test-ai-analysis", {
+    const response = await makeRequest("http://localhost:3001/api/test-ai-analysis", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -85,7 +85,7 @@ export class ProfileService {
       if (error.code === "23505") {
         throw new Error("PROFILE_EXISTS");
       }
-      throw new DatabaseError("Failed to create profile", error);
+      throw new DatabaseError(`Failed to create profile: ${error.message || error.code || "Unknown error"}`, error);
     }
 
     if (!data) {

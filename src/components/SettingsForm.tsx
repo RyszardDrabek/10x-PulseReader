@@ -1,26 +1,27 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSupabase } from "./SupabaseProvider";
 import { logger } from "../lib/utils/logger";
 import { toast } from "sonner";
 import MoodSelector from "./MoodSelector";
 import BlocklistManager from "./BlocklistManager";
 import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
-import type { ProfileDto, UserMood } from "../types";
+import type { ProfileDto, UserMood, User } from "../types";
 
-export default function SettingsForm() {
-  const { user } = useSupabase();
+interface SettingsFormProps {
+  user: User | null;
+}
+
+export default function SettingsForm({ user }: SettingsFormProps) {
   const [profile, setProfile] = useState<ProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Local state for optimistic updates
   const [localMood, setLocalMood] = useState<UserMood | null>(null);
   const [localBlocklist, setLocalBlocklist] = useState<string[]>([]);
 
-  // Track if there are unsaved changes
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // Track saving state for optimistic updates
+  const [savingField, setSavingField] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
     if (!user?.id) return;
@@ -36,6 +37,12 @@ export default function SettingsForm() {
       });
 
       if (!response.ok) {
+        if (response.status === 404) {
+          // Profile doesn't exist yet, set profile to null
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
         throw new Error(`Failed to fetch profile: ${response.status}`);
       }
 
@@ -57,10 +64,12 @@ export default function SettingsForm() {
   useEffect(() => {
     if (user?.id) {
       fetchProfile();
-    } else {
-      setLoading(false); // Stop loading if no user
+    } else if (user === null) {
+      // User is not authenticated, stop loading
+      setLoading(false);
     }
-  }, [user?.id, fetchProfile]);
+    // If user is undefined (still loading), keep loading state
+  }, [user, fetchProfile]);
 
   // Update local state when profile changes
   useEffect(() => {
@@ -70,88 +79,93 @@ export default function SettingsForm() {
     }
   }, [profile]);
 
-  // Check for unsaved changes
+  // Sync local state with profile when it loads
   useEffect(() => {
-    if (profile) {
-      const moodChanged = localMood !== profile.mood;
-      const blocklistChanged = JSON.stringify(localBlocklist.sort()) !== JSON.stringify(profile.blocklist.sort());
-      setHasUnsavedChanges(moodChanged || blocklistChanged);
-    }
-  }, [localMood, localBlocklist, profile]);
-
-  const saveProfile = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      setSaving(true);
-      setError(null);
-
-      const updateData = {
-        mood: localMood,
-        blocklist: localBlocklist,
-      };
-
-      const response = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updateData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const updatedProfile: ProfileDto = await response.json();
-      setProfile(updatedProfile);
-      setHasUnsavedChanges(false);
-
-      toast.success("Settings saved successfully", {
-        description: "Your preferences have been updated.",
-      });
-
-      logger.info("Profile updated successfully", {
-        userId: user.id,
-        mood: localMood,
-        blocklistCount: localBlocklist.length,
-      });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to save settings";
-
-      // Revert optimistic updates on error
-      if (profile) {
-        setLocalMood(profile.mood);
-        setLocalBlocklist([...profile.blocklist]);
-      }
-
-      setError(errorMessage);
-      logger.error("Failed to save profile", err);
-      toast.error("Failed to save settings", {
-        description: "Your changes have been reverted. Please try again.",
-      });
-    } finally {
-      setSaving(false);
-    }
-  }, [user?.id, localMood, localBlocklist, profile]);
-
-  const handleMoodChange = (mood: UserMood | null) => {
-    setLocalMood(mood);
-  };
-
-  const handleBlocklistChange = (blocklist: string[]) => {
-    setLocalBlocklist(blocklist);
-  };
-
-  const handleSave = () => {
-    saveProfile();
-  };
-
-  const handleReset = () => {
     if (profile) {
       setLocalMood(profile.mood);
       setLocalBlocklist([...profile.blocklist]);
+    }
+  }, [profile]);
+
+  const saveProfileUpdate = useCallback(
+    async (updateData: Partial<ProfileDto>, field: string) => {
+      if (!user?.id) {
+        return;
+      }
+
+      // Store previous state for rollback (use current local state if profile exists, or defaults if not)
+      const previousMood = profile?.mood ?? null;
+      const previousBlocklist = profile?.blocklist ?? [];
+
+      try {
+        setSavingField(field);
+        setError(null);
+
+        // Optimistically update local state
+        if (updateData.mood !== undefined) {
+          setLocalMood(updateData.mood);
+        }
+        if (updateData.blocklist !== undefined) {
+          setLocalBlocklist(updateData.blocklist);
+        }
+
+        const method = profile ? "PATCH" : "POST";
+        const response = await fetch("/api/profile", {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const updatedProfile: ProfileDto = await response.json();
+        setProfile(updatedProfile);
+
+        toast.success("Settings updated", {
+          description: "Your preferences have been saved.",
+        });
+
+        logger.info("Profile updated successfully", {
+          userId: user.id,
+          field,
+          updateData,
+          method,
+        });
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to update settings";
+
+        // Revert optimistic updates on error
+        setLocalMood(previousMood);
+        setLocalBlocklist(previousBlocklist);
+
+        setError(errorMessage);
+        logger.error("Failed to update profile", err);
+        toast.error("Failed to update settings", {
+          description: "Your changes have been reverted. Please try again.",
+        });
+      } finally {
+        setSavingField(null);
+      }
+    },
+    [user?.id, profile]
+  );
+
+  const handleMoodChange = (mood: UserMood | null) => {
+    // Only save if the mood has actually changed
+    if (mood !== localMood) {
+      saveProfileUpdate({ mood }, "mood");
+    }
+  };
+
+  const handleBlocklistChange = (blocklist: string[]) => {
+    // Only save if the blocklist has actually changed
+    if (JSON.stringify(blocklist.sort()) !== JSON.stringify(localBlocklist.sort())) {
+      saveProfileUpdate({ blocklist }, "blocklist");
     }
   };
 
@@ -164,7 +178,7 @@ export default function SettingsForm() {
     );
   }
 
-  if (error && !profile) {
+  if (error && profile !== null) {
     return (
       <div className="text-center py-12">
         <p className="text-destructive mb-4">{error}</p>
@@ -179,41 +193,20 @@ export default function SettingsForm() {
     <div className="space-y-8">
       {/* Mood Selection */}
       <div className="space-y-6">
-        <MoodSelector currentMood={localMood} onMoodChange={handleMoodChange} disabled={saving} />
+        <MoodSelector currentMood={localMood} onMoodChange={handleMoodChange} disabled={savingField === "mood"} />
       </div>
 
       {/* Blocklist Management */}
       <div className="space-y-6">
-        <BlocklistManager blocklist={localBlocklist} onBlocklistChange={handleBlocklistChange} disabled={saving} />
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex gap-4 pt-6 border-t">
-        <Button onClick={handleSave} disabled={!hasUnsavedChanges || saving} className="flex-1 sm:flex-none">
-          {saving ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Saving...
-            </>
-          ) : (
-            "Save Changes"
-          )}
-        </Button>
-
-        <Button
-          onClick={handleReset}
-          variant="outline"
-          disabled={!hasUnsavedChanges || saving}
-          className="flex-1 sm:flex-none"
-        >
-          Reset
-        </Button>
+        <BlocklistManager
+          blocklist={localBlocklist}
+          onBlocklistChange={handleBlocklistChange}
+          disabled={savingField === "blocklist"}
+        />
       </div>
 
       {/* Status Messages */}
       {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
-
-      {!hasUnsavedChanges && !saving && <div className="text-sm text-muted-foreground">All changes saved.</div>}
     </div>
   );
 }

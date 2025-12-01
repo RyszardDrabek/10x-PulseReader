@@ -13,6 +13,7 @@ interface AppProps {
 }
 
 export default function App({ children, initialSession, supabaseConfig }: AppProps) {
+  console.log("App component: initialSession", initialSession, "supabaseConfig", supabaseConfig);
   return (
     <SupabaseProvider initialSession={initialSession} config={supabaseConfig}>
       <QueryProvider>{children}</QueryProvider>

@@ -24,6 +24,36 @@ vi.mock("../../../../lib/utils/logger.ts", () => ({
   },
 }));
 
+// Mock Supabase createClient to return a mock client
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: vi.fn(() => ({
+    schema: vi.fn(() => ({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(),
+          })),
+        })),
+        update: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            select: vi.fn(() => ({
+              single: vi.fn(),
+            })),
+          })),
+        })),
+        insert: vi.fn(() => ({
+          select: vi.fn(() => ({
+            single: vi.fn(),
+          })),
+        })),
+        delete: vi.fn(() => ({
+          eq: vi.fn(),
+        })),
+      })),
+    })),
+  })),
+}));
+
 /**
  * Creates a mock Astro API context
  */
@@ -150,19 +180,19 @@ describe("GET /api/profile", () => {
     expect(body.timestamp).toBeDefined();
   });
 
-  test("should return 500 when Supabase client not initialized", async () => {
+  test("should always initialize Supabase client", async () => {
     const user = createMockUser();
     const context = createMockContext("http://localhost:3000/api/profile", "GET", null, user);
-    // Override locals.supabase to null
+    // Override locals.supabase to null - client should still work
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context.locals.supabase = null as any;
 
+    // This should work since we now always create a service role client
+    mockGetProfile.mockResolvedValue(createMockProfile());
+
     const response = await GET(context);
 
-    expect(response.status).toBe(500);
-    const body = await response.json();
-    expect(body.error).toContain("Supabase client not available");
-    expect(body.code).toBe("CONFIGURATION_ERROR");
+    expect(response.status).toBe(200);
   });
 });
 
@@ -424,6 +454,49 @@ describe("PATCH /api/profile", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.mood).toBeNull();
+  });
+
+  test("should handle mood selection and blocklist updates (settings save)", async () => {
+    const user = createMockUser();
+
+    // Test mood selection (positive)
+    const moodPayload = { mood: "positive" };
+    const moodUpdatedProfile = createMockProfile({ mood: "positive", blocklist: [] });
+    mockUpdateProfile.mockResolvedValueOnce(moodUpdatedProfile);
+
+    const moodContext = createMockContext("http://localhost:3000/api/profile", "PATCH", moodPayload, user);
+    const moodResponse = await PATCH(moodContext);
+
+    expect(moodResponse.status).toBe(200);
+    const moodBody = await moodResponse.json();
+    expect(moodBody.mood).toBe("positive");
+    expect(moodBody.blocklist).toEqual([]);
+
+    // Test blocklist update
+    const blocklistPayload = { blocklist: ["politics", "sports"] };
+    const blocklistUpdatedProfile = createMockProfile({ mood: "positive", blocklist: ["politics", "sports"] });
+    mockUpdateProfile.mockResolvedValueOnce(blocklistUpdatedProfile);
+
+    const blocklistContext = createMockContext("http://localhost:3000/api/profile", "PATCH", blocklistPayload, user);
+    const blocklistResponse = await PATCH(blocklistContext);
+
+    expect(blocklistResponse.status).toBe(200);
+    const blocklistBody = await blocklistResponse.json();
+    expect(blocklistBody.mood).toBe("positive");
+    expect(blocklistBody.blocklist).toEqual(["politics", "sports"]);
+
+    // Test combined mood and blocklist update
+    const combinedPayload = { mood: "negative", blocklist: ["weather"] };
+    const combinedUpdatedProfile = createMockProfile({ mood: "negative", blocklist: ["weather"] });
+    mockUpdateProfile.mockResolvedValueOnce(combinedUpdatedProfile);
+
+    const combinedContext = createMockContext("http://localhost:3000/api/profile", "PATCH", combinedPayload, user);
+    const combinedResponse = await PATCH(combinedContext);
+
+    expect(combinedResponse.status).toBe(200);
+    const combinedBody = await combinedResponse.json();
+    expect(combinedBody.mood).toBe("negative");
+    expect(combinedBody.blocklist).toEqual(["weather"]);
   });
 });
 

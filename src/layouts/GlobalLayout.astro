@@ -1,8 +1,5 @@
 ---
 import "../styles/global.css";
-import QueryProvider from "../components/QueryProvider.tsx";
-import SupabaseProvider from "../components/SupabaseProvider.tsx";
-import LogoutHandler from "../components/LogoutHandler.tsx";
 
 interface Props {
   title?: string;
@@ -10,12 +7,6 @@ interface Props {
 
 const { title = "PulseReader" } = Astro.props;
 const user = Astro.locals.user;
-
-// Pass environment variables to client components
-const supabaseConfig = {
-  url: import.meta.env.PUBLIC_SUPABASE_URL || import.meta.env.SUPABASE_URL,
-  key: import.meta.env.PUBLIC_SUPABASE_KEY || import.meta.env.SUPABASE_KEY,
-};
 ---
 
 <!doctype html>
@@ -30,74 +21,69 @@ const supabaseConfig = {
   </head>
   <body class="min-h-screen bg-background font-sans antialiased">
     <div id="root">
-      <SupabaseProvider client:only="react" config={supabaseConfig}>
-        <QueryProvider client:only="react">
-          <LogoutHandler client:only="react" />
-          <header
-            class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
-            role="banner"
-          >
-            <div class="container flex h-14 max-w-screen-2xl items-center">
-              <div class="mr-4 hidden md:flex">
-                <a class="mr-6 flex items-center space-x-2" href="/" aria-label="PulseReader home">
-                  <span class="hidden font-bold sm:inline-block">PulseReader</span>
-                </a>
-              </div>
-              <div class="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-                <div class="w-full flex-1 md:w-auto md:flex-none">
-                  {/* Navigation items can be added here */}
-                </div>
-                <nav class="flex items-center space-x-2" role="navigation" aria-label="User account">
-                  {
-                    user ? (
-                      <>
-                        <a
-                          href="/settings"
-                          class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-                          aria-label="Open settings page"
-                        >
-                          Settings
-                        </a>
-                        <form id="logout-form" action="/api/auth/logout" method="post">
-                          <button
-                            type="submit"
-                            class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
-                            aria-label="Sign out of your account"
-                          >
-                            Sign Out
-                          </button>
-                        </form>
-                      </>
-                    ) : (
-                      <a
-                        href="/login"
-                        class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
-                        aria-label="Sign in to your account"
+      <header
+        class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+        role="banner"
+      >
+        <div class="container flex h-14 max-w-screen-2xl items-center">
+          <div class="mr-4 hidden md:flex">
+            <a class="mr-6 flex items-center space-x-2" href="/" aria-label="PulseReader home">
+              <span class="hidden font-bold sm:inline-block">PulseReader</span>
+            </a>
+          </div>
+          <div class="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+            <div class="w-full flex-1 md:w-auto md:flex-none">
+              {/* Navigation items can be added here */}
+            </div>
+            <nav class="flex items-center space-x-2" role="navigation" aria-label="User account">
+              {
+                user ? (
+                  <>
+                    <a
+                      href="/settings"
+                      class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+                      aria-label="Open settings page"
+                    >
+                      Settings
+                    </a>
+                    <form id="logout-form" action="/api/auth/logout" method="post">
+                      <button
+                        type="submit"
+                        class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+                        aria-label="Sign out of your account"
                       >
-                        Sign In
-                      </a>
-                    )
-                  }
-                </nav>
-              </div>
-            </div>
-          </header>
+                        Sign Out
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <a
+                    href="/login"
+                    class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+                    aria-label="Sign in to your account"
+                  >
+                    Sign In
+                  </a>
+                )
+              }
+            </nav>
+          </div>
+        </div>
+      </header>
 
-          <main class="flex-1" role="main">
-            <slot />
-          </main>
+      <main class="flex-1" role="main">
+        <slot />
+      </main>
 
-          <footer class="border-t bg-background" role="contentinfo">
-            <div class="container flex flex-col items-center justify-between gap-4 py-10 md:h-24 md:flex-row md:py-0">
-              <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-                <p class="text-center text-sm leading-loose text-muted-foreground md:text-left">
-                  Built with Astro and React. Powered by Supabase.
-                </p>
-              </div>
-            </div>
-          </footer>
-        </QueryProvider>
-      </SupabaseProvider>
+      <footer class="border-t bg-background" role="contentinfo">
+        <div class="container flex flex-col items-center justify-between gap-4 py-10 md:h-24 md:flex-row md:py-0">
+          <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+            <p class="text-center text-sm leading-loose text-muted-foreground md:text-left">
+              Built with Astro and React. Powered by Supabase.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   </body>
 </html>

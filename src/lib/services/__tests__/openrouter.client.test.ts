@@ -29,10 +29,19 @@ describe("OpenRouterClient", () => {
     });
 
     it("should throw error when making request without API key", async () => {
-      const client = new OpenRouterClient(); // No API key provided
-      await expect(client.chatCompletion([{ role: "user", content: "test" }])).rejects.toThrow(
-        "OPENROUTER_API_KEY environment variable is required"
-      );
+      // Temporarily clear the environment variable for this test
+      const originalApiKey = process.env.OPENROUTER_API_KEY;
+      delete process.env.OPENROUTER_API_KEY;
+
+      try {
+        const client = new OpenRouterClient(); // No API key provided
+        await expect(client.chatCompletion([{ role: "user", content: "test" }])).rejects.toThrow(
+          "OPENROUTER_API_KEY environment variable is required"
+        );
+      } finally {
+        // Restore the environment variable
+        process.env.OPENROUTER_API_KEY = originalApiKey;
+      }
     });
   });
 
