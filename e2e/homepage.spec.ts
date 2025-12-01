@@ -232,4 +232,48 @@ test.describe("Homepage", () => {
       // Don't fail the test, but log the issue
     }
   });
+
+  test("should display topics on articles", async ({ page }) => {
+    // Arrange
+    const homepage = new HomePage(page);
+
+    // Act
+    await homepage.goto();
+    await page.waitForLoadState("networkidle");
+    await homepage.waitForArticleList();
+
+    // Wait for articles to load
+    const articleCount = await homepage.getArticleCount();
+
+    // Skip if no articles
+    if (articleCount === 0) {
+      test.skip("No articles available to test topics display");
+      return;
+    }
+
+    // Assert - Check if any articles have topics displayed
+    // Look for topic badges within article cards
+    const topicBadges = page.locator('[data-testid="article-card"] .text-xs');
+    const topicBadgeCount = await topicBadges.count();
+
+    // Also check for the expand/collapse button that appears when there are more than 3 topics
+    const expandButtons = page.locator('[data-testid="article-card"] button[aria-label*="more tags"]');
+    const expandButtonCount = await expandButtons.count();
+
+    // Log findings for debugging
+    console.log(`Found ${articleCount} articles, ${topicBadgeCount} topic badges, ${expandButtonCount} expand buttons`);
+
+    // The test should pass if topics are displayed
+    // Since we just ran AI analysis, we expect to find topics
+    const hasTopicsDisplayed = topicBadgeCount > 0 || expandButtonCount > 0;
+
+    // Assert that topics are being displayed
+    expect(hasTopicsDisplayed).toBe(true);
+
+    if (hasTopicsDisplayed) {
+      console.log("✅ Topics are successfully displayed on articles");
+    } else {
+      console.error("❌ No topics found on articles - topics may not be displaying correctly");
+    }
+  });
 });
