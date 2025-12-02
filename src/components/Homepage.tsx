@@ -85,7 +85,7 @@ export default function Homepage({ initialData }: HomepageProps) {
       logger.debug("Disabling personalization for unauthenticated user");
       setIsPersonalized(false);
     }
-  }, [isAuthenticated, profile, user?.id]);
+  }, [isAuthenticated, profile, user]);
 
   // Show onboarding modal for new users without preferences
   useEffect(() => {

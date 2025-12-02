@@ -40,12 +40,15 @@ if (supabase) {
       hasUser: !!userId,
       userId: userId,
     });
-    initialArticles = await articleService.getArticles({
-      limit: 20,
-      offset: 0,
-      sortBy: "publication_date",
-      sortOrder: "desc",
-    }, userId);
+    initialArticles = await articleService.getArticles(
+      {
+        limit: 20,
+        offset: 0,
+        sortBy: "publication_date",
+        sortOrder: "desc",
+      },
+      userId
+    );
   } catch (error) {
     // If server-side fetch fails, provide empty data - client will fetch
     // eslint-disable-next-line no-console

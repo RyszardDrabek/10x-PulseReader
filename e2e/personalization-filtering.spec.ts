@@ -303,7 +303,7 @@ test.describe("Personalized Article Filtering (US-007)", () => {
       await page.waitForTimeout(3000);
 
       // Find the personalization toggle - Switch component with specific ID
-      const personalizationToggle = page.locator('#personalization-toggle');
+      const personalizationToggle = page.locator("#personalization-toggle");
 
       // Check if the toggle exists
       const toggleExists = await personalizationToggle.isVisible().catch(() => false);
