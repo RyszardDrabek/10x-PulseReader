@@ -59,7 +59,35 @@ if (supabase) {
   };
 }
 
-// Pass environment variables to client components
+// Get current session for client-side initialization
+// Use the same server client creation as middleware to access cookies
+let initialSession = null;
+try {
+  const { createSupabaseServerInstance } = await import("../db/supabase.client.ts");
+  const serverSupabase = createSupabaseServerInstance({
+    cookies: Astro.cookies,
+    headers: Astro.request.headers,
+  });
+
+  console.log("[index.astro] Getting session from server-side Supabase...");
+  const {
+    data: { session },
+    error,
+  } = await serverSupabase.auth.getSession();
+  console.log("[index.astro] Server session result:", {
+    hasSession: !!session,
+    sessionUserId: session?.user?.id,
+    sessionUserEmail: session?.user?.email,
+    error: error?.message,
+  });
+  initialSession = session;
+} catch (error) {
+  // If session retrieval fails, continue without initial session
+  // eslint-disable-next-line no-console
+  console.error("[index.astro] Failed to get session:", error);
+}
+
+// Pass environment variables and session to client components
 const supabaseConfig = {
   url: import.meta.env.PUBLIC_SUPABASE_URL || import.meta.env.SUPABASE_URL,
   key: import.meta.env.PUBLIC_SUPABASE_KEY || import.meta.env.SUPABASE_KEY,
@@ -68,7 +96,7 @@ const supabaseConfig = {
 
 <GlobalLayout title="PulseReader - Your Personalized News Feed">
   <div style="min-height: 100vh;">
-    <App client:only="react" initialSession={null} supabaseConfig={supabaseConfig}>
+    <App client:only="react" initialSession={initialSession} supabaseConfig={supabaseConfig}>
       <Homepage client:only="react" initialData={initialArticles} />
     </App>
   </div>

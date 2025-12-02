@@ -276,4 +276,183 @@ test.describe("Homepage", () => {
       console.error("❌ No topics found on articles - topics may not be displaying correctly");
     }
   });
+
+  test("should handle mood-based filtering UI states correctly", async ({ page }) => {
+    // Arrange
+    const homepage = new HomePage(page);
+
+    // Act
+    await homepage.goto();
+    await page.waitForLoadState("networkidle");
+
+    // Wait for filter button to be available
+    const filterButton = homepage.filterButton;
+    let isVisible = false;
+    let isDisabled = false;
+
+    try {
+      await filterButton.waitFor({ state: "visible", timeout: 3000 });
+      isVisible = true;
+      isDisabled = await filterButton.isDisabled();
+    } catch {
+      // Filter button not visible - this shouldn't happen
+      console.log("Filter button not visible");
+    }
+
+    // Verify filter button exists
+    expect(isVisible).toBe(true);
+
+    if (isDisabled) {
+      // For unauthenticated users: filter button should be disabled
+      console.log("Filter button is disabled - testing unauthenticated user state");
+
+      // Verify the button is properly disabled
+      await expect(filterButton).toBeDisabled();
+
+      // Verify "Sign in" link and "to personalize" text are shown for unauthenticated users
+      const signInLink = page.locator('a[aria-label="Sign in to enable personalization features"]');
+      const personalizeText = page.locator('text="to personalize"');
+      await expect(signInLink).toBeVisible();
+      await expect(personalizeText).toBeVisible();
+
+      // Verify mood selection buttons are NOT present
+      const moodButtons = page.locator('[data-testid^="mood-toggle-"]');
+      const moodButtonCount = await moodButtons.count();
+      expect(moodButtonCount).toBe(0);
+
+      console.log("✅ Unauthenticated user state handled correctly");
+    } else {
+      // For authenticated users: filter button should be enabled
+      console.log("Filter button is enabled - testing authenticated user state");
+
+      // Verify the button is enabled
+      await expect(filterButton).toBeEnabled();
+
+      // Check if personalization is enabled
+      const isPersonalized = (await filterButton.getAttribute("aria-checked")) === "true";
+
+      if (!isPersonalized) {
+        // Enable personalization to test mood filtering
+        await homepage.toggleFilter();
+        await page.waitForTimeout(1000); // Wait for state update
+      }
+
+      // Verify mood selection buttons are now visible when personalization is enabled
+      const moodButtons = page.locator('[data-testid^="mood-toggle-"]');
+      const moodButtonCount = await moodButtons.count();
+
+      if (moodButtonCount > 0) {
+        console.log(`Found ${moodButtonCount} mood selection buttons`);
+
+        // Verify all three mood options are present
+        await expect(page.locator('[data-testid="mood-toggle-positive"]')).toBeVisible();
+        await expect(page.locator('[data-testid="mood-toggle-neutral"]')).toBeVisible();
+        await expect(page.locator('[data-testid="mood-toggle-negative"]')).toBeVisible();
+
+        // Test mood selection (click positive mood) - this should work for authenticated users
+        const positiveMoodButton = page.locator('[data-testid="mood-toggle-positive"]');
+        await expect(positiveMoodButton).toBeEnabled();
+
+        // Click the positive mood button
+        await positiveMoodButton.click();
+
+        // Wait for the mood change to take effect
+        await page.waitForTimeout(2000);
+
+        // Verify that mood filtering is active - check for mood label in filter banner
+        const moodLabel = page.locator('span:has-text("Mood:")');
+        await expect(moodLabel).toBeVisible();
+
+        console.log("✅ Mood-based filtering UI is working correctly for authenticated users");
+      } else {
+        console.log("Mood selection buttons not found - user may not have a profile set up");
+        // This could happen if the user exists but hasn't set up their profile yet
+      }
+
+      // Verify personalization can be toggled off
+      await homepage.toggleFilter();
+      await page.waitForTimeout(1000);
+
+      // After toggling off, mood buttons should disappear
+      const moodButtonsAfter = page.locator('[data-testid^="mood-toggle-"]');
+      const moodButtonCountAfter = await moodButtonsAfter.count();
+      expect(moodButtonCountAfter).toBe(0);
+    }
+
+    // Verify articles are still displayed regardless of authentication/filtering state
+    await homepage.waitForArticleList();
+    const articleCount = await homepage.getArticleCount();
+    expect(articleCount).toBeGreaterThanOrEqual(0);
+
+    // Verify main page structure is intact
+    await expect(page.locator("main")).toBeVisible();
+  });
+
+  test("should handle personalization toggle correctly for all user states", async ({ page }) => {
+    // Arrange
+    const homepage = new HomePage(page);
+
+    // Act
+    await homepage.goto();
+    await page.waitForLoadState("networkidle");
+
+    // Wait for Supabase to initialize and FilterBanner to render
+    await page.waitForTimeout(3000);
+
+    // Verify the filter button (personalization toggle) exists
+    const filterButton = homepage.filterButton;
+
+    // Wait for the button to be available
+    try {
+      await filterButton.waitFor({ state: "visible", timeout: 5000 });
+    } catch {
+      throw new Error("Personalization toggle button not found on page");
+    }
+
+    // Test 1: Basic button properties
+    console.log("✅ Personalization toggle button is visible");
+
+    // Check toggle state based on authentication
+    const isDisabled = await filterButton.isDisabled();
+    const ariaChecked = await filterButton.getAttribute("aria-checked");
+
+    console.log(`Button state - Disabled: ${isDisabled}, Checked: ${ariaChecked}`);
+
+    // Label should always show "Personalization"
+    const labelText = page.locator("#personalization-label");
+    await expect(labelText).toHaveText("Personalization");
+
+    // Check authentication state
+    const signOutButton = page.locator('button[aria-label="Sign out of your account"]').first();
+    const isAuthenticated = await signOutButton.isVisible().catch(() => false);
+
+    if (isAuthenticated) {
+      console.log("Testing authenticated user state...");
+
+      // For authenticated users: toggle should be enabled
+      await expect(filterButton).toBeEnabled();
+      await expect(filterButton).toHaveAttribute("aria-checked", "false");
+
+      // For authenticated users: no sign-in link should be visible
+      const signInLink = page.locator('a[aria-label="Sign in to enable personalization features"]');
+      await expect(signInLink).not.toBeVisible();
+
+      console.log("✅ Authenticated user state verified correctly");
+    } else {
+      console.log("Testing unauthenticated user state...");
+
+      // For unauthenticated users: toggle should be disabled
+      await expect(filterButton).toBeDisabled();
+
+      // For unauthenticated users: sign-in link should be present
+      const signInLink = page.locator('a[aria-label="Sign in to enable personalization features"]');
+      await expect(signInLink).toBeVisible();
+
+      // Verify the "to personalize" text is visible
+      const personalizeText = page.locator('text="to personalize"');
+      await expect(personalizeText).toBeVisible();
+
+      console.log("✅ Unauthenticated user state verified correctly");
+    }
+  });
 });

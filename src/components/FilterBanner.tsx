@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { useSupabase } from "./SupabaseProvider";
 import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -16,6 +15,7 @@ interface FilterBannerProps {
   onProfileUpdate?: (updatedProfile: ProfileDto) => void;
   totalArticles?: number;
   filteredArticles?: number;
+  isAuthenticated: boolean;
 }
 
 export default function FilterBanner({
@@ -25,23 +25,35 @@ export default function FilterBanner({
   onProfileUpdate,
   totalArticles,
   filteredArticles,
+  isAuthenticated,
 }: FilterBannerProps) {
-  const { user } = useSupabase();
-  const isAuthenticated = !!user;
   const isPersonalized = currentFilters?.personalization || false;
+
+  // All hooks must be called at the top level, before any conditional returns
   const [updatingMood, setUpdatingMood] = useState<UserMood | null>(null);
   const [showBlocklistInput, setShowBlocklistInput] = useState(false);
   const [newBlocklistItem, setNewBlocklistItem] = useState("");
   const [updatingBlocklist, setUpdatingBlocklist] = useState(false);
   const blocklistInputRef = useRef<HTMLInputElement>(null);
 
+  // Debug logging to help diagnose authentication issues
+  console.log("FilterBanner RENDER:", {
+    isAuthenticated,
+    isPersonalized,
+    timestamp: new Date().toISOString(),
+  });
+
   const handleToggle = (enabled: boolean) => {
+    console.log("handleToggle called:", { enabled, isAuthenticated });
+
     if (!isAuthenticated) {
-      // Redirect to login or show prompt
+      console.log("User not authenticated, redirecting to login");
+      // For unauthenticated users, redirect to login when toggle is clicked
       window.location.href = "/login";
       return;
     }
 
+    console.log("User authenticated, toggling personalization:", enabled);
     onTogglePersonalization(enabled);
   };
 
@@ -398,12 +410,12 @@ export default function FilterBanner({
           aria-label="Personalization controls"
         >
           <span className="text-sm text-muted-foreground md:mr-2" id="personalization-label">
-            {isAuthenticated ? "Personalization" : "Personalize"}
+            Personalization
           </span>
           <Switch
             checked={isPersonalized}
             onCheckedChange={handleToggle}
-            disabled={!isAuthenticated}
+            disabled={!isAuthenticated} // Disabled for unauthenticated users
             aria-labelledby="personalization-label"
             aria-describedby={!isAuthenticated ? "personalization-description" : undefined}
             data-testid="filter-button"

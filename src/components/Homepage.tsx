@@ -160,6 +160,7 @@ export default function Homepage({ initialData }: HomepageProps) {
         onProfileUpdate={setProfile}
         totalArticles={articleStats.totalArticles}
         filteredArticles={articleStats.filteredArticles}
+        isAuthenticated={isAuthenticated}
       />
       <ArticleList
         queryParams={queryParams}
