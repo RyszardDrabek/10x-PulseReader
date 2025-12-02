@@ -46,7 +46,7 @@ const user = Astro.locals.user;
                     >
                       Settings
                     </a>
-                    <form id="logout-form" action="/api/auth/logout" method="post">
+                    <form id="logout-form">
                       <button
                         type="submit"
                         class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
@@ -85,6 +85,45 @@ const user = Astro.locals.user;
         </div>
       </footer>
     </div>
+
+    <script>
+      // Handle logout form submission
+      /* eslint-disable prettier/prettier */
+      document.addEventListener("DOMContentLoaded", () => {
+        const logoutForm = document.getElementById("logout-form");
+        if (logoutForm) {
+          logoutForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const btn = logoutForm.querySelector('button[type="submit"]');
+            const orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = "Signing out...";
+
+            try {
+              const response = await fetch("/api/auth/logout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+              });
+
+              const data = await response.json();
+
+              if (response.ok && data.success) {
+                window.location.href = "/";
+              } else {
+                alert("Sign out failed: " + (data.error || "Please try again."));
+                btn.disabled = false;
+                btn.textContent = orig;
+              }
+            } catch (error) {
+              console.error("Logout error:", error);
+              alert("Sign out failed: Network error. Please try again.");
+              btn.disabled = false;
+              btn.textContent = orig;
+            }
+          });
+        }
+      });
+    </script>
   </body>
 </html>
 

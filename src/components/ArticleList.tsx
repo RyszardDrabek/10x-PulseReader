@@ -94,6 +94,14 @@ export default function ArticleList({
         }
         params.set("applyPersonalization", usePersonalization.toString());
 
+        console.log("[ArticleList] Making API request:", {
+          url: `/api/articles?${params}`,
+          usePersonalization,
+          limit: queryParams.limit,
+          offset: offset,
+          hasSupabase: !!supabase,
+        });
+
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
         };
@@ -104,6 +112,12 @@ export default function ArticleList({
             const {
               data: { session },
             } = await supabase.auth.getSession();
+            console.log("[ArticleList] Session check:", {
+              hasSession: !!session,
+              hasAccessToken: !!session?.access_token,
+              userId: session?.user?.id,
+              userEmail: session?.user?.email,
+            });
             if (session?.access_token) {
               headers.Authorization = `Bearer ${session.access_token}`;
             }

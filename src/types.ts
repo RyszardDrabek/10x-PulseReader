@@ -44,6 +44,7 @@ export interface ProfileEntity {
   userId: string;
   mood: UserMood | null;
   blocklist: string[];
+  personalizationEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -131,6 +132,7 @@ export interface ProfileInsert {
   userId: string;
   mood?: UserMood | null;
   blocklist?: string[];
+  personalizationEnabled?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -194,6 +196,7 @@ export interface ArticleUpdate {
 export interface ProfileUpdate {
   mood?: UserMood | null;
   blocklist?: string[];
+  personalizationEnabled?: boolean;
   updatedAt?: string;
 }
 
@@ -338,6 +341,7 @@ export type ProfileDto = ProfileEntity;
 export interface CreateProfileCommand {
   mood?: UserMood | null;
   blocklist?: string[];
+  personalizationEnabled?: boolean;
 }
 
 /**

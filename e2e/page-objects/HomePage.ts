@@ -8,17 +8,18 @@ export class HomePage {
   readonly page: Page;
   readonly articleList: Locator;
   readonly articleCards: Locator;
-  readonly filterButton: Locator;
   readonly activeFilters: Locator;
   readonly h1Heading: Locator;
+  readonly filterButton: Locator; // For backwards compatibility - may not exist in new UI
 
   constructor(page: Page) {
     this.page = page;
     this.articleList = page.getByTestId("article-list");
     this.articleCards = page.getByTestId("article-card");
-    this.filterButton = page.getByTestId("filter-button");
     this.activeFilters = page.locator('[data-testid="active-filter"]');
     this.h1Heading = page.locator("h1");
+    // Note: Filter button may not exist in current UI since personalization is automatic
+    this.filterButton = page.locator('[data-testid="filter-button"], [data-testid="personalization-toggle"]').first();
   }
 
   /**
@@ -40,13 +41,6 @@ export class HomePage {
    */
   async getArticleCount(): Promise<number> {
     return await this.articleCards.count();
-  }
-
-  /**
-   * Click the filter/personalization toggle button
-   */
-  async toggleFilter(): Promise<void> {
-    await this.filterButton.click();
   }
 
   /**

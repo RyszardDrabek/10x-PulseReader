@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import MoodSelector from "./MoodSelector";
 import BlocklistManager from "./BlocklistManager";
 import { Button } from "./ui/button";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 import { Loader2 } from "lucide-react";
 import type { ProfileDto, UserMood, User } from "../types";
 
@@ -19,6 +21,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   // Local state for optimistic updates
   const [localMood, setLocalMood] = useState<UserMood | null>(null);
   const [localBlocklist, setLocalBlocklist] = useState<string[]>([]);
+  const [localPersonalizationEnabled, setLocalPersonalizationEnabled] = useState<boolean>(true);
 
   // Track saving state for optimistic updates
   const [savingField, setSavingField] = useState<string | null>(null);
@@ -76,14 +79,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     if (profile) {
       setLocalMood(profile.mood);
       setLocalBlocklist([...profile.blocklist]);
-    }
-  }, [profile]);
-
-  // Sync local state with profile when it loads
-  useEffect(() => {
-    if (profile) {
-      setLocalMood(profile.mood);
-      setLocalBlocklist([...profile.blocklist]);
+      setLocalPersonalizationEnabled(profile.personalizationEnabled ?? true);
     }
   }, [profile]);
 
@@ -96,6 +92,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
       // Store previous state for rollback (use current local state if profile exists, or defaults if not)
       const previousMood = profile?.mood ?? null;
       const previousBlocklist = profile?.blocklist ?? [];
+      const previousPersonalizationEnabled = profile?.personalizationEnabled ?? true;
 
       try {
         setSavingField(field);
@@ -108,6 +105,9 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         if (updateData.blocklist !== undefined) {
           setLocalBlocklist(updateData.blocklist);
         }
+        if (updateData.personalizationEnabled !== undefined) {
+          setLocalPersonalizationEnabled(updateData.personalizationEnabled);
+        }
 
         const method = profile ? "PATCH" : "POST";
         const response = await fetch("/api/profile", {
@@ -115,6 +115,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include",
           body: JSON.stringify(updateData),
         });
 
@@ -142,6 +143,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         // Revert optimistic updates on error
         setLocalMood(previousMood);
         setLocalBlocklist(previousBlocklist);
+        setLocalPersonalizationEnabled(previousPersonalizationEnabled);
 
         setError(errorMessage);
         logger.error("Failed to update profile", err);
@@ -166,6 +168,13 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     // Only save if the blocklist has actually changed
     if (JSON.stringify(blocklist.sort()) !== JSON.stringify(localBlocklist.sort())) {
       saveProfileUpdate({ blocklist }, "blocklist");
+    }
+  };
+
+  const handlePersonalizationToggle = (enabled: boolean) => {
+    // Only save if the setting has actually changed
+    if (enabled !== localPersonalizationEnabled) {
+      saveProfileUpdate({ personalizationEnabled: enabled }, "personalization");
     }
   };
 
@@ -203,6 +212,35 @@ export default function SettingsForm({ user }: SettingsFormProps) {
           onBlocklistChange={handleBlocklistChange}
           disabled={savingField === "blocklist"}
         />
+      </div>
+
+      {/* Personalization Settings */}
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h3 className="text-lg font-medium">Personalization</h3>
+            <p className="text-sm text-muted-foreground">
+              Control whether your mood and blocklist preferences are applied to filter articles.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="space-y-0.5">
+              <Label htmlFor="personalization-toggle" className="text-sm font-medium">
+                Enable personalization
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                When enabled, articles will be filtered based on your mood and blocked keywords
+              </p>
+            </div>
+            <Switch
+              id="personalization-toggle"
+              checked={localPersonalizationEnabled}
+              onCheckedChange={handlePersonalizationToggle}
+              disabled={savingField === "personalization"}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Status Messages */}

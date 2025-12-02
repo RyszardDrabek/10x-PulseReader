@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -10,7 +9,6 @@ import type { ArticleFiltersApplied, ProfileDto, UserMood } from "../types";
 
 interface FilterBannerProps {
   currentFilters: ArticleFiltersApplied;
-  onTogglePersonalization: (enabled: boolean) => void;
   profile: ProfileDto | null;
   onProfileUpdate?: (updatedProfile: ProfileDto) => void;
   totalArticles?: number;
@@ -20,7 +18,6 @@ interface FilterBannerProps {
 
 export default function FilterBanner({
   currentFilters,
-  onTogglePersonalization,
   profile,
   onProfileUpdate,
   totalArticles,
@@ -42,20 +39,6 @@ export default function FilterBanner({
     isPersonalized,
     timestamp: new Date().toISOString(),
   });
-
-  const handleToggle = (enabled: boolean) => {
-    console.log("handleToggle called:", { enabled, isAuthenticated });
-
-    if (!isAuthenticated) {
-      console.log("User not authenticated, redirecting to login");
-      // For unauthenticated users, redirect to login when toggle is clicked
-      window.location.href = "/login";
-      return;
-    }
-
-    console.log("User authenticated, toggling personalization:", enabled);
-    onTogglePersonalization(enabled);
-  };
 
   const handleMoodChange = async (newMood: UserMood) => {
     if (!isAuthenticated || !profile || updatingMood) return;
@@ -404,24 +387,10 @@ export default function FilterBanner({
             </div>
           )}
 
-        <div
-          className="flex items-center justify-between md:justify-end md:space-x-2"
-          role="group"
-          aria-label="Personalization controls"
-        >
-          <span className="text-sm text-muted-foreground md:mr-2" id="personalization-label">
-            Personalization
-          </span>
-          <Switch
-            checked={isPersonalized}
-            onCheckedChange={handleToggle}
-            disabled={!isAuthenticated} // Disabled for unauthenticated users
-            aria-labelledby="personalization-label"
-            aria-describedby={!isAuthenticated ? "personalization-description" : undefined}
-            data-testid="filter-button"
-          />
-          {!isAuthenticated && (
-            <span className="text-xs text-muted-foreground ml-2 flex-shrink-0" id="personalization-description">
+        {/* Removed personalization toggle - now controlled in Settings */}
+        {!isAuthenticated && (
+          <div className="flex items-center justify-end">
+            <span className="text-xs text-muted-foreground">
               <a
                 href="/login"
                 className="text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
@@ -431,8 +400,8 @@ export default function FilterBanner({
               </a>{" "}
               to personalize
             </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Quick blocklist item removal - shown when personalization is enabled and items exist */}
@@ -465,11 +434,13 @@ export default function FilterBanner({
           </div>
         )}
 
-      {/* Live region for filter changes */}
+      {/* Live region for filter status */}
       <div aria-live="polite" aria-atomic="true" className="sr-only" role="status">
-        {isPersonalized
-          ? `Personalization enabled${profile?.mood ? ` with ${profile.mood} mood filter` : ""}${profile?.blocklist?.length ? ` and ${profile.blocklist.length} blocked items` : ""}`
-          : "Personalization disabled, showing all articles"}
+        {isAuthenticated && isPersonalized
+          ? `Showing personalized content${profile?.mood ? ` with ${profile.mood} mood filter` : ""}${profile?.blocklist?.length ? ` and ${profile.blocklist.length} blocked items` : ""}`
+          : isAuthenticated
+            ? "Showing all articles - personalization disabled in settings"
+            : "Sign in to enable personalized content"}
       </div>
     </div>
   );

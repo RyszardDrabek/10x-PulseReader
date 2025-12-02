@@ -48,6 +48,7 @@ interface TestUser {
   name: string;
   mood?: UserMood;
   blocklist?: string[];
+  personalizationEnabled?: boolean;
 }
 
 const TEST_USERS: TestUser[] = [
@@ -57,6 +58,7 @@ const TEST_USERS: TestUser[] = [
     name: "Anna Kowalska",
     mood: "positive",
     blocklist: ["wojna", "konflikt", "kryzys"],
+    personalizationEnabled: true,
   },
   {
     email: "piotr.nowak@example.com",
@@ -64,6 +66,7 @@ const TEST_USERS: TestUser[] = [
     name: "Piotr Nowak",
     mood: "neutral",
     blocklist: ["sport", "piłka"],
+    personalizationEnabled: true,
   },
   {
     email: "maria.wisniewska@example.com",
@@ -71,6 +74,7 @@ const TEST_USERS: TestUser[] = [
     name: "Maria Wiśniewska",
     mood: "negative",
     blocklist: [],
+    personalizationEnabled: false, // This user doesn't want personalization
   },
   {
     email: "jan.kowalczyk@example.com",
@@ -78,6 +82,7 @@ const TEST_USERS: TestUser[] = [
     name: "Jan Kowalczyk",
     mood: null,
     blocklist: ["polityka", "wybory"],
+    personalizationEnabled: true,
   },
 ];
 
@@ -404,6 +409,7 @@ async function seedProfiles(userIdMap: Map<string, string>) {
         user_id: userId,
         mood: userData.mood ?? null,
         blocklist: userData.blocklist ?? [],
+        personalization_enabled: userData.personalizationEnabled ?? true,
       })
       .select()
       .single();

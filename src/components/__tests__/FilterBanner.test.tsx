@@ -38,11 +38,11 @@ describe("FilterBanner", () => {
       personalization: true,
       blockedItemsCount: 2,
     } as ArticleFiltersApplied,
-    onTogglePersonalization: vi.fn(),
     profile: mockProfile,
     onProfileUpdate: vi.fn(),
     totalArticles: 20,
     filteredArticles: 5,
+    isAuthenticated: true,
   };
 
   beforeEach(() => {
@@ -58,11 +58,17 @@ describe("FilterBanner", () => {
       expect(screen.getByText("Showing 20 of 25 articles")).toBeInTheDocument();
     });
 
-    it("renders personalization toggle", () => {
+    it("renders mood selection buttons for authenticated users", () => {
       render(<FilterBanner {...defaultProps} />);
 
-      const toggle = screen.getByRole("switch", { name: /personalization/i });
-      expect(toggle).toBeInTheDocument();
+      // Should show mood selection buttons
+      const positiveButton = screen.getByTestId("mood-toggle-positive");
+      const neutralButton = screen.getByTestId("mood-toggle-neutral");
+      const negativeButton = screen.getByTestId("mood-toggle-negative");
+
+      expect(positiveButton).toBeInTheDocument();
+      expect(neutralButton).toBeInTheDocument();
+      expect(negativeButton).toBeInTheDocument();
     });
   });
 });

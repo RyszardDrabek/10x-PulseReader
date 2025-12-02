@@ -34,12 +34,18 @@ let initialArticles;
 if (supabase) {
   try {
     const articleService = new ArticleService(supabase);
+    // Get user from Astro locals for server-side rendering
+    const userId = Astro.locals.user?.id;
+    console.log("[index.astro] Server-side article fetch:", {
+      hasUser: !!userId,
+      userId: userId,
+    });
     initialArticles = await articleService.getArticles({
       limit: 20,
       offset: 0,
       sortBy: "publication_date",
       sortOrder: "desc",
-    });
+    }, userId);
   } catch (error) {
     // If server-side fetch fails, provide empty data - client will fetch
     // eslint-disable-next-line no-console

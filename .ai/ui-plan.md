@@ -61,7 +61,7 @@ The user journeys are designed to be linear and intuitive, with authentication a
 - **Guest Browsing (US-001)**: User lands on Homepage → Views unfiltered article feed with infinite scroll → Interacts with cards (click to open external source) → Sees teaser prompts in nav for registration → Clicks "Register" to navigate to /register.
 - **Registration and Onboarding (US-002, US-005)**: From Homepage or direct → Navigates to /register → Submits form → Redirects to /verify-email → User verifies email externally → Returns to /login → Logs in → Redirects to Homepage (now personalized with default/null mood) → Optional onboarding modal prompts to /settings for initial mood setup → Sets mood → Feed updates immediately.
 
-- **Authenticated Browsing and Personalization (US-003, US-007, US-009)**: Login success → Homepage with applied filters (mood/blocklist) → Browses infinite feed, sees filter banner → Clicks article to open in new tab → Navigates to /settings via nav → Adjusts mood or blocklist → Saves (optimistic update) → Returns to Homepage for refetched personalized results → Toggles filters off for unfiltered view.
+- **Authenticated Browsing and Personalization (US-003, US-007, US-009)**: Login success → Homepage with automatically applied filters (mood/blocklist) → Browses infinite feed, sees filter banner with active filters → Clicks article to open in new tab → Can change mood directly from banner → Navigates to /settings via nav → Adjusts mood, blocklist, or personalization settings → Saves (optimistic update) → Returns to Homepage for updated personalized results.
 
 - **Blocklist Management (US-006)**: From Settings → Adds/removes items in BlocklistManager → Saves → Toast confirmation → Feed excludes matches (title/desc/URL) → No-results if overly strict (US-008).
 
@@ -100,7 +100,7 @@ This structure ensures low cognitive load, with 2-3 clicks max for common tasks,
 
 - **BlocklistManager**: Input field for adding items, virtualized list of blocked terms with delete icons; supports drag-reorder (future); debounced saves to /api/profile; input sanitization.
 
-- **FilterBanner**: Persistent bar on Homepage/Settings; shows active mood icon, block count, toggle switch for personalization; updates via global state; ARIA-live for changes.
+- **FilterBanner**: Persistent bar on Homepage; shows active mood filter, block count, and statistics; allows quick mood changes; updates via global state; ARIA-live for changes.
 
 - **InfiniteScrollLoader**: React component using TanStack Query for paginated fetches (/api/articles with offset); skeleton placeholders; error retry button.
 

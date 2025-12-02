@@ -436,7 +436,23 @@ export const PATCH: APIRoute = async (context) => {
 
     // Update profile using service
     const profileService = new ProfileService(supabase);
-    const profile = await profileService.updateProfile(user.id, command);
+
+    // Try to update the profile, but if it doesn't exist, create it
+    let profile;
+    try {
+      profile = await profileService.updateProfile(user.id, command);
+    } catch (error) {
+      // If profile doesn't exist, create it
+      if (error instanceof Error && error.message === "PROFILE_NOT_FOUND") {
+        logger.info("Profile not found for update, creating new profile", {
+          endpoint: "PATCH /api/profile",
+          userId: user.id,
+        });
+        profile = await profileService.createProfile(user.id, command);
+      } else {
+        throw error;
+      }
+    }
 
     // Log success
     logger.info("Profile updated successfully", {

@@ -24,6 +24,10 @@ export const CreateProfileCommandSchema = z.object({
     .max(100, { message: "Maximum 100 items allowed in blocklist" })
     .optional()
     .default([]),
+  personalizationEnabled: z
+    .boolean({ required_error: "Personalization preference is required" })
+    .optional()
+    .default(true),
 });
 
 /**
@@ -54,6 +58,7 @@ export const UpdateProfileCommandSchema = z.object({
     )
     .max(100, { message: "Maximum 100 items allowed in blocklist" })
     .optional(),
+  personalizationEnabled: z.boolean().optional(),
 });
 
 /**

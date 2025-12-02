@@ -71,11 +71,21 @@ export class ProfileService {
       throw new Error("PROFILE_EXISTS");
     }
 
+    // Check if user exists in auth.users (skip this check in development for testing)
+    const isDevelopment = import.meta.env.DEV;
+    if (!isDevelopment) {
+      const { data: userData, error: userError } = await this.supabase.auth.admin.getUserById(userId);
+      if (userError || !userData?.user) {
+        throw new Error(`User ${userId} does not exist in auth.users`);
+      }
+    }
+
     // Prepare insert data (convert camelCase to snake_case)
     const insertData: Database["app"]["Tables"]["profiles"]["Insert"] = {
       user_id: userId,
       mood: command.mood ?? null,
       blocklist: command.blocklist ?? [],
+      personalization_enabled: command.personalizationEnabled ?? true,
     };
 
     const { data, error } = await this.supabase.schema("app").from("profiles").insert(insertData).select().single();
@@ -122,6 +132,10 @@ export class ProfileService {
 
     if (command.blocklist !== undefined) {
       updateData.blocklist = command.blocklist;
+    }
+
+    if (command.personalizationEnabled !== undefined) {
+      updateData.personalization_enabled = command.personalizationEnabled;
     }
 
     // If no fields to update, return existing profile
@@ -212,6 +226,7 @@ export class ProfileService {
       userId: row.user_id,
       mood: row.mood,
       blocklist: row.blocklist || [],
+      personalizationEnabled: row.personalization_enabled ?? true,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

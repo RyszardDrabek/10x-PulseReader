@@ -61,6 +61,32 @@ export default function Homepage({ initialData }: HomepageProps) {
     }
   }, [isAuthenticated, user?.id, fetchProfile]);
 
+  // Automatically enable personalization for authenticated users based on their profile preference
+  useEffect(() => {
+    console.log("[Homepage] Authentication and personalization setup:", {
+      isAuthenticated,
+      hasUser: !!user,
+      userId: user?.id,
+      hasProfile: !!profile,
+      personalizationEnabled: profile?.personalizationEnabled,
+      timestamp: new Date().toISOString(),
+    });
+
+    if (isAuthenticated && profile) {
+      const personalizationValue = profile.personalizationEnabled ?? true;
+      logger.debug("Setting personalization for authenticated user", {
+        userId: user?.id,
+        personalizationEnabled: profile.personalizationEnabled,
+        defaultValue: true,
+        finalValue: personalizationValue,
+      });
+      setIsPersonalized(personalizationValue);
+    } else if (!isAuthenticated) {
+      logger.debug("Disabling personalization for unauthenticated user");
+      setIsPersonalized(false);
+    }
+  }, [isAuthenticated, profile, user?.id]);
+
   // Show onboarding modal for new users without preferences
   useEffect(() => {
     if (isAuthenticated && profile && !showOnboarding) {
@@ -86,12 +112,6 @@ export default function Homepage({ initialData }: HomepageProps) {
     return () => window.removeEventListener("focus", handleFocus);
   }, [isAuthenticated, user?.id, fetchProfile]);
 
-  const handleTogglePersonalization = (enabled: boolean) => {
-    setIsPersonalized(enabled);
-    // The ArticleList component will re-render with the new personalization setting
-    // and useArticles hook will handle the query invalidation
-  };
-
   const handleOnboardingComplete = useCallback(
     async (preferences: { mood?: UserMood; blocklist?: string[] }) => {
       if (!user?.id) return;
@@ -115,7 +135,7 @@ export default function Homepage({ initialData }: HomepageProps) {
           throw new Error(`Failed to update profile: ${response.status}`);
         }
 
-        const updatedProfile: ProfileDto = await response.json;
+        const updatedProfile: ProfileDto = await response.json();
         setProfile(updatedProfile);
         setShowOnboarding(false);
 
@@ -155,7 +175,6 @@ export default function Homepage({ initialData }: HomepageProps) {
           ...getCurrentFilters(),
           blockedItemsCount: articleStats.blockedItemsCount,
         }}
-        onTogglePersonalization={handleTogglePersonalization}
         profile={profile}
         onProfileUpdate={setProfile}
         totalArticles={articleStats.totalArticles}

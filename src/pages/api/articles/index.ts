@@ -60,6 +60,18 @@ export const GET: APIRoute = async (context) => {
 
   cfLogger.trace("API_ARTICLES_GET_START");
 
+  // Enhanced logging for debugging personalization
+  console.log("[API_ARTICLES] Request details:", {
+    method: context.request.method,
+    url: context.request.url,
+    userAgent: context.request.headers.get("User-Agent"),
+    authorization: context.request.headers.get("Authorization") ? "[PRESENT]" : "[MISSING]",
+    user: user ? { id: user.id, email: user.email, userType: typeof user } : null,
+    userKeys: user ? Object.keys(user) : null,
+    cookies: context.request.headers.get("Cookie") ? "[PRESENT]" : "[MISSING]",
+    timestamp: new Date().toISOString(),
+  });
+
   // Validate Supabase client is available
   if (!supabase) {
     logger.error("Supabase client not initialized", {
@@ -93,6 +105,14 @@ export const GET: APIRoute = async (context) => {
       sortOrder: url.searchParams.get("sortOrder") || undefined,
     };
 
+    console.log("[API_ARTICLES] Parsed query parameters:", {
+      queryParams,
+      applyPersonalization: queryParams.applyPersonalization,
+      applyPersonalizationType: typeof queryParams.applyPersonalization,
+      userId: user?.id || null,
+      isAuthenticated: !!user,
+    });
+
     // Validate query parameters with Zod
     let validatedParams;
     try {
@@ -124,6 +144,10 @@ export const GET: APIRoute = async (context) => {
 
     // Check authentication if personalization is requested
     if (validatedParams.applyPersonalization && !user) {
+      console.log("[API_ARTICLES] Personalization requested but no user authenticated:", {
+        applyPersonalization: validatedParams.applyPersonalization,
+        user: null,
+      });
       logger.warn("Personalization requested without authentication", {
         endpoint: "GET /api/articles",
       });
@@ -140,6 +164,13 @@ export const GET: APIRoute = async (context) => {
         }
       );
     }
+
+    console.log("[API_ARTICLES] About to call ArticleService.getArticles:", {
+      validatedParams,
+      applyPersonalization: validatedParams.applyPersonalization,
+      userId: user?.id || null,
+      userEmail: user?.email || null,
+    });
 
     // Fetch articles using ArticleService
     const articleService = new ArticleService(supabase);

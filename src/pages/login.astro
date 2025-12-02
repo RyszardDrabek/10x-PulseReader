@@ -21,7 +21,7 @@ if (Astro.request.method === "POST") {
       headers: Astro.request.headers,
     });
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -42,6 +42,27 @@ if (Astro.request.method === "POST") {
       }
 
       return Astro.redirect(`/login?error=${encodeURIComponent(errorMessage)}`);
+    }
+
+    // Create a profile for the user if it doesn't exist
+    if (data.user) {
+      try {
+        const profileService = new (await import("../lib/services/profile.service.ts")).ProfileService(supabase);
+        // Try to get the profile first
+        const existingProfile = await profileService.getProfile(data.user.id).catch(() => null);
+
+        // If no profile exists, create one with default settings
+        if (!existingProfile) {
+          await profileService.createProfile(data.user.id, {
+            mood: null,
+            blocklist: [],
+            personalizationEnabled: true,
+          });
+        }
+      } catch (profileError) {
+        // Log the error but don't fail the login
+        console.error("Failed to create profile for user:", profileError);
+      }
     }
 
     return Astro.redirect("/");
