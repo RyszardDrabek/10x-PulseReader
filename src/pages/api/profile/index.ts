@@ -215,6 +215,47 @@ export const POST: APIRoute = async (context) => {
   const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(supabaseUrl, supabaseKey);
 
+  // Test service role permissions in production (GET endpoint only)
+  if (isProduction && context.request.method === 'GET') {
+    console.log("[API_PROFILE_GET] Testing service role permissions...");
+
+    try {
+      // Test if we can access the database at all
+      const testResult = await supabase
+        .schema("app")
+        .from("profiles")
+        .select("count")
+        .limit(1);
+
+      console.log("[API_PROFILE_GET] Service role test result:", {
+        success: !testResult.error,
+        error: testResult.error,
+        hasData: !!testResult.data
+      });
+
+      if (testResult.error) {
+        console.error("[API_PROFILE_GET] Service role cannot access profiles table:", testResult.error);
+        return new Response(
+          JSON.stringify({
+            error: "Service role cannot access database. Check Supabase RLS policies and permissions.",
+            code: "SERVICE_ROLE_ERROR",
+            details: {
+              error: testResult.error,
+              suggestion: "Check if RLS policies allow service role access or if the profiles table exists in app schema"
+            },
+            timestamp: new Date().toISOString(),
+          }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+    } catch (testError) {
+      console.error("[API_PROFILE_GET] Service role test failed:", testError);
+    }
+  }
+
   const user = context.locals.user;
 
   // Validate Supabase client is available
