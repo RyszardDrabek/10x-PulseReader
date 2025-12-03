@@ -260,7 +260,16 @@ export class ProfileService {
 
     // Try a simpler query first to test basic connectivity
     try {
-      console.log("[ProfileService.profileExists] Testing basic table access");
+      console.log("[ProfileService.profileExists] Testing basic table access with full details");
+
+      // Test the Supabase client connection
+      console.log("[ProfileService.profileExists] Supabase client details:", {
+        supabaseUrl: this.supabase.supabaseUrl,
+        hasRestUrl: !!this.supabase.restUrl,
+        hasKey: !!this.supabase.supabaseKey,
+        keyLength: this.supabase.supabaseKey?.length || 0,
+      });
+
       const basicResult = await this.supabase
         .schema("app")
         .from("profiles")
@@ -269,7 +278,10 @@ export class ProfileService {
 
       console.log("[ProfileService.profileExists] Basic query result:", {
         success: !basicResult.error,
-        error: basicResult.error
+        error: basicResult.error,
+        data: basicResult.data,
+        status: basicResult.status,
+        statusText: basicResult.statusText
       });
 
       // Also test if personalization_enabled column exists
@@ -284,7 +296,8 @@ export class ProfileService {
         console.log("[ProfileService.profileExists] Column test result:", {
           success: !columnTest.error,
           error: columnTest.error,
-          data: columnTest.data
+          data: columnTest.data,
+          status: columnTest.status
         });
       }
     } catch (basicError) {
