@@ -21,7 +21,15 @@ class DatabaseError extends Error {
  * Handles profile CRUD operations with RLS enforcement.
  */
 export class ProfileService {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  constructor(private supabase: SupabaseClient<Database>) {
+    // Log what client we receive
+    console.log("[ProfileService] Constructor called with client:", {
+      url: this.supabase.supabaseUrl,
+      hasKey: !!this.supabase.supabaseKey,
+      keyLength: this.supabase.supabaseKey?.length || 0,
+      keyType: typeof this.supabase.supabaseKey,
+    });
+  }
 
   /**
    * Executes a query with fallback schema support.
@@ -268,6 +276,10 @@ export class ProfileService {
         hasRestUrl: !!this.supabase.restUrl,
         hasKey: !!this.supabase.supabaseKey,
         keyLength: this.supabase.supabaseKey?.length || 0,
+        keyPrefix: this.supabase.supabaseKey ? this.supabase.supabaseKey.substring(0, 20) + "..." : "NO_KEY",
+        keySuffix: this.supabase.supabaseKey ? "..." + this.supabase.supabaseKey.substring(this.supabase.supabaseKey.length - 20) : "NO_KEY",
+        clientType: typeof this.supabase,
+        clientKeys: Object.keys(this.supabase).filter(k => k.includes('key') || k.includes('url')),
       });
 
       const basicResult = await this.supabase
