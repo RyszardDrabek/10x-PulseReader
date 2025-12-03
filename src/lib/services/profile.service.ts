@@ -24,6 +24,25 @@ export class ProfileService {
   constructor(private supabase: SupabaseClient<Database>) {}
 
   /**
+   * Executes a query with fallback schema support.
+   * Tries "app" schema first, falls back to "public" if schema doesn't exist.
+   */
+  private async executeQueryWithSchemaFallback<T>(
+    queryBuilder: (schema: string) => Promise<{ data: T; error: any }>
+  ): Promise<{ data: T; error: any }> {
+    // Try with "app" schema first
+    let result = await queryBuilder("app");
+
+    // If schema "app" fails with error code 1003 (schema not found), try "public"
+    if (result.error && (result.error.code === "1003" || result.error.message?.includes("schema"))) {
+      console.log("[ProfileService] Schema 'app' failed, trying 'public' schema");
+      result = await queryBuilder("public");
+    }
+
+    return result;
+  }
+
+  /**
    * Retrieves a user's profile by user ID.
    * RLS policies ensure users can only access their own profile.
    *
@@ -32,12 +51,16 @@ export class ProfileService {
    * @throws DatabaseError if database query fails
    */
   async getProfile(userId: string): Promise<ProfileEntity | null> {
-    const { data, error } = await this.supabase
-      .schema("app")
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
+    const result = await this.executeQueryWithSchemaFallback(async (schema) => {
+      return await this.supabase
+        .schema(schema)
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+    });
+
+    const { data, error } = result;
 
     if (error) {
       // Check if error is "not found" (PGRST116)
@@ -88,7 +111,10 @@ export class ProfileService {
       personalization_enabled: command.personalizationEnabled ?? true,
     };
 
-    const { data, error } = await this.supabase.schema("app").from("profiles").insert(insertData).select().single();
+    const result = await this.executeQueryWithSchemaFallback(async (schema) => {
+      return await this.supabase.schema(schema).from("profiles").insert(insertData).select().single();
+    });
+    const { data, error } = result;
 
     if (error) {
       // Check for unique constraint violation (user_id already exists)
@@ -99,11 +125,15 @@ export class ProfileService {
       if (error.code === "PGRST301") {
         console.warn("[ProfileService.createProfile] PGRST301 error during insert (likely RLS disabled in development), attempting fallback query");
         // Try a simpler insert without .select().single()
-        const { data: fallbackData, error: fallbackError } = await this.supabase
-          .schema("app")
-          .from("profiles")
-          .insert(insertData)
-          .select("id, user_id, mood, blocklist, personalization_enabled, created_at, updated_at");
+        const fallbackResult = await this.executeQueryWithSchemaFallback(async (schema) => {
+          return await this.supabase
+            .schema(schema)
+            .from("profiles")
+            .insert(insertData)
+            .select("id, user_id, mood, blocklist, personalization_enabled, created_at, updated_at");
+        });
+
+        const { data: fallbackData, error: fallbackError } = fallbackResult;
 
         if (fallbackError) {
           throw new DatabaseError(`Failed to create profile (fallback): ${fallbackError.message || fallbackError.code || "Unknown error"}`, fallbackError);
@@ -137,9 +167,14 @@ export class ProfileService {
    * @throws DatabaseError if database update fails
    */
   async updateProfile(userId: string, command: UpdateProfileCommand): Promise<ProfileEntity> {
+    console.log("[ProfileService.updateProfile] Starting update for userId:", userId, "command:", command);
+
     // Check if profile exists
     const existingProfile = await this.profileExists(userId);
+    console.log("[ProfileService.updateProfile] Profile exists check result:", existingProfile);
+
     if (!existingProfile) {
+      console.log("[ProfileService.updateProfile] Profile not found, throwing error");
       throw new Error("PROFILE_NOT_FOUND");
     }
 
@@ -167,13 +202,16 @@ export class ProfileService {
       return profile;
     }
 
-    const { data, error } = await this.supabase
-      .schema("app")
-      .from("profiles")
-      .update(updateData)
-      .eq("user_id", userId)
-      .select()
-      .single();
+    const result = await this.executeQueryWithSchemaFallback(async (schema) => {
+      return await this.supabase
+        .schema(schema)
+        .from("profiles")
+        .update(updateData)
+        .eq("user_id", userId)
+        .select()
+        .single();
+    });
+    const { data, error } = result;
 
     if (error) {
       throw new DatabaseError("Failed to update profile", error);
@@ -201,7 +239,10 @@ export class ProfileService {
       throw new Error("PROFILE_NOT_FOUND");
     }
 
-    const { error } = await this.supabase.schema("app").from("profiles").delete().eq("user_id", userId);
+    const result = await this.executeQueryWithSchemaFallback(async (schema) => {
+      return await this.supabase.schema(schema).from("profiles").delete().eq("user_id", userId);
+    });
+    const { error } = result;
 
     if (error) {
       throw new DatabaseError("Failed to delete profile", error);
@@ -216,16 +257,53 @@ export class ProfileService {
    */
   private async profileExists(userId: string): Promise<boolean> {
     console.log("[ProfileService.profileExists] Checking profile for userId:", userId);
-    const { data, error } = await this.supabase
+
+    // Try a simpler query first to test basic connectivity
+    try {
+      console.log("[ProfileService.profileExists] Testing basic table access");
+      const basicResult = await this.supabase
+        .schema("app")
+        .from("profiles")
+        .select("count")
+        .limit(1);
+
+      console.log("[ProfileService.profileExists] Basic query result:", {
+        success: !basicResult.error,
+        error: basicResult.error
+      });
+
+      // Also test if personalization_enabled column exists
+      if (!basicResult.error) {
+        console.log("[ProfileService.profileExists] Testing personalization_enabled column");
+        const columnTest = await this.supabase
+          .schema("app")
+          .from("profiles")
+          .select("personalization_enabled")
+          .limit(1);
+
+        console.log("[ProfileService.profileExists] Column test result:", {
+          success: !columnTest.error,
+          error: columnTest.error,
+          data: columnTest.data
+        });
+      }
+    } catch (basicError) {
+      console.error("[ProfileService.profileExists] Basic query failed:", basicError);
+    }
+
+    const result = await this.supabase
       .schema("app")
       .from("profiles")
       .select("id")
       .eq("user_id", userId)
       .single();
 
+    const { data, error } = result;
+
     console.log("[ProfileService.profileExists] Query result:", {
       data,
-      error: error ? { code: error.code, message: error.message, details: error.details } : null
+      error: error ? { code: error.code, message: error.message, details: error.details, hint: error.hint } : null,
+      fullError: error
     });
 
     // PGRST116 means no rows found
@@ -241,9 +319,36 @@ export class ProfileService {
       return false;
     }
 
+    // Error code 1003 - "No suitable key or wrong key type"
+    if (error && error.code === "1003") {
+      console.warn("[ProfileService.profileExists] Error 1003 - trying alternative query approach");
+
+      // Try without .single() to see if it's a constraint issue
+      try {
+        const altResult = await this.supabase
+          .schema("app")
+          .from("profiles")
+          .select("id")
+          .eq("user_id", userId);
+
+        console.log("[ProfileService.profileExists] Alternative query result:", {
+          data: altResult.data,
+          error: altResult.error,
+          count: altResult.data?.length
+        });
+
+        return altResult.data && altResult.data.length > 0;
+      } catch (altError) {
+        console.error("[ProfileService.profileExists] Alternative query also failed:", altError);
+        return false; // Assume profile doesn't exist
+      }
+    }
+
     if (error) {
       console.error("[ProfileService.profileExists] Database error:", error);
-      throw new DatabaseError("Failed to check profile existence", error);
+      // For other errors, assume profile doesn't exist rather than failing
+      console.warn("[ProfileService.profileExists] Treating error as 'profile not found'");
+      return false;
     }
 
     console.log("[ProfileService.profileExists] Profile exists:", !!data);

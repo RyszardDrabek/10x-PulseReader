@@ -53,6 +53,25 @@ export class ArticleService {
   constructor(private supabase: SupabaseClient<Database>) {}
 
   /**
+   * Executes a query with fallback schema support.
+   * Tries "app" schema first, falls back to "public" if it fails.
+   */
+  private async executeQueryWithSchemaFallback<T>(
+    queryBuilder: (schema: string) => Promise<{ data: T; error: any }>
+  ): Promise<{ data: T; error: any }> {
+    // Try with "app" schema first
+    let result = await queryBuilder("app");
+
+    // If schema "app" fails with error code 1003 (schema not found), try "public"
+    if (result.error && (result.error.code === "1003" || result.error.message?.includes("schema"))) {
+      console.log("[ArticleService] Schema 'app' failed, trying 'public' schema");
+      result = await queryBuilder("public");
+    }
+
+    return result;
+  }
+
+  /**
    * Validates that the RSS source exists in the database.
    * @param sourceId - UUID of the RSS source to validate
    * @returns true if source exists, false otherwise
@@ -60,12 +79,15 @@ export class ArticleService {
   async validateSource(sourceId: string): Promise<boolean> {
     // Use .maybeSingle() instead of .single() to avoid errors when source doesn't exist
     // .maybeSingle() returns null data instead of error when no rows found
-    const { data, error } = await this.supabase
-      .schema("app")
-      .from("rss_sources")
-      .select("id")
-      .eq("id", sourceId)
-      .maybeSingle();
+    const result = await this.executeQueryWithSchemaFallback(async (schema) => {
+      return await this.supabase
+        .schema(schema)
+        .from("rss_sources")
+        .select("id")
+        .eq("id", sourceId)
+        .maybeSingle();
+    });
+    const { data, error } = result;
 
     // If there's an error (other than "not found"), return false
     if (error) {
@@ -176,11 +198,14 @@ export class ArticleService {
     // If filtering by topic, first fetch article IDs that have this topic
     let articleIdsForTopic: string[] | null = null;
     if (params.topicId) {
-      const { data: articleTopics, error: topicError } = await this.supabase
-        .schema("app")
-        .from("article_topics")
-        .select("article_id")
-        .eq("topic_id", params.topicId);
+      const topicResult = await this.executeQueryWithSchemaFallback(async (schema) => {
+        return await this.supabase
+          .schema(schema)
+          .from("article_topics")
+          .select("article_id")
+          .eq("topic_id", params.topicId);
+      });
+      const { data: articleTopics, error: topicError } = topicResult;
 
       if (topicError) {
         throw topicError;
@@ -207,8 +232,10 @@ export class ArticleService {
     }
 
     // Build base query with joins for source and topics
+    // We'll use schema fallback for the main query
+    let querySchema = "app";
     let query = this.supabase
-      .schema("app")
+      .schema(querySchema)
       .from("articles")
       .select(
         `
@@ -254,9 +281,53 @@ export class ArticleService {
     // Apply pagination
     query = query.range(offset, offset + fetchLimit - 1);
 
-    // Execute query
+    // Execute query with schema fallback
     console.log("[ArticleService] Executing database query with filters applied");
-    const { data, count, error } = await query;
+    let queryResult = await query;
+    let { data, count, error } = queryResult;
+
+    // If schema "app" fails with error code 1003, try "public"
+    if (error && (error.code === "1003" || error.message?.includes("schema"))) {
+      console.log("[ArticleService] Main query failed with schema error, trying 'public' schema");
+      querySchema = "public";
+      const fallbackQuery = this.supabase
+        .schema(querySchema)
+        .from("articles")
+        .select(
+          `
+        id,
+        title,
+        description,
+        link,
+        publication_date,
+        sentiment,
+        created_at,
+        updated_at,
+        rss_sources!articles_source_id_fkey (
+          id,
+          name,
+          url
+        ),
+        article_topics (
+          topics (
+            id,
+            name
+          )
+        )
+      `,
+          { count: "exact" }
+        );
+
+      // Reapply filters with new schema
+      const filteredFallbackQuery = this.applyFilters(fallbackQuery, params, userProfile, articleIdsForTopic);
+      const sortedFallbackQuery = filteredFallbackQuery.order(sortField, { ascending });
+      const paginatedFallbackQuery = sortedFallbackQuery.range(offset, offset + fetchLimit - 1);
+
+      queryResult = await paginatedFallbackQuery;
+      data = queryResult.data;
+      count = queryResult.count;
+      error = queryResult.error;
+    }
 
     if (error) {
       // Wrap Supabase error in DatabaseError for better error handling
@@ -364,19 +435,22 @@ export class ArticleService {
     }
 
     // Step 3: Insert article
-    const { data: article, error: insertError } = await this.supabase
-      .schema("app")
-      .from("articles")
-      .insert({
-        source_id: command.sourceId,
-        title: command.title,
-        description: command.description ?? null,
-        link: command.link,
-        publication_date: command.publicationDate,
-        sentiment: command.sentiment ?? null,
-      })
-      .select()
-      .single();
+    const insertResult = await this.executeQueryWithSchemaFallback(async (schema) => {
+      return await this.supabase
+        .schema(schema)
+        .from("articles")
+        .insert({
+          source_id: command.sourceId,
+          title: command.title,
+          description: command.description ?? null,
+          link: command.link,
+          publication_date: command.publicationDate,
+          sentiment: command.sentiment ?? null,
+        })
+        .select()
+        .single();
+    });
+    const { data: article, error: insertError } = insertResult;
 
     if (insertError) {
       // Check for unique constraint violation (duplicate link)
@@ -393,11 +467,16 @@ export class ArticleService {
         topic_id: topicId,
       }));
 
-      const { error: associationError } = await this.supabase.schema("app").from("article_topics").insert(associations);
+      const associationResult = await this.executeQueryWithSchemaFallback(async (schema) => {
+        return await this.supabase.schema(schema).from("article_topics").insert(associations);
+      });
+      const { error: associationError } = associationResult;
 
       if (associationError) {
         // Rollback: delete the article that was just created
-        await this.supabase.schema("app").from("articles").delete().eq("id", article.id);
+        await this.executeQueryWithSchemaFallback(async (schema) => {
+          return await this.supabase.schema(schema).from("articles").delete().eq("id", article.id);
+        });
 
         throw new Error("TOPIC_ASSOCIATION_FAILED");
       }
@@ -528,27 +607,30 @@ export class ArticleService {
   async getArticleById(id: string): Promise<ArticleDto> {
     // Query article with nested selects for source and topics
     // Using Supabase foreign key relationship syntax
-    const { data, error } = await this.supabase
-      .schema("app")
-      .from("articles")
-      .select(
-        `
-        *,
-        rss_sources!articles_source_id_fkey (
-          id,
-          name,
-          url
-        ),
-        article_topics (
-          topics (
+    const result = await this.executeQueryWithSchemaFallback(async (schema) => {
+      return await this.supabase
+        .schema(schema)
+        .from("articles")
+        .select(
+          `
+          *,
+          rss_sources!articles_source_id_fkey (
             id,
-            name
+            name,
+            url
+          ),
+          article_topics (
+            topics (
+              id,
+              name
+            )
           )
+        `
         )
-      `
-      )
-      .eq("id", id)
-      .single();
+        .eq("id", id)
+        .single();
+    });
+    const { data, error } = result;
 
     if (error || !data) {
       throw new Error("ARTICLE_NOT_FOUND");
