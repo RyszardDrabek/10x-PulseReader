@@ -27,6 +27,19 @@ vi.mock("../../../../lib/utils/logger.ts", () => ({
   },
 }));
 
+// Mock environment variables
+Object.defineProperty(import.meta, 'env', {
+  value: {
+    ...import.meta.env,
+    SUPABASE_URL: "http://127.0.0.1:18785",
+    SUPABASE_SERVICE_ROLE_KEY: "mock-service-role-key",
+    SUPABASE_KEY: "mock-anon-key",
+    PROD: false,
+    NODE_ENV: "test",
+  },
+  writable: true,
+});
+
 /**
  * Creates a mock Astro API context
  */

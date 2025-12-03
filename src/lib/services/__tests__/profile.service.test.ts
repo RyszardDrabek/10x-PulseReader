@@ -25,6 +25,7 @@ function createMockSupabaseClient() {
   const mockDelete = vi.fn();
   const mockFrom = vi.fn();
   const mockSchema = vi.fn();
+  const mockLimit = vi.fn();
 
   // Create chain builder function that returns objects with all possible next methods
   const createChainObject = () => ({
@@ -35,6 +36,7 @@ function createMockSupabaseClient() {
     delete: mockDelete,
     single: mockSingle,
     from: mockFrom,
+    limit: vi.fn(() => createChainObject()), // Add limit method that returns chain
   });
 
   // Setup chain: each method returns an object with next methods
@@ -54,6 +56,7 @@ function createMockSupabaseClient() {
   mockDelete.mockImplementation(() => createChainObject());
   mockFrom.mockImplementation(() => createChainObject());
   mockSchema.mockImplementation(() => createChainObject());
+  mockLimit.mockImplementation(() => createChainObject());
 
   // Default return values
   mockSingle.mockResolvedValue({ data: null, error: null });
@@ -74,6 +77,7 @@ function createMockSupabaseClient() {
       delete: mockDelete,
       eq: mockEq,
       single: mockSingle,
+      limit: mockLimit,
     },
   };
 }
