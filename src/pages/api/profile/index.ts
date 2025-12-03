@@ -19,11 +19,21 @@ export const prerender = false;
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const GET: APIRoute = async (context) => {
-  // Always use service role key for API operations that need admin privileges
-  // Hardcoded for testing - environment variables might not be loading properly
-  const supabaseUrl = "http://127.0.0.1:18785";
-  const supabaseKey =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
+  // Use environment variables for Supabase client
+  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
+  let supabaseUrl: string;
+  let supabaseKey: string;
+
+  if (isProduction) {
+    // In production, use environment variables
+    supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+    supabaseKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+  } else {
+    // In local development, use known working local instance
+    supabaseUrl = "http://127.0.0.1:18785";
+    supabaseKey =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+  }
 
   const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(supabaseUrl, supabaseKey);
@@ -144,11 +154,21 @@ export const GET: APIRoute = async (context) => {
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const POST: APIRoute = async (context) => {
-  // Always use service role key for API operations that need admin privileges
-  // Hardcoded for testing - environment variables might not be loading properly
-  const supabaseUrl = "http://127.0.0.1:18785";
-  const supabaseKey =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
+  // Use environment variables for Supabase client
+  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
+  let supabaseUrl: string;
+  let supabaseKey: string;
+
+  if (isProduction) {
+    // In production, use environment variables
+    supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
+    supabaseKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+  } else {
+    // In local development, use known working local instance
+    supabaseUrl = "http://127.0.0.1:18785";
+    supabaseKey =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNmi43kdQwgnWNReilDMblYTn_I0";
+  }
 
   const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(supabaseUrl, supabaseKey);
