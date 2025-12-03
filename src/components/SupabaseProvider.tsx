@@ -184,8 +184,7 @@ export default function SupabaseProvider({ children, initialSession = null, conf
       mounted = false;
       subscription.unsubscribe();
     };
-    // hasServerSession is derived from initialSession, user is only used for logging
-  }, [supabase, initialSession]);
+  }, [supabase, initialSession, hasServerSession, user]);
 
   const value: SupabaseContextType = {
     supabase,
