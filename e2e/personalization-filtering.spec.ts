@@ -184,7 +184,7 @@ test.describe("Personalized Article Filtering (US-007)", () => {
     });
   });
 
-  test.describe("Unauthenticated User Behavior", () => {
+  test.describe.serial("Unauthenticated User Behavior", () => {
     test("should show login prompt for unauthenticated users", async ({ page }) => {
       // Arrange
       const homepage = new HomePage(page);

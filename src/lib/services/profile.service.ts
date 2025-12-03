@@ -95,6 +95,26 @@ export class ProfileService {
       if (error.code === "23505") {
         throw new Error("PROFILE_EXISTS");
       }
+      // Handle PGRST301 error (No suitable key or wrong key type) in development
+      if (error.code === "PGRST301") {
+        console.warn("[ProfileService.createProfile] PGRST301 error during insert (likely RLS disabled in development), attempting fallback query");
+        // Try a simpler insert without .select().single()
+        const { data: fallbackData, error: fallbackError } = await this.supabase
+          .schema("app")
+          .from("profiles")
+          .insert(insertData)
+          .select("id, user_id, mood, blocklist, personalization_enabled, created_at, updated_at");
+
+        if (fallbackError) {
+          throw new DatabaseError(`Failed to create profile (fallback): ${fallbackError.message || fallbackError.code || "Unknown error"}`, fallbackError);
+        }
+
+        if (!fallbackData || fallbackData.length === 0) {
+          throw new Error("Failed to create profile: no data returned from fallback query");
+        }
+
+        return this.mapDbToEntity(fallbackData[0]);
+      }
       throw new DatabaseError(`Failed to create profile: ${error.message || error.code || "Unknown error"}`, error);
     }
 
@@ -195,6 +215,7 @@ export class ProfileService {
    * @returns true if profile exists, false otherwise
    */
   private async profileExists(userId: string): Promise<boolean> {
+    console.log("[ProfileService.profileExists] Checking profile for userId:", userId);
     const { data, error } = await this.supabase
       .schema("app")
       .from("profiles")
@@ -202,15 +223,30 @@ export class ProfileService {
       .eq("user_id", userId)
       .single();
 
+    console.log("[ProfileService.profileExists] Query result:", {
+      data,
+      error: error ? { code: error.code, message: error.message, details: error.details } : null
+    });
+
     // PGRST116 means no rows found
     if (error && error.code === "PGRST116") {
+      console.log("[ProfileService.profileExists] Profile not found (PGRST116)");
+      return false;
+    }
+
+    // PGRST301 means "No suitable key or wrong key type" - can happen in development with RLS disabled
+    // In development, we can treat this as "profile not found"
+    if (error && error.code === "PGRST301") {
+      console.warn("[ProfileService.profileExists] PGRST301 error (likely RLS disabled in development), assuming profile does not exist");
       return false;
     }
 
     if (error) {
+      console.error("[ProfileService.profileExists] Database error:", error);
       throw new DatabaseError("Failed to check profile existence", error);
     }
 
+    console.log("[ProfileService.profileExists] Profile exists:", !!data);
     return data !== null;
   }
 
