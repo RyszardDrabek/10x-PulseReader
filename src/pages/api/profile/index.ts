@@ -208,29 +208,27 @@ export const POST: APIRoute = async (context) => {
   } else {
     // In local development, use known working local instance
     supabaseUrl = "http://127.0.0.1:18785";
-    supabaseKey =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNmi43kdQwgnWNReilDMblYTn_I0";
+    supabaseKey = isProduction
+      ? (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
+        import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+      : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNmi43kdQwgnWNReilDMblYTn_I0";
   }
 
   const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   // Test service role permissions in production (GET endpoint only)
-  if (isProduction && context.request.method === 'GET') {
+  if (isProduction && context.request.method === "GET") {
     console.log("[API_PROFILE_GET] Testing service role permissions...");
 
     try {
       // Test if we can access the database at all
-      const testResult = await supabase
-        .schema("app")
-        .from("profiles")
-        .select("count")
-        .limit(1);
+      const testResult = await supabase.schema("app").from("profiles").select("count").limit(1);
 
       console.log("[API_PROFILE_GET] Service role test result:", {
         success: !testResult.error,
         error: testResult.error,
-        hasData: !!testResult.data
+        hasData: !!testResult.data,
       });
 
       if (testResult.error) {
@@ -241,7 +239,8 @@ export const POST: APIRoute = async (context) => {
             code: "SERVICE_ROLE_ERROR",
             details: {
               error: testResult.error,
-              suggestion: "Check if RLS policies allow service role access or if the profiles table exists in app schema"
+              suggestion:
+                "Check if RLS policies allow service role access or if the profiles table exists in app schema",
             },
             timestamp: new Date().toISOString(),
           }),
@@ -434,7 +433,12 @@ export const POST: APIRoute = async (context) => {
 export const PATCH: APIRoute = async (context) => {
   // Always use service role key for API operations that need admin privileges
   // Hardcoded for testing - environment variables might not be loading properly
-  const supabaseUrl = "http://127.0.0.1:18785";
+  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
+  const supabaseUrl = isProduction
+    ? (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
+      import.meta.env.SUPABASE_URL ||
+      import.meta.env.PUBLIC_SUPABASE_URL
+    : "http://127.0.0.1:18785";
   const supabaseKey =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
@@ -618,7 +622,12 @@ export const PATCH: APIRoute = async (context) => {
 export const DELETE: APIRoute = async (context) => {
   // Always use service role key for API operations that need admin privileges
   // Hardcoded for testing - environment variables might not be loading properly
-  const supabaseUrl = "http://127.0.0.1:18785";
+  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
+  const supabaseUrl = isProduction
+    ? (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
+      import.meta.env.SUPABASE_URL ||
+      import.meta.env.PUBLIC_SUPABASE_URL
+    : "http://127.0.0.1:18785";
   const supabaseKey =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
