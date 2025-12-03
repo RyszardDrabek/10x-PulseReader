@@ -25,9 +25,30 @@ export const GET: APIRoute = async (context) => {
   let supabaseKey: string;
 
   if (isProduction) {
-    // In production, use environment variables
-    supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
-    supabaseKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+    // In production (Cloudflare), use environment variables
+    // Cloudflare Pages uses process.env for server-side environment variables
+    supabaseUrl =
+      (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
+      import.meta.env.SUPABASE_URL ||
+      import.meta.env.PUBLIC_SUPABASE_URL;
+
+    supabaseKey =
+      (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
+      import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    console.log("[API_PROFILE] Production environment detected");
+    console.log("[API_PROFILE] Environment check:", {
+      hasProcess: typeof process !== "undefined",
+      hasProcessEnv: typeof process !== "undefined" && !!process.env,
+      supabaseUrl: !!supabaseUrl,
+      supabaseKey: !!supabaseKey,
+      supabaseKeyLength: supabaseKey?.length || 0,
+      processEnvKeys:
+        typeof process !== "undefined" && process.env
+          ? Object.keys(process.env).filter((k) => k.includes("SUPABASE"))
+          : [],
+      importMetaEnvKeys: Object.keys(import.meta.env).filter((k) => k.includes("SUPABASE")),
+    });
   } else {
     // In local development, use known working local instance
     supabaseUrl = "http://127.0.0.1:18785";
@@ -160,9 +181,30 @@ export const POST: APIRoute = async (context) => {
   let supabaseKey: string;
 
   if (isProduction) {
-    // In production, use environment variables
-    supabaseUrl = import.meta.env.SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL;
-    supabaseKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+    // In production (Cloudflare), use environment variables
+    // Cloudflare Pages uses process.env for server-side environment variables
+    supabaseUrl =
+      (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
+      import.meta.env.SUPABASE_URL ||
+      import.meta.env.PUBLIC_SUPABASE_URL;
+
+    supabaseKey =
+      (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
+      import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    console.log("[API_PROFILE] Production environment detected");
+    console.log("[API_PROFILE] Environment check:", {
+      hasProcess: typeof process !== "undefined",
+      hasProcessEnv: typeof process !== "undefined" && !!process.env,
+      supabaseUrl: !!supabaseUrl,
+      supabaseKey: !!supabaseKey,
+      supabaseKeyLength: supabaseKey?.length || 0,
+      processEnvKeys:
+        typeof process !== "undefined" && process.env
+          ? Object.keys(process.env).filter((k) => k.includes("SUPABASE"))
+          : [],
+      importMetaEnvKeys: Object.keys(import.meta.env).filter((k) => k.includes("SUPABASE")),
+    });
   } else {
     // In local development, use known working local instance
     supabaseUrl = "http://127.0.0.1:18785";

@@ -21,7 +21,17 @@ export const POST: APIRoute = async (context) => {
     // For testing purposes, create a direct supabase client with service role
     // This bypasses the middleware authentication for development testing
     const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(import.meta.env.SUPABASE_URL, import.meta.env.SUPABASE_SERVICE_ROLE_KEY);
+    const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
+    const supabaseUrl = isProduction
+      ? (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
+        import.meta.env.SUPABASE_URL ||
+        import.meta.env.PUBLIC_SUPABASE_URL
+      : import.meta.env.SUPABASE_URL;
+    const supabaseKey = isProduction
+      ? (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
+        import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+      : import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     if (!supabase) {
       return new Response(
