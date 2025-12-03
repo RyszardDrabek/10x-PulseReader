@@ -57,8 +57,8 @@ export class ArticleService {
    * Tries "app" schema first, falls back to "public" if it fails.
    */
   private async executeQueryWithSchemaFallback<T>(
-    queryBuilder: (schema: string) => Promise<{ data: T; error: any }>
-  ): Promise<{ data: T; error: any }> {
+    queryBuilder: (schema: string) => Promise<{ data: T; error: PostgrestError | null }>
+  ): Promise<{ data: T; error: PostgrestError | null }> {
     // Try with "app" schema first
     let result = await queryBuilder("app");
 
@@ -80,12 +80,7 @@ export class ArticleService {
     // Use .maybeSingle() instead of .single() to avoid errors when source doesn't exist
     // .maybeSingle() returns null data instead of error when no rows found
     const result = await this.executeQueryWithSchemaFallback(async (schema) => {
-      return await this.supabase
-        .schema(schema)
-        .from("rss_sources")
-        .select("id")
-        .eq("id", sourceId)
-        .maybeSingle();
+      return await this.supabase.schema(schema).from("rss_sources").select("id").eq("id", sourceId).maybeSingle();
     });
     const { data, error } = result;
 

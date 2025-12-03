@@ -13,12 +13,14 @@ export const GET: APIRoute = async () => {
 
     if (isProduction) {
       // In production, use environment variables
-      supabaseUrl = (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
-                    import.meta.env.SUPABASE_URL ||
-                    import.meta.env.PUBLIC_SUPABASE_URL;
-      supabaseKey = (typeof process !== "undefined" && process.env?.SUPABASE_KEY) ||
-                    import.meta.env.SUPABASE_KEY ||
-                    import.meta.env.PUBLIC_SUPABASE_KEY;
+      supabaseUrl =
+        (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
+        import.meta.env.SUPABASE_URL ||
+        import.meta.env.PUBLIC_SUPABASE_URL;
+      supabaseKey =
+        (typeof process !== "undefined" && process.env?.SUPABASE_KEY) ||
+        import.meta.env.SUPABASE_KEY ||
+        import.meta.env.PUBLIC_SUPABASE_KEY;
     } else {
       // In local development, use known working local instance
       supabaseUrl = "http://127.0.0.1:18785";

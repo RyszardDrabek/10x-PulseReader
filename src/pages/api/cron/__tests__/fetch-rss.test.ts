@@ -28,7 +28,7 @@ vi.mock("../../../../lib/utils/logger.ts", () => ({
 }));
 
 // Mock environment variables
-Object.defineProperty(import.meta, 'env', {
+Object.defineProperty(import.meta, "env", {
   value: {
     ...import.meta.env,
     SUPABASE_URL: "http://127.0.0.1:18785",

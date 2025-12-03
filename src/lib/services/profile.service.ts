@@ -22,13 +22,7 @@ class DatabaseError extends Error {
  */
 export class ProfileService {
   constructor(private supabase: SupabaseClient<Database>) {
-    // Log what client we receive
-    console.log("[ProfileService] Constructor called with client:", {
-      url: this.supabase.supabaseUrl,
-      hasKey: !!this.supabase.supabaseKey,
-      keyLength: this.supabase.supabaseKey?.length || 0,
-      keyType: typeof this.supabase.supabaseKey,
-    });
+    // Constructor - minimal logging
   }
 
   /**
@@ -36,14 +30,13 @@ export class ProfileService {
    * Tries "app" schema first, falls back to "public" if schema doesn't exist.
    */
   private async executeQueryWithSchemaFallback<T>(
-    queryBuilder: (schema: string) => Promise<{ data: T; error: any }>
-  ): Promise<{ data: T; error: any }> {
+    queryBuilder: (schema: string) => Promise<{ data: T; error: PostgrestError | null }>
+  ): Promise<{ data: T; error: PostgrestError | null }> {
     // Try with "app" schema first
     let result = await queryBuilder("app");
 
     // If schema "app" fails with error code 1003 (schema not found), try "public"
     if (result.error && (result.error.code === "1003" || result.error.message?.includes("schema"))) {
-      console.log("[ProfileService] Schema 'app' failed, trying 'public' schema");
       result = await queryBuilder("public");
     }
 
@@ -60,12 +53,7 @@ export class ProfileService {
    */
   async getProfile(userId: string): Promise<ProfileEntity | null> {
     const result = await this.executeQueryWithSchemaFallback(async (schema) => {
-      return await this.supabase
-        .schema(schema)
-        .from("profiles")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
+      return await this.supabase.schema(schema).from("profiles").select("*").eq("user_id", userId).single();
     });
 
     const { data, error } = result;
@@ -131,7 +119,9 @@ export class ProfileService {
       }
       // Handle PGRST301 error (No suitable key or wrong key type) in development
       if (error.code === "PGRST301") {
-        console.warn("[ProfileService.createProfile] PGRST301 error during insert (likely RLS disabled in development), attempting fallback query");
+        console.warn(
+          "[ProfileService.createProfile] PGRST301 error during insert (likely RLS disabled in development), attempting fallback query"
+        );
         // Try a simpler insert without .select().single()
         const fallbackResult = await this.executeQueryWithSchemaFallback(async (schema) => {
           return await this.supabase
@@ -144,7 +134,10 @@ export class ProfileService {
         const { data: fallbackData, error: fallbackError } = fallbackResult;
 
         if (fallbackError) {
-          throw new DatabaseError(`Failed to create profile (fallback): ${fallbackError.message || fallbackError.code || "Unknown error"}`, fallbackError);
+          throw new DatabaseError(
+            `Failed to create profile (fallback): ${fallbackError.message || fallbackError.code || "Unknown error"}`,
+            fallbackError
+          );
         }
 
         if (!fallbackData || fallbackData.length === 0) {
@@ -277,23 +270,21 @@ export class ProfileService {
         hasKey: !!this.supabase.supabaseKey,
         keyLength: this.supabase.supabaseKey?.length || 0,
         keyPrefix: this.supabase.supabaseKey ? this.supabase.supabaseKey.substring(0, 20) + "..." : "NO_KEY",
-        keySuffix: this.supabase.supabaseKey ? "..." + this.supabase.supabaseKey.substring(this.supabase.supabaseKey.length - 20) : "NO_KEY",
+        keySuffix: this.supabase.supabaseKey
+          ? "..." + this.supabase.supabaseKey.substring(this.supabase.supabaseKey.length - 20)
+          : "NO_KEY",
         clientType: typeof this.supabase,
-        clientKeys: Object.keys(this.supabase).filter(k => k.includes('key') || k.includes('url')),
+        clientKeys: Object.keys(this.supabase).filter((k) => k.includes("key") || k.includes("url")),
       });
 
-      const basicResult = await this.supabase
-        .schema("app")
-        .from("profiles")
-        .select("count")
-        .limit(1);
+      const basicResult = await this.supabase.schema("app").from("profiles").select("count").limit(1);
 
       console.log("[ProfileService.profileExists] Basic query result:", {
         success: !basicResult.error,
         error: basicResult.error,
         data: basicResult.data,
         status: basicResult.status,
-        statusText: basicResult.statusText
+        statusText: basicResult.statusText,
       });
 
       // Also test if personalization_enabled column exists
@@ -309,26 +300,21 @@ export class ProfileService {
           success: !columnTest.error,
           error: columnTest.error,
           data: columnTest.data,
-          status: columnTest.status
+          status: columnTest.status,
         });
       }
     } catch (basicError) {
       console.error("[ProfileService.profileExists] Basic query failed:", basicError);
     }
 
-    const result = await this.supabase
-      .schema("app")
-      .from("profiles")
-      .select("id")
-      .eq("user_id", userId)
-      .single();
+    const result = await this.supabase.schema("app").from("profiles").select("id").eq("user_id", userId).single();
 
     const { data, error } = result;
 
     console.log("[ProfileService.profileExists] Query result:", {
       data,
       error: error ? { code: error.code, message: error.message, details: error.details, hint: error.hint } : null,
-      fullError: error
+      fullError: error,
     });
 
     // PGRST116 means no rows found
@@ -340,7 +326,9 @@ export class ProfileService {
     // PGRST301 means "No suitable key or wrong key type" - can happen in development with RLS disabled
     // In development, we can treat this as "profile not found"
     if (error && error.code === "PGRST301") {
-      console.warn("[ProfileService.profileExists] PGRST301 error (likely RLS disabled in development), assuming profile does not exist");
+      console.warn(
+        "[ProfileService.profileExists] PGRST301 error (likely RLS disabled in development), assuming profile does not exist"
+      );
       return false;
     }
 
@@ -350,16 +338,12 @@ export class ProfileService {
 
       // Try without .single() to see if it's a constraint issue
       try {
-        const altResult = await this.supabase
-          .schema("app")
-          .from("profiles")
-          .select("id")
-          .eq("user_id", userId);
+        const altResult = await this.supabase.schema("app").from("profiles").select("id").eq("user_id", userId);
 
         console.log("[ProfileService.profileExists] Alternative query result:", {
           data: altResult.data,
           error: altResult.error,
-          count: altResult.data?.length
+          count: altResult.data?.length,
         });
 
         return altResult.data && altResult.data.length > 0;

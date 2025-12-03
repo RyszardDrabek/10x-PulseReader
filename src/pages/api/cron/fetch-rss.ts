@@ -44,7 +44,9 @@ export const POST: APIRoute = async (context) => {
         // In test environment, create a minimal mock client
         if (import.meta.env.NODE_ENV === "test" || import.meta.env.VITEST) {
           supabase = {
-            schema: () => ({ from: () => ({ select: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) }),
+            schema: () => ({
+              from: () => ({ select: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }),
+            }),
           } as unknown as ReturnType<typeof createClient>;
         } else {
           const supabaseUrl = isProduction
@@ -72,14 +74,16 @@ export const POST: APIRoute = async (context) => {
       // In test environment, create a minimal mock client to avoid connection issues
       if (import.meta.env.NODE_ENV === "test" || import.meta.env.VITEST) {
         supabase = {
-          schema: () => ({ from: () => ({ select: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) }),
+          schema: () => ({
+            from: () => ({ select: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }),
+          }),
         } as unknown as ReturnType<typeof createClient>;
       } else {
         supabase = createClient(
           isProduction
             ? (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
-              import.meta.env.SUPABASE_URL ||
-              import.meta.env.PUBLIC_SUPABASE_URL
+                import.meta.env.SUPABASE_URL ||
+                import.meta.env.PUBLIC_SUPABASE_URL
             : "http://127.0.0.1:18785",
           "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
         );
