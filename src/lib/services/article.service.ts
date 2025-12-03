@@ -57,14 +57,13 @@ export class ArticleService {
    * Tries "app" schema first, falls back to "public" if it fails.
    */
   private async executeQueryWithSchemaFallback<T>(
-    queryBuilder: (schema: string) => Promise<{ data: T; error: PostgrestError | null }>
+    queryBuilder: (schema: "app" | "public") => Promise<{ data: T; error: PostgrestError | null }>
   ): Promise<{ data: T; error: PostgrestError | null }> {
     // Try with "app" schema first
     let result = await queryBuilder("app");
 
     // If schema "app" fails with error code 1003 (schema not found), try "public"
     if (result.error && (result.error.code === "1003" || result.error.message?.includes("schema"))) {
-      console.log("[ArticleService] Schema 'app' failed, trying 'public' schema");
       result = await queryBuilder("public");
     }
 
@@ -129,15 +128,9 @@ export class ArticleService {
    *   - PROFILE_NOT_FOUND: User profile not found when personalization requested
    */
   async getArticles(params: GetArticlesQueryParams, userId?: string): Promise<ArticleListResponse> {
-    console.log("[ArticleService.getArticles] START:", {
-      params,
-      userId,
-      applyPersonalization: params.applyPersonalization,
-      applyPersonalizationType: typeof params.applyPersonalization,
-    });
-
     // For debugging - ensure personalization is disabled for guests
     if (!userId && params.applyPersonalization) {
+      // eslint-disable-next-line no-console
       console.warn("[ArticleService] Personalization requested for guest user, disabling");
       params.applyPersonalization = false;
     }
@@ -145,45 +138,23 @@ export class ArticleService {
     // Calculate fetch limit (over-fetch for blocklist filtering if needed)
     let userProfile = null;
     if (userId) {
-      console.log("[ArticleService] Fetching profile for userId:", userId);
       userProfile = await this.getProfile(userId);
-      console.log("[ArticleService] User profile fetched:", {
-        profileExists: !!userProfile,
-        personalizationEnabled: userProfile?.personalizationEnabled,
-        mood: userProfile?.mood,
-        blocklistLength: userProfile?.blocklist?.length,
-      });
     }
 
     // Automatically apply personalization for authenticated users if enabled in their profile
     // Only override if applyPersonalization is not explicitly set to false
     if (userId && userProfile && params.applyPersonalization !== false) {
       const shouldApplyPersonalization = userProfile.personalizationEnabled ?? true;
-      console.log("[ArticleService] Checking personalization settings:", {
-        userId,
-        currentApplyPersonalization: params.applyPersonalization,
-        personalizationEnabled: userProfile.personalizationEnabled,
-        shouldApplyPersonalization,
-        willSetToTrue: shouldApplyPersonalization && params.applyPersonalization === undefined,
-      });
       if (shouldApplyPersonalization && params.applyPersonalization === undefined) {
         params.applyPersonalization = true;
-        console.log("[ArticleService] Set applyPersonalization to true for authenticated user");
       }
     }
 
     if (params.applyPersonalization && userId && !userProfile) {
+      // eslint-disable-next-line no-console
       console.error("[ArticleService] Personalization requested but no profile found for user:", userId);
       throw new Error("PROFILE_NOT_FOUND");
     }
-
-    console.log("[ArticleService] Final personalization state:", {
-      applyPersonalization: params.applyPersonalization,
-      userId,
-      hasProfile: !!userProfile,
-      mood: userProfile?.mood,
-      blocklistLength: userProfile?.blocklist?.length,
-    });
 
     const shouldOverFetch = params.applyPersonalization && userProfile?.blocklist && userProfile.blocklist.length > 0;
     const limit = params.limit ?? 20;
@@ -258,14 +229,6 @@ export class ArticleService {
       );
 
     // Apply filters
-    console.log("[ArticleService] About to apply filters:", {
-      applyPersonalization: params.applyPersonalization,
-      sentiment: params.sentiment,
-      topicId: params.topicId,
-      sourceId: params.sourceId,
-      hasUserProfile: !!userProfile,
-      mood: userProfile?.mood,
-    });
     query = this.applyFilters(query, params, userProfile, articleIdsForTopic);
 
     // Apply sorting - default to publication_date desc (newest first)
@@ -277,13 +240,11 @@ export class ArticleService {
     query = query.range(offset, offset + fetchLimit - 1);
 
     // Execute query with schema fallback
-    console.log("[ArticleService] Executing database query with filters applied");
     let queryResult = await query;
     let { data, count, error } = queryResult;
 
     // If schema "app" fails with error code 1003, try "public"
     if (error && (error.code === "1003" || error.message?.includes("schema"))) {
-      console.log("[ArticleService] Main query failed with schema error, trying 'public' schema");
       querySchema = "public";
       const fallbackQuery = this.supabase
         .schema(querySchema)
@@ -327,6 +288,7 @@ export class ArticleService {
     if (error) {
       // Wrap Supabase error in DatabaseError for better error handling
       const errorMessage = error.message || JSON.stringify(error);
+      // eslint-disable-next-line no-console
       console.error("[ArticleService.getArticles] Database error:", error);
       throw new DatabaseError(`Database query failed: ${errorMessage}`, error);
     }
@@ -336,36 +298,13 @@ export class ArticleService {
     // Data now includes joined relationships
     let filteredData: JoinedArticle[] = (data as JoinedArticle[]) || [];
 
-    console.log("[ArticleService] Database query results:", {
-      totalFromDb: count,
-      articlesFetched: filteredData.length,
-      applyPersonalization: params.applyPersonalization,
-      hasBlocklist: !!(userProfile?.blocklist && userProfile.blocklist.length > 0),
-      blocklistLength: userProfile?.blocklist?.length || 0,
-    });
-
     if (params.applyPersonalization && userProfile?.blocklist && userProfile.blocklist.length > 0) {
-      console.log("[ArticleService] Applying blocklist filter:", {
-        blocklist: userProfile.blocklist,
-        articlesBeforeFilter: filteredData.length,
-      });
       const beforeFilterCount = filteredData.length;
       filteredData = this.applyBlocklistFilter(filteredData, userProfile.blocklist);
       blockedCount = beforeFilterCount - filteredData.length;
 
-      console.log("[ArticleService] Blocklist filter results:", {
-        articlesAfterFilter: filteredData.length,
-        blockedCount,
-      });
-
       // Trim to requested limit
       filteredData = filteredData.slice(0, limit);
-    } else {
-      console.log("[ArticleService] Skipping blocklist filter:", {
-        applyPersonalization: params.applyPersonalization,
-        hasBlocklist: !!(userProfile?.blocklist && userProfile.blocklist.length > 0),
-        reason: !params.applyPersonalization ? "personalization disabled" : "no blocklist",
-      });
     }
 
     // Map to DTOs with error handling
@@ -850,39 +789,21 @@ export class ArticleService {
     articleIdsForTopic: string[] | null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): any {
-    console.log("[ArticleService.applyFilters] Applying filters:", {
-      explicitSentiment: params.sentiment,
-      applyPersonalization: params.applyPersonalization,
-      userMood: userProfile?.mood,
-      sourceId: params.sourceId,
-      topicId: params.topicId,
-      hasArticleIdsForTopic: !!(articleIdsForTopic && articleIdsForTopic.length > 0),
-    });
-
     // Filter by sentiment (explicit or from mood)
     if (params.sentiment) {
-      console.log("[ArticleService.applyFilters] Applying explicit sentiment filter:", params.sentiment);
       query = query.eq("sentiment", params.sentiment);
     } else if (params.applyPersonalization && userProfile?.mood) {
       // Apply mood-based sentiment filtering
-      console.log("[ArticleService.applyFilters] Applying mood-based sentiment filter:", userProfile.mood);
       query = query.eq("sentiment", userProfile.mood);
-    } else {
-      console.log("[ArticleService.applyFilters] No sentiment filter applied");
     }
 
     // Filter by source ID
     if (params.sourceId) {
-      console.log("[ArticleService.applyFilters] Applying source filter:", params.sourceId);
       query = query.eq("source_id", params.sourceId);
     }
 
     // Filter by topic ID - use pre-fetched article IDs
     if (params.topicId && articleIdsForTopic && articleIdsForTopic.length > 0) {
-      console.log("[ArticleService.applyFilters] Applying topic filter:", {
-        topicId: params.topicId,
-        articleCount: articleIdsForTopic.length,
-      });
       query = query.in("id", articleIdsForTopic);
     }
 

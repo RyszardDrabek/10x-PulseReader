@@ -48,6 +48,7 @@ export const GET: APIRoute = async () => {
     const { data, error } = await supabase.schema("app").from("profiles").select("count").limit(1);
 
     if (error) {
+      // eslint-disable-next-line no-console
       console.log("Query error:", error);
       return new Response(
         JSON.stringify({
@@ -73,6 +74,7 @@ export const GET: APIRoute = async () => {
       }
     );
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.log("Unexpected error:", error);
     return new Response(
       JSON.stringify({

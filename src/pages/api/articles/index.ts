@@ -68,6 +68,7 @@ export const GET: APIRoute = async (context) => {
   cfLogger.trace("API_ARTICLES_GET_START");
 
   // Enhanced logging for debugging personalization
+  // eslint-disable-next-line no-console
   console.log("[API_ARTICLES] Request details:", {
     method: context.request.method,
     url: context.request.url,
@@ -112,6 +113,7 @@ export const GET: APIRoute = async (context) => {
       sortOrder: url.searchParams.get("sortOrder") || undefined,
     };
 
+    // eslint-disable-next-line no-console
     console.log("[API_ARTICLES] Parsed query parameters:", {
       queryParams,
       applyPersonalization: queryParams.applyPersonalization,
@@ -151,6 +153,7 @@ export const GET: APIRoute = async (context) => {
 
     // Check authentication if personalization is requested
     if (validatedParams.applyPersonalization && !user) {
+      // eslint-disable-next-line no-console
       console.log("[API_ARTICLES] Personalization requested but no user authenticated:", {
         applyPersonalization: validatedParams.applyPersonalization,
         user: null,
@@ -172,6 +175,7 @@ export const GET: APIRoute = async (context) => {
       );
     }
 
+    // eslint-disable-next-line no-console
     console.log("[API_ARTICLES] About to call ArticleService.getArticles:", {
       validatedParams,
       applyPersonalization: validatedParams.applyPersonalization,

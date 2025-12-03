@@ -13,7 +13,9 @@ interface AppProps {
 }
 
 export default function App({ children, initialSession, supabaseConfig }: AppProps) {
+  // eslint-disable-next-line no-console
   console.log("App component: initialSession", initialSession, "supabaseConfig", supabaseConfig);
+  // eslint-disable-next-line no-console
   console.log("App component: initialSession exists:", !!initialSession);
 
   return (

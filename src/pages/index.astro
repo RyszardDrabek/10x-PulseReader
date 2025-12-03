@@ -36,6 +36,7 @@ if (supabase) {
     const articleService = new ArticleService(supabase);
     // Get user from Astro locals for server-side rendering
     const userId = Astro.locals.user?.id;
+    // eslint-disable-next-line no-console
     console.log("[index.astro] Server-side article fetch:", {
       hasUser: !!userId,
       userId: userId,
@@ -78,11 +79,13 @@ try {
     headers: Astro.request.headers,
   });
 
+  // eslint-disable-next-line no-console
   console.log("[index.astro] Getting session from server-side Supabase...");
   const {
     data: { session },
     error,
   } = await serverSupabase.auth.getSession();
+  // eslint-disable-next-line no-console
   console.log("[index.astro] Server session result:", {
     hasSession: !!session,
     sessionUserId: session?.user?.id,

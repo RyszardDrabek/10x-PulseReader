@@ -34,6 +34,7 @@ export default function FilterBanner({
   const blocklistInputRef = useRef<HTMLInputElement>(null);
 
   // Debug logging to help diagnose authentication issues
+  // eslint-disable-next-line no-console
   console.log("FilterBanner RENDER:", {
     isAuthenticated,
     isPersonalized,

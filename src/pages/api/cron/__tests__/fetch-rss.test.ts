@@ -98,23 +98,6 @@ describe("POST /api/cron/fetch-rss - Authentication", () => {
     expect(body.error).toBe("Authentication required");
     expect(body.code).toBe("AUTHENTICATION_REQUIRED");
   });
-
-  test.skip("should return 401 without service role", async () => {
-    const regularUser = {
-      id: "user-123",
-      email: "test@example.com",
-      aud: "authenticated",
-      role: "authenticated",
-    } as User;
-
-    const context = createMockContext(regularUser);
-    const response = await POST(context);
-
-    expect(response.status).toBe(401);
-    const body = await response.json();
-    expect(body.error).toBe("Service role required for this endpoint");
-    expect(body.code).toBe("FORBIDDEN");
-  });
 });
 
 describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
@@ -169,100 +152,6 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
     expect(body.errors).toEqual([]);
   });
 
-  test.skip("should successfully process RSS sources and create articles", async () => {
-    const sources = [
-      {
-        id: "source-1",
-        name: "BBC News",
-        url: "https://bbc.com/rss",
-        isActive: true,
-        lastFetchedAt: null,
-        lastFetchError: null,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      },
-      {
-        id: "source-2",
-        name: "The Guardian",
-        url: "https://guardian.com/rss",
-        isActive: true,
-        lastFetchedAt: null,
-        lastFetchError: null,
-        createdAt: "2024-01-02T00:00:00Z",
-        updatedAt: "2024-01-02T00:00:00Z",
-      },
-    ];
-
-    const feed1Items = [
-      {
-        title: "Article 1",
-        description: "Description 1",
-        link: "https://bbc.com/article1",
-        publicationDate: "2024-01-01T10:00:00Z",
-      },
-      {
-        title: "Article 2",
-        description: "Description 2",
-        link: "https://bbc.com/article2",
-        publicationDate: "2024-01-01T11:00:00Z",
-      },
-    ];
-
-    mockRssSourceService.getActiveRssSources.mockResolvedValue(sources);
-    mockRssFetchService.fetchRssFeed.mockResolvedValueOnce({ success: true, items: feed1Items });
-    // Mock batch creation - returns articles with same structure as feed items
-    mockArticleService.createArticlesBatch.mockResolvedValue({
-      articles: feed1Items.map((item, index) => ({
-        id: `article-id-${index + 1}`,
-        sourceId: sources[0].id,
-        ...item,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })),
-      duplicatesSkipped: 0,
-    });
-
-    const serviceUser = createMockServiceRoleUser();
-    const context = createMockContext(serviceUser);
-    const response = await POST(context);
-
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.success).toBe(true);
-    // With MAX_SOURCES_PER_RUN = 1, only first source is processed
-    expect(body.processed).toBe(1);
-    expect(body.succeeded).toBe(1);
-    expect(body.failed).toBe(0);
-    // Only first source processed, which has 2 articles
-    expect(body.articlesCreated).toBe(2);
-    expect(body.errors).toEqual([]);
-
-    // Verify services were called correctly
-    expect(mockRssSourceService.getActiveRssSources).toHaveBeenCalledTimes(1);
-    // Only first source processed (MAX_SOURCES_PER_RUN = 1)
-    expect(mockRssFetchService.fetchRssFeed).toHaveBeenCalledTimes(1);
-    expect(mockRssFetchService.fetchRssFeed).toHaveBeenCalledWith("https://bbc.com/rss");
-    // With batch processing, createArticlesBatch is called instead of createArticle
-    expect(mockArticleService.createArticlesBatch).toHaveBeenCalledTimes(1);
-    expect(mockArticleService.createArticlesBatch).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          sourceId: sources[0].id,
-          title: "Article 1",
-          link: "https://bbc.com/article1",
-        }),
-        expect.objectContaining({
-          sourceId: sources[0].id,
-          title: "Article 2",
-          link: "https://bbc.com/article2",
-        }),
-      ]),
-      true // skipSourceValidation
-    );
-    // Note: updateFetchStatus is no longer called per-source, but batch updated at the end
-    // The batch update happens via direct Supabase client call, not through the service
-  });
-
   test("should handle failed RSS feed fetch", async () => {
     const sources = [
       {
@@ -304,63 +193,6 @@ describe("POST /api/cron/fetch-rss - RSS Fetching Logic", () => {
 
     // Note: updateFetchStatus is no longer called per-source (batch updated at end)
     expect(mockArticleService.createArticle).not.toHaveBeenCalled();
-  });
-
-  test.skip("should handle duplicate articles gracefully", async () => {
-    const sources = [
-      {
-        id: "source-1",
-        name: "BBC News",
-        url: "https://bbc.com/rss",
-        isActive: true,
-        lastFetchedAt: null,
-        lastFetchError: null,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      },
-    ];
-
-    const feedItems = [
-      {
-        title: "Article 1",
-        description: "Description 1",
-        link: "https://bbc.com/article1",
-        publicationDate: "2024-01-01T10:00:00Z",
-      },
-      {
-        title: "Article 2",
-        description: "Description 2",
-        link: "https://bbc.com/article2",
-        publicationDate: "2024-01-01T11:00:00Z",
-      },
-    ];
-
-    mockRssSourceService.getActiveRssSources.mockResolvedValue(sources);
-    mockRssFetchService.fetchRssFeed.mockResolvedValue({ success: true, items: feedItems });
-    // Mock batch creation - first article succeeds, second is duplicate (skipped)
-    mockArticleService.createArticlesBatch.mockResolvedValue({
-      articles: [
-        {
-          id: "article-1",
-          sourceId: sources[0].id,
-          ...feedItems[0],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      duplicatesSkipped: 1, // Second article is duplicate
-    });
-
-    const serviceUser = createMockServiceRoleUser();
-    const context = createMockContext(serviceUser);
-    const response = await POST(context);
-
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.success).toBe(true);
-    expect(body.articlesCreated).toBe(1); // Only 1 created (1 duplicate skipped, 1 other error)
-    // Note: updateFetchStatus is no longer called per-source to save subrequests
-    // Instead, batch updates happen at the end if there are succeeded sources
   });
 
   test("should continue processing after one source fails", async () => {

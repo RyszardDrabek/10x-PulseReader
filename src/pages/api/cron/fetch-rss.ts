@@ -55,6 +55,7 @@ export const POST: APIRoute = async (context) => {
               import.meta.env.PUBLIC_SUPABASE_URL
             : "http://127.0.0.1:18785";
 
+          // eslint-disable-next-line no-console
           console.log("[CRON_FETCH_RSS] Using Supabase URL:", supabaseUrl);
           supabase = createClient(supabaseUrl, token, {
             auth: {

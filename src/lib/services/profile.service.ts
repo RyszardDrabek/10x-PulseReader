@@ -21,9 +21,7 @@ class DatabaseError extends Error {
  * Handles profile CRUD operations with RLS enforcement.
  */
 export class ProfileService {
-  constructor(private supabase: SupabaseClient<Database>) {
-    // Constructor - minimal logging
-  }
+  constructor(private supabase: SupabaseClient<Database>) {}
 
   /**
    * Executes a query with fallback schema support.
@@ -119,6 +117,7 @@ export class ProfileService {
       }
       // Handle PGRST301 error (No suitable key or wrong key type) in development
       if (error.code === "PGRST301") {
+        // eslint-disable-next-line no-console
         console.warn(
           "[ProfileService.createProfile] PGRST301 error during insert (likely RLS disabled in development), attempting fallback query"
         );
@@ -168,14 +167,9 @@ export class ProfileService {
    * @throws DatabaseError if database update fails
    */
   async updateProfile(userId: string, command: UpdateProfileCommand): Promise<ProfileEntity> {
-    console.log("[ProfileService.updateProfile] Starting update for userId:", userId, "command:", command);
-
     // Check if profile exists
     const existingProfile = await this.profileExists(userId);
-    console.log("[ProfileService.updateProfile] Profile exists check result:", existingProfile);
-
     if (!existingProfile) {
-      console.log("[ProfileService.updateProfile] Profile not found, throwing error");
       throw new Error("PROFILE_NOT_FOUND");
     }
 
@@ -257,111 +251,32 @@ export class ProfileService {
    * @returns true if profile exists, false otherwise
    */
   private async profileExists(userId: string): Promise<boolean> {
-    console.log("[ProfileService.profileExists] Checking profile for userId:", userId);
-
-    // Try a simpler query first to test basic connectivity
     try {
-      console.log("[ProfileService.profileExists] Testing basic table access with full details");
+      const { data, error } = await this.supabase
+        .schema("app")
+        .from("profiles")
+        .select("id")
+        .eq("user_id", userId)
+        .single();
 
-      // Test the Supabase client connection
-      console.log("[ProfileService.profileExists] Supabase client details:", {
-        supabaseUrl: this.supabase.supabaseUrl,
-        hasRestUrl: !!this.supabase.restUrl,
-        hasKey: !!this.supabase.supabaseKey,
-        keyLength: this.supabase.supabaseKey?.length || 0,
-        keyPrefix: this.supabase.supabaseKey ? this.supabase.supabaseKey.substring(0, 20) + "..." : "NO_KEY",
-        keySuffix: this.supabase.supabaseKey
-          ? "..." + this.supabase.supabaseKey.substring(this.supabase.supabaseKey.length - 20)
-          : "NO_KEY",
-        clientType: typeof this.supabase,
-        clientKeys: Object.keys(this.supabase).filter((k) => k.includes("key") || k.includes("url")),
-      });
-
-      const basicResult = await this.supabase.schema("app").from("profiles").select("count").limit(1);
-
-      console.log("[ProfileService.profileExists] Basic query result:", {
-        success: !basicResult.error,
-        error: basicResult.error,
-        data: basicResult.data,
-        status: basicResult.status,
-        statusText: basicResult.statusText,
-      });
-
-      // Also test if personalization_enabled column exists
-      if (!basicResult.error) {
-        console.log("[ProfileService.profileExists] Testing personalization_enabled column");
-        const columnTest = await this.supabase
-          .schema("app")
-          .from("profiles")
-          .select("personalization_enabled")
-          .limit(1);
-
-        console.log("[ProfileService.profileExists] Column test result:", {
-          success: !columnTest.error,
-          error: columnTest.error,
-          data: columnTest.data,
-          status: columnTest.status,
-        });
+      // PGRST116 means no rows found
+      if (error && error.code === "PGRST116") {
+        return false;
       }
-    } catch (basicError) {
-      console.error("[ProfileService.profileExists] Basic query failed:", basicError);
-    }
 
-    const result = await this.supabase.schema("app").from("profiles").select("id").eq("user_id", userId).single();
-
-    const { data, error } = result;
-
-    console.log("[ProfileService.profileExists] Query result:", {
-      data,
-      error: error ? { code: error.code, message: error.message, details: error.details, hint: error.hint } : null,
-      fullError: error,
-    });
-
-    // PGRST116 means no rows found
-    if (error && error.code === "PGRST116") {
-      console.log("[ProfileService.profileExists] Profile not found (PGRST116)");
-      return false;
-    }
-
-    // PGRST301 means "No suitable key or wrong key type" - can happen in development with RLS disabled
-    // In development, we can treat this as "profile not found"
-    if (error && error.code === "PGRST301") {
-      console.warn(
-        "[ProfileService.profileExists] PGRST301 error (likely RLS disabled in development), assuming profile does not exist"
-      );
-      return false;
-    }
-
-    // Error code 1003 - "No suitable key or wrong key type"
-    if (error && error.code === "1003") {
-      console.warn("[ProfileService.profileExists] Error 1003 - trying alternative query approach");
-
-      // Try without .single() to see if it's a constraint issue
-      try {
-        const altResult = await this.supabase.schema("app").from("profiles").select("id").eq("user_id", userId);
-
-        console.log("[ProfileService.profileExists] Alternative query result:", {
-          data: altResult.data,
-          error: altResult.error,
-          count: altResult.data?.length,
-        });
-
-        return altResult.data && altResult.data.length > 0;
-      } catch (altError) {
-        console.error("[ProfileService.profileExists] Alternative query also failed:", altError);
-        return false; // Assume profile doesn't exist
+      // Handle database errors gracefully in development
+      if (error) {
+        // eslint-disable-next-line no-console
+        console.warn("[ProfileService] Profile check failed, assuming profile does not exist:", error.code);
+        return false;
       }
-    }
 
-    if (error) {
-      console.error("[ProfileService.profileExists] Database error:", error);
-      // For other errors, assume profile doesn't exist rather than failing
-      console.warn("[ProfileService.profileExists] Treating error as 'profile not found'");
+      return data !== null;
+    } catch {
+      // eslint-disable-next-line no-console
+      console.warn("[ProfileService] Profile check error, assuming profile does not exist");
       return false;
     }
-
-    console.log("[ProfileService.profileExists] Profile exists:", !!data);
-    return data !== null;
   }
 
   /**

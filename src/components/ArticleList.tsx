@@ -94,6 +94,7 @@ export default function ArticleList({
         }
         params.set("applyPersonalization", usePersonalization.toString());
 
+        // eslint-disable-next-line no-console
         console.log("[ArticleList] Making API request:", {
           url: `/api/articles?${params}`,
           usePersonalization,
@@ -112,6 +113,7 @@ export default function ArticleList({
             const {
               data: { session },
             } = await supabase.auth.getSession();
+            // eslint-disable-next-line no-console
             console.log("[ArticleList] Session check:", {
               hasSession: !!session,
               hasAccessToken: !!session?.access_token,

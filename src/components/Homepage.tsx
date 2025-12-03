@@ -63,6 +63,7 @@ export default function Homepage({ initialData }: HomepageProps) {
 
   // Automatically enable personalization for authenticated users based on their profile preference
   useEffect(() => {
+    // eslint-disable-next-line no-console
     console.log("[Homepage] Authentication and personalization setup:", {
       isAuthenticated,
       hasUser: !!user,

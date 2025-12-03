@@ -45,6 +45,7 @@ export const POST: APIRoute = async ({ request }) => {
           });
         }
       } catch (profileError) {
+        // eslint-disable-next-line no-console
         console.error("Failed to create profile:", profileError);
       }
     }
@@ -54,6 +55,7 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Ensure user error:", error);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,

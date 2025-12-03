@@ -36,7 +36,9 @@ export const GET: APIRoute = async (context) => {
       (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
       import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
+    // eslint-disable-next-line no-console
     console.log("[API_PROFILE] Production environment detected");
+    // eslint-disable-next-line no-console
     console.log("[API_PROFILE] Environment check:", {
       hasProcess: typeof process !== "undefined",
       hasProcessEnv: typeof process !== "undefined" && !!process.env,
@@ -192,7 +194,9 @@ export const POST: APIRoute = async (context) => {
       (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
       import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
+    // eslint-disable-next-line no-console
     console.log("[API_PROFILE] Production environment detected");
+    // eslint-disable-next-line no-console
     console.log("[API_PROFILE] Environment check:", {
       hasProcess: typeof process !== "undefined",
       hasProcessEnv: typeof process !== "undefined" && !!process.env,
@@ -219,12 +223,14 @@ export const POST: APIRoute = async (context) => {
 
   // Test service role permissions in production (GET endpoint only)
   if (isProduction && context.request.method === "GET") {
+    // eslint-disable-next-line no-console
     console.log("[API_PROFILE_GET] Testing service role permissions...");
 
     try {
       // Test if we can access the database at all
       const testResult = await supabase.schema("app").from("profiles").select("count").limit(1);
 
+      // eslint-disable-next-line no-console
       console.log("[API_PROFILE_GET] Service role test result:", {
         success: !testResult.error,
         error: testResult.error,
@@ -232,6 +238,7 @@ export const POST: APIRoute = async (context) => {
       });
 
       if (testResult.error) {
+        // eslint-disable-next-line no-console
         console.error("[API_PROFILE_GET] Service role cannot access profiles table:", testResult.error);
         return new Response(
           JSON.stringify({
@@ -251,6 +258,7 @@ export const POST: APIRoute = async (context) => {
         );
       }
     } catch (testError) {
+      // eslint-disable-next-line no-console
       console.error("[API_PROFILE_GET] Service role test failed:", testError);
     }
   }
