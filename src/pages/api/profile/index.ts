@@ -8,18 +8,9 @@ import { CreateProfileCommandSchema, UpdateProfileCommandSchema } from "../../..
 export const prerender = false;
 
 /**
- * GET /api/profile
- * Retrieves the authenticated user's profile.
- *
- * Authentication: Required
- *
- * @returns 200 OK with ProfileDto on success
- * @returns 401 Unauthorized if not authenticated
- * @returns 404 Not Found if profile doesn't exist
- * @returns 500 Internal Server Error for unexpected errors
+ * Helper function to get Supabase configuration
  */
-export const GET: APIRoute = async (context) => {
-  // Use environment variables for Supabase client
+function getSupabaseConfig() {
   const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
   let supabaseUrl: string;
   let supabaseKey: string;
@@ -52,12 +43,28 @@ export const GET: APIRoute = async (context) => {
       importMetaEnvKeys: Object.keys(import.meta.env).filter((k) => k.includes("SUPABASE")),
     });
   } else {
-    // In local development, use known working local instance
+    // In local development, use service role key for profile operations
     supabaseUrl = "http://127.0.0.1:18785";
-    supabaseKey =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+    supabaseKey = "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz";
   }
 
+  return { supabaseUrl, supabaseKey };
+}
+
+/**
+ * GET /api/profile
+ * Retrieves the authenticated user's profile.
+ *
+ * Authentication: Required
+ *
+ * @returns 200 OK with ProfileDto on success
+ * @returns 401 Unauthorized if not authenticated
+ * @returns 404 Not Found if profile doesn't exist
+ * @returns 500 Internal Server Error for unexpected errors
+ */
+export const GET: APIRoute = async (context) => {
+  // Use environment variables for Supabase client
+  const { supabaseUrl, supabaseKey } = getSupabaseConfig();
   const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -178,90 +185,9 @@ export const GET: APIRoute = async (context) => {
  */
 export const POST: APIRoute = async (context) => {
   // Use environment variables for Supabase client
-  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
-  let supabaseUrl: string;
-  let supabaseKey: string;
-
-  if (isProduction) {
-    // In production (Cloudflare), use environment variables
-    // Cloudflare Pages uses process.env for server-side environment variables
-    supabaseUrl =
-      (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
-      import.meta.env.SUPABASE_URL ||
-      import.meta.env.PUBLIC_SUPABASE_URL;
-
-    supabaseKey =
-      (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
-      import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    // eslint-disable-next-line no-console
-    console.log("[API_PROFILE] Production environment detected");
-    // eslint-disable-next-line no-console
-    console.log("[API_PROFILE] Environment check:", {
-      hasProcess: typeof process !== "undefined",
-      hasProcessEnv: typeof process !== "undefined" && !!process.env,
-      supabaseUrl: !!supabaseUrl,
-      supabaseKey: !!supabaseKey,
-      supabaseKeyLength: supabaseKey?.length || 0,
-      processEnvKeys:
-        typeof process !== "undefined" && process.env
-          ? Object.keys(process.env).filter((k) => k.includes("SUPABASE"))
-          : [],
-      importMetaEnvKeys: Object.keys(import.meta.env).filter((k) => k.includes("SUPABASE")),
-    });
-  } else {
-    // In local development, use known working local instance
-    supabaseUrl = "http://127.0.0.1:18785";
-    supabaseKey = isProduction
-      ? (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
-        import.meta.env.SUPABASE_SERVICE_ROLE_KEY
-      : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNmi43kdQwgnWNReilDMblYTn_I0";
-  }
-
+  const { supabaseUrl, supabaseKey } = getSupabaseConfig();
   const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(supabaseUrl, supabaseKey);
-
-  // Test service role permissions in production (GET endpoint only)
-  if (isProduction && context.request.method === "GET") {
-    // eslint-disable-next-line no-console
-    console.log("[API_PROFILE_GET] Testing service role permissions...");
-
-    try {
-      // Test if we can access the database at all
-      const testResult = await supabase.schema("app").from("profiles").select("count").limit(1);
-
-      // eslint-disable-next-line no-console
-      console.log("[API_PROFILE_GET] Service role test result:", {
-        success: !testResult.error,
-        error: testResult.error,
-        hasData: !!testResult.data,
-      });
-
-      if (testResult.error) {
-        // eslint-disable-next-line no-console
-        console.error("[API_PROFILE_GET] Service role cannot access profiles table:", testResult.error);
-        return new Response(
-          JSON.stringify({
-            error: "Service role cannot access database. Check Supabase RLS policies and permissions.",
-            code: "SERVICE_ROLE_ERROR",
-            details: {
-              error: testResult.error,
-              suggestion:
-                "Check if RLS policies allow service role access or if the profiles table exists in app schema",
-            },
-            timestamp: new Date().toISOString(),
-          }),
-          {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          }
-        );
-      }
-    } catch (testError) {
-      // eslint-disable-next-line no-console
-      console.error("[API_PROFILE_GET] Service role test failed:", testError);
-    }
-  }
 
   const user = context.locals.user;
 
@@ -439,19 +365,8 @@ export const POST: APIRoute = async (context) => {
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const PATCH: APIRoute = async (context) => {
-  // Always use service role key for API operations that need admin privileges
-  // Hardcoded for testing - environment variables might not be loading properly
-  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
-  const supabaseUrl = isProduction
-    ? (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
-      import.meta.env.SUPABASE_URL ||
-      import.meta.env.PUBLIC_SUPABASE_URL
-    : "http://127.0.0.1:18785";
-  const supabaseKey = isProduction
-    ? (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
-      import.meta.env.SUPABASE_SERVICE_ROLE_KEY
-    : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNmi43kdQwgnWNReilDMblYTn_I0";
-
+  // Use environment variables for Supabase client
+  const { supabaseUrl, supabaseKey } = getSupabaseConfig();
   const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -553,7 +468,6 @@ export const PATCH: APIRoute = async (context) => {
 
     // Update profile using service
     const profileService = new ProfileService(supabase);
-
     const profile = await profileService.updateProfile(user.id, command);
 
     // Log success
@@ -630,19 +544,8 @@ export const PATCH: APIRoute = async (context) => {
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const DELETE: APIRoute = async (context) => {
-  // Always use service role key for API operations that need admin privileges
-  // Hardcoded for testing - environment variables might not be loading properly
-  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
-  const supabaseUrl = isProduction
-    ? (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
-      import.meta.env.SUPABASE_URL ||
-      import.meta.env.PUBLIC_SUPABASE_URL
-    : "http://127.0.0.1:18785";
-  const supabaseKey = isProduction
-    ? (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
-      import.meta.env.SUPABASE_SERVICE_ROLE_KEY
-    : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNmi43kdQwgnWNReilDMblYTn_I0";
-
+  // Use environment variables for Supabase client
+  const { supabaseUrl, supabaseKey } = getSupabaseConfig();
   const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(supabaseUrl, supabaseKey);
 

@@ -37,6 +37,7 @@
     "test:rss-fetch": "node scripts/test-rss-fetch.cjs",
     "fetch:all-rss": "node scripts/fetch-all-rss.cjs",
     "test:delete-and-fetch": "node scripts/test-delete-and-fetch.cjs",
+    "simulate:ai-analysis": "node scripts/simulate-ai-analysis.cjs",
     "docs:api": "npx swagger-ui-serve docs/openapi.yaml",
     "docs:api:validate": "npx swagger-cli validate docs/openapi.yaml",
     "docs:api:build": "npx @redocly/cli build-docs docs/openapi.yaml --output docs/api-docs.html"

@@ -3,12 +3,13 @@ import { useSupabase } from "./SupabaseProvider";
 import ArticleCard from "./ArticleCard";
 import LoadingSkeleton from "./LoadingSkeleton";
 import NoResultsPlaceholder from "./NoResultsPlaceholder";
-import type { GetArticlesQueryParams, ArticleListResponse } from "../types";
+import type { GetArticlesQueryParams, ArticleListResponse, ProfileDto } from "../types";
 
 interface ArticleListProps {
   queryParams?: GetArticlesQueryParams;
   initialData?: ArticleListResponse;
   isPersonalized?: boolean;
+  profile?: ProfileDto | null;
   onStatsUpdate?: (stats: { totalArticles?: number; filteredArticles?: number; blockedItemsCount?: number }) => void;
 }
 
@@ -16,6 +17,7 @@ export default function ArticleList({
   queryParams = { limit: 20, offset: 0, sortBy: "publication_date", sortOrder: "desc" },
   initialData,
   isPersonalized = false,
+  profile,
   onStatsUpdate,
 }: ArticleListProps) {
   const { supabase } = useSupabase();
@@ -201,6 +203,21 @@ export default function ArticleList({
 
     prevPersonalizationRef.current = isPersonalized;
   }, [isPersonalized, fetchArticles]);
+
+  // Watch for profile changes (specifically mood) and refetch when mood changes
+  const prevProfileMoodRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const prevMood = prevProfileMoodRef.current;
+    const currentMood = profile?.mood;
+
+    // Only refetch if mood actually changed and we're in personalized mode
+    if (isPersonalized && prevMood !== undefined && prevMood !== currentMood) {
+      setArticles([]);
+      fetchArticles(0, false);
+    }
+
+    prevProfileMoodRef.current = currentMood;
+  }, [profile?.mood, isPersonalized, fetchArticles]);
 
   const lastArticleRef = useCallback(
     (node: HTMLDivElement | null) => {

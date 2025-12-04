@@ -27,17 +27,20 @@ export const POST: APIRoute = async (context) => {
     let user: UserWithRole | null = context.locals.user;
     let supabase;
 
+    const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
+
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
       // Get expected service role key from environment
-      const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
       const expectedServiceRoleKey = isProduction
         ? (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
           import.meta.env.SUPABASE_SERVICE_ROLE_KEY
         : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
       // Allow any token that looks like a service role key (contains "service_role")
-      if (token === expectedServiceRoleKey || token.includes("service_role")) {
+      // or the actual service role key from development environment
+      const devServiceRoleKey = "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz";
+      if (token === expectedServiceRoleKey || token.includes("service_role") || token === devServiceRoleKey) {
         // Service role authentication successful
         const { createClient } = await import("@supabase/supabase-js");
 

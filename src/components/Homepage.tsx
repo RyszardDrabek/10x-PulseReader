@@ -185,6 +185,7 @@ export default function Homepage({ initialData }: HomepageProps) {
       <ArticleList
         queryParams={queryParams}
         isPersonalized={isPersonalized}
+        profile={profile}
         initialData={initialData}
         onStatsUpdate={setArticleStats}
       />

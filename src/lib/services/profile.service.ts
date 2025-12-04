@@ -252,12 +252,11 @@ export class ProfileService {
    */
   private async profileExists(userId: string): Promise<boolean> {
     try {
-      const { data, error } = await this.supabase
-        .schema("app")
-        .from("profiles")
-        .select("id")
-        .eq("user_id", userId)
-        .single();
+      const result = await this.executeQueryWithSchemaFallback(async (schema) => {
+        return await this.supabase.schema(schema).from("profiles").select("id").eq("user_id", userId).single();
+      });
+
+      const { data, error } = result;
 
       // PGRST116 means no rows found
       if (error && error.code === "PGRST116") {

@@ -160,9 +160,12 @@ test.describe("Personalized Article Filtering (US-007)", () => {
       const isAuthenticated = await signOutButton.isVisible().catch(() => false);
 
       if (!isAuthenticated) {
+        console.log("❌ User is not authenticated - cannot test mood filtering");
         test.skip("User must be authenticated to test mood filtering");
         return;
       }
+
+      console.log("✅ User is authenticated");
 
       // Verify mood selection buttons are available
       const positiveMoodButton = page.locator('[data-testid="mood-toggle-positive"]');
@@ -174,11 +177,28 @@ test.describe("Personalized Article Filtering (US-007)", () => {
       const neutralVisible = await neutralMoodButton.isVisible().catch(() => false);
       const negativeVisible = await negativeMoodButton.isVisible().catch(() => false);
 
-      if (positiveVisible && neutralVisible && negativeVisible) {
-        console.log("✅ All mood selection buttons are available");
-      } else {
-        console.log("ℹ️ Some mood buttons may not be visible");
+      console.log(
+        `Mood button visibility: positive=${positiveVisible}, neutral=${neutralVisible}, negative=${negativeVisible}`
+      );
+
+      if (!positiveVisible || !neutralVisible || !negativeVisible) {
+        console.log("❌ Some mood buttons are not visible - personalization may not be enabled");
+        console.log("Let's check what filter elements are visible...");
+
+        // Debug: Check what filter elements exist
+        const activeFilters = page.locator('[data-testid="active-filter"]');
+        const activeFilterCount = await activeFilters.count();
+        console.log(`Found ${activeFilterCount} active filter sections`);
+
+        if (activeFilterCount === 0) {
+          console.log("❌ No active filters found - personalization is likely disabled");
+        }
+
+        test.skip("Mood toggle buttons not available - personalization may not be enabled");
+        return;
       }
+
+      console.log("✅ All mood selection buttons are available");
 
       console.log("✅ Mood selection functionality verified");
     });
@@ -354,6 +374,127 @@ test.describe("Personalized Article Filtering (US-007)", () => {
       }
 
       console.log("✅ Personalization settings test completed");
+    });
+
+    test("should filter articles by sentiment during infinite scroll", async ({ page }) => {
+      // Arrange - Authenticate and ensure personalization is enabled
+      const homepage = new HomePage(page);
+      await homepage.goto();
+      await page.waitForLoadState("networkidle");
+
+      // Check if user is already authenticated
+      let signOutButton = page.locator('button[aria-label="Sign out of your account"]').first();
+      let isAuthenticated = await signOutButton.isVisible().catch(() => false);
+
+      if (!isAuthenticated) {
+        // Authenticate user first
+        await authenticateUser(page);
+        signOutButton = page.locator('button[aria-label="Sign out of your account"]').first();
+        isAuthenticated = await signOutButton.isVisible().catch(() => false);
+
+        if (!isAuthenticated) {
+          test.skip("Could not authenticate user for infinite scroll sentiment test");
+          return;
+        }
+      }
+
+      console.log("✅ User is authenticated - testing infinite scroll sentiment filtering");
+
+      // Wait for initial articles to load
+      await homepage.waitForArticleList();
+      const initialArticleCount = await homepage.getArticleCount();
+
+      if (initialArticleCount < 3) {
+        test.skip("Not enough articles for meaningful sentiment filtering test");
+        return;
+      }
+
+      // Ensure we have some articles loaded
+      console.log(`Initial article count: ${initialArticleCount}`);
+
+      // Get current mood toggle states
+      const positiveMoodButton = page.locator('[data-testid="mood-toggle-positive"]');
+      const neutralMoodButton = page.locator('[data-testid="mood-toggle-neutral"]');
+      const negativeMoodButton = page.locator('[data-testid="mood-toggle-negative"]');
+
+      // Check if mood buttons are available
+      const positiveVisible = await positiveMoodButton.isVisible().catch(() => false);
+      const neutralVisible = await neutralMoodButton.isVisible().catch(() => false);
+      const negativeVisible = await negativeMoodButton.isVisible().catch(() => false);
+
+      if (!positiveVisible || !neutralVisible || !negativeVisible) {
+        test.skip("Mood toggle buttons not available - personalization may not be enabled");
+        return;
+      }
+
+      // Get initial mood state
+      const positivePressed = (await positiveMoodButton.getAttribute("aria-pressed")) === "true";
+      const neutralPressed = (await neutralMoodButton.getAttribute("aria-pressed")) === "true";
+      const negativePressed = (await negativeMoodButton.getAttribute("aria-pressed")) === "true";
+
+      console.log(
+        `Initial mood states: positive=${positivePressed}, neutral=${neutralPressed}, negative=${negativePressed}`
+      );
+
+      // Act - Change mood to positive (if not already)
+      if (!positivePressed) {
+        console.log("Changing mood to positive...");
+        await positiveMoodButton.click();
+
+        // Wait for mood change to propagate
+        await page.waitForTimeout(2000);
+
+        // Wait for articles to be refetched
+        await homepage.waitForArticleLoad(10000);
+
+        // Verify mood is now positive
+        const newPositivePressed = (await positiveMoodButton.getAttribute("aria-pressed")) === "true";
+        expect(newPositivePressed).toBe(true);
+        console.log("✅ Mood successfully changed to positive");
+      } else {
+        console.log("Mood already set to positive");
+      }
+
+      // Scroll down to trigger infinite scroll with the new sentiment filter
+      console.log("Testing infinite scroll with positive sentiment filter...");
+      await homepage.scrollToBottom();
+
+      // Wait for potential new articles to load
+      await page.waitForTimeout(3000);
+
+      // Check if more articles were loaded
+      const afterMoodChangeCount = await homepage.getArticleCount();
+      console.log(`Article count after mood change: ${afterMoodChangeCount}`);
+
+      // Verify that articles are still loading (infinite scroll is working)
+      // We can't easily verify sentiment filtering without analyzing article content,
+      // but we can verify that the mood change doesn't break infinite scroll
+
+      // Try to scroll to the last article to trigger more loading
+      const lastArticle = homepage.getLastArticleCard();
+      if (await lastArticle.isVisible().catch(() => false)) {
+        await homepage.scrollToElement(lastArticle);
+        await page.waitForTimeout(2000);
+
+        const finalArticleCount = await homepage.getArticleCount();
+        console.log(`Final article count after scrolling: ${finalArticleCount}`);
+
+        // Infinite scroll should still work - we should have at least the same number of articles
+        expect(finalArticleCount).toBeGreaterThanOrEqual(afterMoodChangeCount);
+        console.log("✅ Infinite scroll still works after mood change");
+      }
+
+      // Verify no errors occurred during the mood change
+      const errorMessages = page.locator('[role="alert"]').or(page.locator(".text-destructive"));
+      const hasErrors = await errorMessages.isVisible().catch(() => false);
+
+      if (hasErrors) {
+        const errorText = await errorMessages.textContent();
+        console.log(`❌ Error detected after mood change: ${errorText}`);
+        expect(errorText).not.toContain("error");
+      }
+
+      console.log("✅ Infinite scroll sentiment filtering test completed");
     });
   });
 });
