@@ -39,11 +39,12 @@ export default function Homepage({ initialData }: HomepageProps) {
     if (!user?.id) return;
 
     try {
-      const response = await fetch("/api/profile", {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+        const response = await fetch("/api/profile", {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        });
 
       if (response.ok) {
         const profileData: ProfileDto = await response.json();
@@ -63,15 +64,6 @@ export default function Homepage({ initialData }: HomepageProps) {
 
   // Automatically enable personalization for authenticated users based on their profile preference
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("[Homepage] Authentication and personalization setup:", {
-      isAuthenticated,
-      hasUser: !!user,
-      userId: user?.id,
-      hasProfile: !!profile,
-      personalizationEnabled: profile?.personalizationEnabled,
-      timestamp: new Date().toISOString(),
-    });
 
     if (isAuthenticated && profile) {
       const personalizationValue = profile.personalizationEnabled ?? true;
@@ -85,6 +77,9 @@ export default function Homepage({ initialData }: HomepageProps) {
     } else if (!isAuthenticated) {
       logger.debug("Disabling personalization for unauthenticated user");
       setIsPersonalized(false);
+    } else if (isAuthenticated && !profile) {
+      // Authenticated but profile not loaded yet - default to true for personalization
+      setIsPersonalized(true);
     }
   }, [isAuthenticated, profile, user]);
 
@@ -101,16 +96,44 @@ export default function Homepage({ initialData }: HomepageProps) {
     }
   }, [isAuthenticated, profile, showOnboarding]);
 
-  // Refresh profile data when window regains focus (e.g., returning from settings page)
+  // Refresh profile data when window regains focus or becomes visible (e.g., returning from settings page)
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isAuthenticated && user?.id) {
+        fetchProfile();
+      }
+    };
+
     const handleFocus = () => {
       if (isAuthenticated && user?.id) {
         fetchProfile();
       }
     };
 
+    const handleStorageChange = (e: StorageEvent) => {
+      // Listen for profile changes from other tabs/windows
+      if (e.key === 'profile-updated' && isAuthenticated && user?.id) {
+        // eslint-disable-next-line no-console
+        console.log("[Homepage] Profile update detected from another tab, refetching...");
+        fetchProfile();
+      }
+    };
+
+    const handleProfileUpdate = (e: CustomEvent<ProfileDto>) => {
+      // Listen for profile updates from the same tab (e.g., from settings page)
+      setProfile(e.detail);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("profileUpdated", handleProfileUpdate as EventListener);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("profileUpdated", handleProfileUpdate as EventListener);
+    };
   }, [isAuthenticated, user?.id, fetchProfile]);
 
   const handleOnboardingComplete = useCallback(
@@ -168,6 +191,7 @@ export default function Homepage({ initialData }: HomepageProps) {
       blockedItemsCount: profile?.blocklist?.length || 0,
     };
   };
+
 
   return (
     <div className="min-h-screen">

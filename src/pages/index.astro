@@ -41,12 +41,28 @@ if (supabase) {
       hasUser: !!userId,
       userId: userId,
     });
+
+    // Get user profile to check personalization settings
+    let shouldApplyPersonalization = false;
+    if (userId) {
+      try {
+        const userProfile = await articleService.getProfile(userId);
+        shouldApplyPersonalization = userProfile?.personalizationEnabled ?? true;
+      } catch (profileError) {
+        // If profile fetch fails, default to personalization enabled (matches ArticleService behavior)
+        // eslint-disable-next-line no-console
+        console.warn("[index.astro] Failed to fetch user profile:", profileError);
+        shouldApplyPersonalization = true;
+      }
+    }
+
     initialArticles = await articleService.getArticles(
       {
         limit: 20,
         offset: 0,
         sortBy: "publication_date",
         sortOrder: "desc",
+        applyPersonalization: shouldApplyPersonalization,
       },
       userId
     );

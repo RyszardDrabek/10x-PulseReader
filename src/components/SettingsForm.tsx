@@ -127,6 +127,12 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         const updatedProfile: ProfileDto = await response.json();
         setProfile(updatedProfile);
 
+        // Notify current tab and other tabs/windows about the profile update
+        window.localStorage.setItem('profile-updated', Date.now().toString());
+        // Dispatch a custom event for the current tab
+        window.dispatchEvent(new CustomEvent('profileUpdated', { detail: updatedProfile }));
+        window.localStorage.removeItem('profile-updated');
+
         toast.success("Settings updated", {
           description: "Your preferences have been saved.",
         });

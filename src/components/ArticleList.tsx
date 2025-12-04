@@ -20,7 +20,7 @@ export default function ArticleList({
   profile,
   onStatsUpdate,
 }: ArticleListProps) {
-  const { supabase } = useSupabase();
+  const { supabase, user } = useSupabase();
 
   // Check if we have valid initial data (with articles)
   const hasInitialData = initialData && initialData.data && initialData.data.length > 0;
@@ -33,6 +33,7 @@ export default function ArticleList({
     initialData ? initialData.pagination.offset + initialData.pagination.limit : 0
   );
   const [usePersonalization, setUsePersonalization] = useState(isPersonalized);
+  const [localProfile, setLocalProfile] = useState<ProfileDto | null>(profile);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const prevPersonalizationRef = useRef<boolean | undefined>(undefined);
   const hasMoreRef = useRef(hasMore);
@@ -94,15 +95,51 @@ export default function ArticleList({
         if (queryParams.sortOrder) {
           params.set("sortOrder", queryParams.sortOrder);
         }
-        params.set("applyPersonalization", usePersonalization.toString());
+        // Fetch the latest profile for personalization decisions
+        let currentProfile = profile;
+        if (user?.id) {
+          try {
+            const response = await fetch("/api/profile", {
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+            });
+            if (response.ok) {
+              currentProfile = await response.json();
+            }
+          } catch (error) {
+            // If profile fetch fails, keep using the prop value
+          }
+        }
+
+        // Fetch the latest profile to ensure we have the most current personalization setting
+        let shouldApplyPersonalization = false;
+        if (user?.id) {
+          try {
+            const response = await fetch("/api/profile", {
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+            });
+            if (response.ok) {
+              const currentProfile = await response.json();
+              shouldApplyPersonalization = currentProfile?.personalizationEnabled ?? false;
+            }
+          } catch (error) {
+            // On error, fall back to the prop value
+            shouldApplyPersonalization = isPersonalized;
+          }
+        }
+        params.set("applyPersonalization", shouldApplyPersonalization.toString());
 
         // eslint-disable-next-line no-console
         console.log("[ArticleList] Making API request:", {
           url: `/api/articles?${params}`,
-          usePersonalization,
+          applyPersonalization: params.get("applyPersonalization"),
           limit: queryParams.limit,
           offset: offset,
-          hasSupabase: !!supabase,
         });
 
         const headers: Record<string, string> = {
@@ -148,7 +185,11 @@ export default function ArticleList({
           if (append) {
             // Only append if we have new data
             if (data.data && data.data.length > 0) {
-              return [...prev, ...data.data];
+              // Create a set of existing article IDs for deduplication
+              const existingIds = new Set(prev.map(article => article.id));
+              // Filter out articles that are already in the list
+              const newArticles = data.data.filter(article => !existingIds.has(article.id));
+              return [...prev, ...newArticles];
             }
             // If no new data but append was requested, keep previous articles
             return prev;
@@ -176,8 +217,27 @@ export default function ArticleList({
         setLoading(false);
       }
     },
-    [queryParams, usePersonalization, supabase, onStatsUpdate]
+    [queryParams, isPersonalized, supabase, onStatsUpdate, localProfile, user?.id]
   );
+
+  // Fetch profile if we don't have it but need personalization data
+  const fetchProfileIfNeeded = useCallback(async () => {
+    if (user?.id && !localProfile) {
+      try {
+        const response = await fetch("/api/profile", {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (response.ok) {
+          const profileData = await response.json();
+          setLocalProfile(profileData);
+        }
+      } catch (error) {
+        // Ignore fetch errors - we'll use fallback
+      }
+    }
+  }, [user?.id, localProfile]);
 
   // Initial fetch if no valid initialData (empty or missing)
   useEffect(() => {
@@ -186,38 +246,54 @@ export default function ArticleList({
     }
   }, [hasInitialData, fetchArticles]);
 
+  // Always keep usePersonalization in sync with isPersonalized prop
+  // But only refetch if personalization actually changed from a previous value
   useEffect(() => {
     const prevPersonalization = prevPersonalizationRef.current;
 
-    // Only update if personalization actually changed
-    if (prevPersonalization !== isPersonalized) {
-      setUsePersonalization(isPersonalized);
+    // Always update the state to stay in sync
+    setUsePersonalization(isPersonalized);
 
-      // Only refetch if personalization actually changed from a previous value
-      // Don't refetch on initial render when prevPersonalization is undefined
-      if (prevPersonalization !== undefined) {
-        setArticles([]);
-        fetchArticles(0, false);
-      }
+    // Only refetch if personalization actually changed from a previous value
+    // Don't refetch on initial render when prevPersonalization is undefined
+    if (prevPersonalization !== undefined && prevPersonalization !== isPersonalized) {
+      setArticles([]);
+      fetchArticles(0, false);
     }
 
     prevPersonalizationRef.current = isPersonalized;
   }, [isPersonalized, fetchArticles]);
 
-  // Watch for profile changes (specifically mood) and refetch when mood changes
-  const prevProfileMoodRef = useRef<string | null | undefined>(undefined);
+  // Update local profile when prop changes
   useEffect(() => {
-    const prevMood = prevProfileMoodRef.current;
-    const currentMood = profile?.mood;
+    // eslint-disable-next-line no-console
+    console.log("[ArticleList] Profile prop updated:", {
+      hasProfile: !!profile,
+      personalizationEnabled: profile?.personalizationEnabled,
+      mood: profile?.mood,
+    });
+    setLocalProfile(profile);
+  }, [profile]);
 
-    // Only refetch if mood actually changed and we're in personalized mode
-    if (isPersonalized && prevMood !== undefined && prevMood !== currentMood) {
+  // Watch for profile changes and refetch when profile is updated
+  const prevProfileRef = useRef<ProfileDto | null | undefined>(undefined);
+  useEffect(() => {
+    const prevProfile = prevProfileRef.current;
+    const currentProfile = localProfile;
+
+    // Refetch if profile changed (mood, personalizationEnabled, or blocklist changed)
+    const profileChanged = prevProfile !== currentProfile &&
+      (prevProfile?.mood !== currentProfile?.mood ||
+       prevProfile?.personalizationEnabled !== currentProfile?.personalizationEnabled ||
+       JSON.stringify(prevProfile?.blocklist) !== JSON.stringify(currentProfile?.blocklist));
+
+    if (profileChanged) {
       setArticles([]);
       fetchArticles(0, false);
     }
 
-    prevProfileMoodRef.current = currentMood;
-  }, [profile?.mood, isPersonalized, fetchArticles]);
+    prevProfileRef.current = currentProfile;
+  }, [localProfile]); // Remove fetchArticles from deps to avoid circular dependency
 
   const lastArticleRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -252,10 +328,11 @@ export default function ArticleList({
   if (isEmpty) {
     return (
       <NoResultsPlaceholder
-        filters={{ personalization: usePersonalization, blockedItemsCount: 0 }}
+        filters={{ personalization: profile?.personalizationEnabled ?? isPersonalized, blockedItemsCount: 0 }}
         isAuthenticated={!!supabase.user}
         onAdjustFilters={() => {
-          setUsePersonalization(false);
+          // Note: This callback would need to be updated in the parent component
+          // For now, we'll just refetch without personalization
           fetchArticles(0, false);
         }}
       />

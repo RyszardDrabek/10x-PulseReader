@@ -128,10 +128,10 @@ export class ArticleService {
    *   - PROFILE_NOT_FOUND: User profile not found when personalization requested
    */
   async getArticles(params: GetArticlesQueryParams, userId?: string): Promise<ArticleListResponse> {
-    // For debugging - ensure personalization is disabled for guests
+    // Ensure personalization is disabled for non-authenticated users
     if (!userId && params.applyPersonalization) {
       // eslint-disable-next-line no-console
-      console.warn("[ArticleService] Personalization requested for guest user, disabling");
+      console.warn("[ArticleService] Personalization requested for non-authenticated user, disabling");
       params.applyPersonalization = false;
     }
 
@@ -141,12 +141,15 @@ export class ArticleService {
       userProfile = await this.getProfile(userId);
     }
 
-    // Automatically apply personalization for authenticated users if enabled in their profile
-    // Only override if applyPersonalization is not explicitly set to false
-    if (userId && userProfile && params.applyPersonalization !== false) {
-      const shouldApplyPersonalization = userProfile.personalizationEnabled ?? true;
-      if (shouldApplyPersonalization && params.applyPersonalization === undefined) {
-        params.applyPersonalization = true;
+    // Check if personalization should be applied based on user profile
+    if (userId && userProfile) {
+      const userWantsPersonalization = userProfile.personalizationEnabled ?? true;
+      if (params.applyPersonalization === undefined) {
+        // If not explicitly set, use user's preference
+        params.applyPersonalization = userWantsPersonalization;
+      } else if (params.applyPersonalization === true && !userWantsPersonalization) {
+        // If frontend sent true but user has it disabled, respect user's setting
+        params.applyPersonalization = false;
       }
     }
 
@@ -235,6 +238,11 @@ export class ArticleService {
     const sortField = params.sortBy || "publication_date";
     const ascending = params.sortOrder === "asc";
     query = query.order(sortField, { ascending });
+
+    // Add secondary sort by ID for consistent ordering when primary sort field has ties
+    if (sortField !== "id") {
+      query = query.order("id", { ascending });
+    }
 
     // Apply pagination
     query = query.range(offset, offset + fetchLimit - 1);
@@ -847,7 +855,7 @@ export class ArticleService {
    * @param userId - UUID of the user
    * @returns Profile entity or null if not found
    */
-  private async getProfile(userId: string): Promise<ProfileEntity | null> {
+  async getProfile(userId: string): Promise<ProfileEntity | null> {
     const { data, error } = await this.supabase
       .schema("app")
       .from("profiles")
@@ -864,6 +872,7 @@ export class ArticleService {
       userId: data.user_id,
       mood: data.mood,
       blocklist: data.blocklist || [],
+      personalizationEnabled: data.personalization_enabled ?? true,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
