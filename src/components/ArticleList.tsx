@@ -241,7 +241,6 @@ export default function ArticleList({
     }
   }, [hasInitialData, fetchArticles]);
 
-
   // Update local profile when prop changes
   useEffect(() => {
     // eslint-disable-next-line no-console
