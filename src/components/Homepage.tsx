@@ -39,16 +39,24 @@ export default function Homepage({ initialData }: HomepageProps) {
     if (!user?.id) return;
 
     try {
-        const response = await fetch("/api/profile", {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
+      logger.debug("Fetching profile for user", { userId: user.id });
+      const response = await fetch("/api/profile", {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
 
       if (response.ok) {
         const profileData: ProfileDto = await response.json();
+        logger.debug("Profile fetched successfully", {
+          userId: user.id,
+          personalizationEnabled: profileData.personalizationEnabled,
+          mood: profileData.mood,
+        });
         setProfile(profileData);
+      } else {
+        logger.warn("Profile fetch failed", { status: response.status, userId: user.id });
       }
     } catch (error) {
       logger.error("Failed to fetch profile", error);
@@ -64,7 +72,6 @@ export default function Homepage({ initialData }: HomepageProps) {
 
   // Automatically enable personalization for authenticated users based on their profile preference
   useEffect(() => {
-
     if (isAuthenticated && profile) {
       const personalizationValue = profile.personalizationEnabled ?? true;
       logger.debug("Setting personalization for authenticated user", {
@@ -99,7 +106,7 @@ export default function Homepage({ initialData }: HomepageProps) {
   // Refresh profile data when window regains focus or becomes visible (e.g., returning from settings page)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isAuthenticated && user?.id) {
+      if (document.visibilityState === "visible" && isAuthenticated && user?.id) {
         fetchProfile();
       }
     };
@@ -112,7 +119,7 @@ export default function Homepage({ initialData }: HomepageProps) {
 
     const handleStorageChange = (e: StorageEvent) => {
       // Listen for profile changes from other tabs/windows
-      if (e.key === 'profile-updated' && isAuthenticated && user?.id) {
+      if (e.key === "profile-updated" && isAuthenticated && user?.id) {
         // eslint-disable-next-line no-console
         console.log("[Homepage] Profile update detected from another tab, refetching...");
         fetchProfile();
@@ -191,7 +198,6 @@ export default function Homepage({ initialData }: HomepageProps) {
       blockedItemsCount: profile?.blocklist?.length || 0,
     };
   };
-
 
   return (
     <div className="min-h-screen">

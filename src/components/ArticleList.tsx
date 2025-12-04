@@ -32,10 +32,8 @@ export default function ArticleList({
   const [currentOffset, setCurrentOffset] = useState(
     initialData ? initialData.pagination.offset + initialData.pagination.limit : 0
   );
-  const [usePersonalization, setUsePersonalization] = useState(isPersonalized);
   const [localProfile, setLocalProfile] = useState<ProfileDto | null>(profile);
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const prevPersonalizationRef = useRef<boolean | undefined>(undefined);
   const hasMoreRef = useRef(hasMore);
   const loadingRef = useRef(loading);
   const currentOffsetRef = useRef(currentOffset);
@@ -95,9 +93,8 @@ export default function ArticleList({
         if (queryParams.sortOrder) {
           params.set("sortOrder", queryParams.sortOrder);
         }
-        // Fetch the latest profile for personalization decisions
-        let currentProfile = profile;
-        if (user?.id) {
+        // Use the profile prop if available, otherwise fetch it
+        if (user?.id && !profile) {
           try {
             const response = await fetch("/api/profile", {
               headers: {
@@ -106,17 +103,19 @@ export default function ArticleList({
               credentials: "include",
             });
             if (response.ok) {
-              currentProfile = await response.json();
+              await response.json(); // Profile fetched but not needed here
             }
-          } catch (error) {
-            // If profile fetch fails, keep using the prop value
+          } catch {
+            // If profile fetch fails, keep using the prop value (null)
           }
         }
 
-        // Fetch the latest profile to ensure we have the most current personalization setting
+        // Always fetch the latest profile for personalization decisions to ensure consistency
         let shouldApplyPersonalization = false;
         if (user?.id) {
           try {
+            // eslint-disable-next-line no-console
+            console.log("[ArticleList] Fetching latest profile for personalization decision:", { offset });
             const response = await fetch("/api/profile", {
               headers: {
                 "Content-Type": "application/json",
@@ -126,12 +125,27 @@ export default function ArticleList({
             if (response.ok) {
               const currentProfile = await response.json();
               shouldApplyPersonalization = currentProfile?.personalizationEnabled ?? false;
+              // eslint-disable-next-line no-console
+              console.log("[ArticleList] Latest profile fetched for personalization:", {
+                personalizationEnabled: currentProfile?.personalizationEnabled,
+                shouldApplyPersonalization,
+                offset,
+              });
+            } else {
+              // eslint-disable-next-line no-console
+              console.log("[ArticleList] Profile fetch failed:", { status: response.status, offset });
             }
           } catch (error) {
-            // On error, fall back to the prop value
-            shouldApplyPersonalization = isPersonalized;
+            // On error, personalization should be disabled for safety
+            shouldApplyPersonalization = false;
+            // eslint-disable-next-line no-console
+            console.log("[ArticleList] Failed to fetch profile, disabling personalization:", {
+              offset,
+              error: error.message,
+            });
           }
         }
+        // For non-authenticated users, personalization is always false
         params.set("applyPersonalization", shouldApplyPersonalization.toString());
 
         // eslint-disable-next-line no-console
@@ -186,9 +200,9 @@ export default function ArticleList({
             // Only append if we have new data
             if (data.data && data.data.length > 0) {
               // Create a set of existing article IDs for deduplication
-              const existingIds = new Set(prev.map(article => article.id));
+              const existingIds = new Set(prev.map((article) => article.id));
               // Filter out articles that are already in the list
-              const newArticles = data.data.filter(article => !existingIds.has(article.id));
+              const newArticles = data.data.filter((article) => !existingIds.has(article.id));
               return [...prev, ...newArticles];
             }
             // If no new data but append was requested, keep previous articles
@@ -217,27 +231,8 @@ export default function ArticleList({
         setLoading(false);
       }
     },
-    [queryParams, isPersonalized, supabase, onStatsUpdate, localProfile, user?.id]
+    [queryParams, supabase, onStatsUpdate, user?.id, profile]
   );
-
-  // Fetch profile if we don't have it but need personalization data
-  const fetchProfileIfNeeded = useCallback(async () => {
-    if (user?.id && !localProfile) {
-      try {
-        const response = await fetch("/api/profile", {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-        if (response.ok) {
-          const profileData = await response.json();
-          setLocalProfile(profileData);
-        }
-      } catch (error) {
-        // Ignore fetch errors - we'll use fallback
-      }
-    }
-  }, [user?.id, localProfile]);
 
   // Initial fetch if no valid initialData (empty or missing)
   useEffect(() => {
@@ -246,23 +241,6 @@ export default function ArticleList({
     }
   }, [hasInitialData, fetchArticles]);
 
-  // Always keep usePersonalization in sync with isPersonalized prop
-  // But only refetch if personalization actually changed from a previous value
-  useEffect(() => {
-    const prevPersonalization = prevPersonalizationRef.current;
-
-    // Always update the state to stay in sync
-    setUsePersonalization(isPersonalized);
-
-    // Only refetch if personalization actually changed from a previous value
-    // Don't refetch on initial render when prevPersonalization is undefined
-    if (prevPersonalization !== undefined && prevPersonalization !== isPersonalized) {
-      setArticles([]);
-      fetchArticles(0, false);
-    }
-
-    prevPersonalizationRef.current = isPersonalized;
-  }, [isPersonalized, fetchArticles]);
 
   // Update local profile when prop changes
   useEffect(() => {
@@ -271,6 +249,7 @@ export default function ArticleList({
       hasProfile: !!profile,
       personalizationEnabled: profile?.personalizationEnabled,
       mood: profile?.mood,
+      timestamp: new Date().toISOString(),
     });
     setLocalProfile(profile);
   }, [profile]);
@@ -282,10 +261,11 @@ export default function ArticleList({
     const currentProfile = localProfile;
 
     // Refetch if profile changed (mood, personalizationEnabled, or blocklist changed)
-    const profileChanged = prevProfile !== currentProfile &&
+    const profileChanged =
+      prevProfile !== currentProfile &&
       (prevProfile?.mood !== currentProfile?.mood ||
-       prevProfile?.personalizationEnabled !== currentProfile?.personalizationEnabled ||
-       JSON.stringify(prevProfile?.blocklist) !== JSON.stringify(currentProfile?.blocklist));
+        prevProfile?.personalizationEnabled !== currentProfile?.personalizationEnabled ||
+        JSON.stringify(prevProfile?.blocklist) !== JSON.stringify(currentProfile?.blocklist));
 
     if (profileChanged) {
       setArticles([]);
@@ -293,7 +273,21 @@ export default function ArticleList({
     }
 
     prevProfileRef.current = currentProfile;
-  }, [localProfile]); // Remove fetchArticles from deps to avoid circular dependency
+  }, [localProfile, fetchArticles]);
+
+  // Watch for personalization changes and refetch when toggled
+  const prevPersonalizationRef = useRef<boolean>(isPersonalized);
+  useEffect(() => {
+    const prevPersonalization = prevPersonalizationRef.current;
+
+    // Refetch if personalization was toggled
+    if (prevPersonalization !== isPersonalized) {
+      setArticles([]);
+      fetchArticles(0, false);
+    }
+
+    prevPersonalizationRef.current = isPersonalized;
+  }, [isPersonalized, fetchArticles]);
 
   const lastArticleRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -309,8 +303,15 @@ export default function ArticleList({
         observerRef.current = new IntersectionObserver(
           (entries) => {
             // Check conditions using refs to get latest values
-            if (entries[0].isIntersecting && hasMoreRef.current && !loadingRef.current) {
+            // Only trigger infinite scroll if we have a profile (for authenticated users) or if user is not authenticated
+            const shouldTrigger = entries[0].isIntersecting && hasMoreRef.current && !loadingRef.current;
+            const hasProfileOrNotNeeded = !user?.id || localProfile !== null;
+
+            if (shouldTrigger && hasProfileOrNotNeeded) {
               fetchArticles(currentOffsetRef.current, true);
+            } else if (shouldTrigger && user?.id && localProfile === null) {
+              // eslint-disable-next-line no-console
+              console.log("[ArticleList] Delaying infinite scroll until profile loads");
             }
           },
           {
@@ -321,7 +322,7 @@ export default function ArticleList({
         observerRef.current.observe(node);
       }
     },
-    [fetchArticles]
+    [fetchArticles, user?.id, localProfile]
   );
 
   const isEmpty = articles.length === 0 && !loading && !error;
