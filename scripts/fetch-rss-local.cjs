@@ -19,22 +19,23 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1);
 }
 
+const { fetch, AbortSignal } = globalThis;
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // RSS Sources to fetch from
 const RSS_SOURCES = [
   {
     name: "BBC News - World",
-    url: "http://feeds.bbci.co.uk/news/world/rss.xml"
+    url: "http://feeds.bbci.co.uk/news/world/rss.xml",
   },
   {
     name: "Reuters - World News",
-    url: "https://feeds.reuters.com/Reuters/worldNews"
+    url: "https://feeds.reuters.com/Reuters/worldNews",
   },
   {
     name: "The Guardian - World",
-    url: "https://www.theguardian.com/world/rss"
-  }
+    url: "https://www.theguardian.com/world/rss",
+  },
 ];
 
 async function fetchRssFeed(url) {
@@ -73,8 +74,8 @@ async function fetchRssFeed(url) {
 
       if (titleMatch && linkMatch) {
         items.push({
-          title: titleMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim(),
-          description: descriptionMatch ? descriptionMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim() : null,
+          title: titleMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1").trim(),
+          description: descriptionMatch ? descriptionMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/g, "$1").trim() : null,
           link: linkMatch[1].trim(),
           publicationDate: pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString(),
         });
@@ -92,7 +93,8 @@ async function saveArticlesToDatabase(sourceId, articles) {
   let created = 0;
   let skipped = 0;
 
-  for (const article of articles.slice(0, 10)) { // Limit to 10 articles per source
+  for (const article of articles.slice(0, 10)) {
+    // Limit to 10 articles per source
     try {
       // Check if article already exists
       const { data: existingArticle } = await supabase
@@ -108,17 +110,14 @@ async function saveArticlesToDatabase(sourceId, articles) {
       }
 
       // Create new article
-      const { error } = await supabase
-        .schema("app")
-        .from("articles")
-        .insert({
-          source_id: sourceId,
-          title: article.title,
-          description: article.description,
-          link: article.link,
-          publication_date: article.publicationDate,
-          sentiment: null, // Will be analyzed later
-        });
+      const { error } = await supabase.schema("app").from("articles").insert({
+        source_id: sourceId,
+        title: article.title,
+        description: article.description,
+        link: article.link,
+        publication_date: article.publicationDate,
+        sentiment: null, // Will be analyzed later
+      });
 
       if (error) {
         console.error(`❌ Failed to save article "${article.title}": ${error.message}`);

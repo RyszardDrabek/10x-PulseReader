@@ -574,9 +574,7 @@ test.describe("Personalized Article Filtering (US-007)", () => {
       }
 
       // Ensure personalization is ON by toggling it
-      const currentState = await personalizationToggle.getAttribute("data-state");
-      const isCurrentlyOn = currentState === "checked";
-
+      await personalizationToggle.getAttribute("data-state");
       console.log("Forcing personalization toggle to ensure event fires...");
       await personalizationToggle.click();
       await page.waitForTimeout(2000);
@@ -595,7 +593,7 @@ test.describe("Personalized Article Filtering (US-007)", () => {
 
       // Verify the profile was actually updated by checking the API
       console.log("🔍 Checking profile API to verify personalization setting...");
-      const profileResponse = await page.request.get('/api/profile');
+      const profileResponse = await page.request.get("/api/profile");
       const profileData = await profileResponse.json();
       console.log(`Profile API response - personalizationEnabled: ${profileData.personalizationEnabled}`);
       expect(profileData.personalizationEnabled).toBe(true);
@@ -612,15 +610,14 @@ test.describe("Personalized Article Filtering (US-007)", () => {
 
       // Monitor network requests for infinite scroll
       const apiRequests: string[] = [];
-      page.on('request', request => {
+      page.on("request", (request) => {
         const url = request.url();
-        if (url.includes('/api/articles') && url.includes('offset=')) {
+        if (url.includes("/api/articles") && url.includes("offset=")) {
           // This is an infinite scroll request
           apiRequests.push(url);
           console.log(`📡 Infinite scroll request: ${url}`);
         }
       });
-
 
       // Scroll to trigger infinite scroll
       console.log("🔄 Scrolling to trigger infinite scroll with personalization ON...");
@@ -647,9 +644,13 @@ test.describe("Personalized Article Filtering (US-007)", () => {
           // Note: We can't easily verify sentiment filtering without inspecting article content,
           // but the reduced count (15 vs 20) in other tests shows filtering is working
         } else {
-          console.log("ℹ️ No additional articles loaded - this is correct when personalization filtering reduces available articles");
+          console.log(
+            "ℹ️ No additional articles loaded - this is correct when personalization filtering reduces available articles"
+          );
           console.log("   With personalization ON, only articles matching the user's mood are shown");
-          console.log("   If there are fewer filtered articles than the page size, infinite scroll correctly loads 0 additional articles");
+          console.log(
+            "   If there are fewer filtered articles than the page size, infinite scroll correctly loads 0 additional articles"
+          );
         }
       } else {
         console.log("ℹ️ No infinite scroll requests were made - may have reached end of articles");
