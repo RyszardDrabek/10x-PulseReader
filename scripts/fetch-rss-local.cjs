@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /* eslint-env node */
+/* globals fetch, AbortSignal */
 
 /**
  * RSS Fetch Local Script for PulseReader

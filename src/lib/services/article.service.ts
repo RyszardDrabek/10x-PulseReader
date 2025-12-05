@@ -151,7 +151,7 @@ export class ArticleService {
         // If frontend sent true but user has it disabled, respect user's setting
         params.applyPersonalization = false;
       } else if (params.applyPersonalization === false && userWantsPersonalization) {
-        // If frontend sent true but user has it disabled, respect user's setting
+        // If frontend sent false but user has it enabled, respect user's setting
         params.applyPersonalization = true;
       }
     }

@@ -44,7 +44,6 @@ export default function SupabaseProvider({ children, initialSession = null, conf
   const [session, setSession] = useState<Session | null>(initialSession);
   const [user, setUser] = useState<User | null>(initialSession?.user ?? null);
   const [loading, setLoading] = useState(!initialSession); // Start loaded if we have initial session
-  const hasServerSession = !!initialSession;
 
   // Initialize Supabase client on client side only
   useEffect(() => {
@@ -86,36 +85,39 @@ export default function SupabaseProvider({ children, initialSession = null, conf
 
     let mounted = true;
 
-    // Get initial session
-    const getInitialSession = async () => {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
-
-      if (error) {
-        // eslint-disable-next-line no-console
-        console.error("Error getting client session:", error);
-      }
-      if (mounted) {
-        // Only update if the session is different from what we already have
-        // This prevents unnecessary state updates when session is already null
-        if (session !== null || user !== null) {
-          setSession(session);
-          setUser(session?.user ?? null);
-        }
-        setLoading(false);
-      }
-    };
-
-    if (!initialSession) {
-      getInitialSession();
-    } else {
-      // For initialSession, we trust the server-provided session
-      // Don't make async calls that might fail - just use the provided session
+    if (initialSession) {
+      // We have a server session - trust it and set it immediately
+      // This ensures the UI shows the authenticated state immediately
+      // eslint-disable-next-line no-console
+      console.log("[SupabaseProvider] Setting initial server session:", {
+        hasSession: !!initialSession,
+        userId: initialSession?.user?.id,
+        userEmail: initialSession?.user?.email,
+        expiresAt: initialSession?.expires_at,
+      });
       setSession(initialSession);
       setUser(initialSession?.user ?? null);
       setLoading(false);
+    } else {
+      // No server session provided, try to get it from client
+      const getClientSession = async () => {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) {
+          // eslint-disable-next-line no-console
+          console.error("Error getting client session:", error);
+        }
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      };
+
+      getClientSession();
     }
 
     // Listen for auth changes
@@ -123,16 +125,12 @@ export default function SupabaseProvider({ children, initialSession = null, conf
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (mounted) {
-        // Don't override server session with client events
-        if (!hasServerSession) {
-          setSession(session);
-          setUser(session?.user ?? null);
-        }
+        setSession(session);
+        setUser(session?.user ?? null);
         setLoading(false);
 
         // Reload page on auth state changes to sync server/client state
-        // But skip reload if we already have a server session (properly synchronized)
-        if ((event === "SIGNED_IN" || event === "SIGNED_OUT") && !hasServerSession) {
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
           if (typeof window !== "undefined") {
             window.location.reload();
           }
@@ -144,7 +142,7 @@ export default function SupabaseProvider({ children, initialSession = null, conf
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase, initialSession, hasServerSession, user]);
+  }, [supabase, initialSession]);
 
   const value: SupabaseContextType = {
     supabase,

@@ -115,10 +115,10 @@ try {
   console.error("[index.astro] Failed to get session:", error);
 }
 
-// Pass environment variables and session to client components
+// Pass the same Supabase config used for server-side operations to client components
 const supabaseConfig = {
-  url: import.meta.env.PUBLIC_SUPABASE_URL || import.meta.env.SUPABASE_URL,
-  key: import.meta.env.PUBLIC_SUPABASE_KEY || import.meta.env.SUPABASE_KEY,
+  url: supabaseUrl,
+  key: supabaseKey,
 };
 ---
 
