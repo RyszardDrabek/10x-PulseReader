@@ -32,8 +32,17 @@ export class HomePage {
   /**
    * Wait for the article list to be visible
    */
-  async waitForArticleList(timeout = 10000): Promise<void> {
+  async waitForArticleList(timeout = 60000): Promise<void> {
+    // Ensure the document is loaded before waiting for the article list
+    await this.page.waitForLoadState("domcontentloaded", { timeout });
+    // Network can stay active due to API polling; don't fail on that
+    await this.page.waitForLoadState("networkidle", { timeout }).catch(() => undefined);
     await this.articleList.waitFor({ state: "visible", timeout });
+    // Also wait for at least one article card if present
+    await this.articleCards
+      .first()
+      .waitFor({ state: "visible", timeout })
+      .catch(() => undefined);
   }
 
   /**

@@ -85,57 +85,108 @@ export default function SupabaseProvider({ children, initialSession = null, conf
 
     let mounted = true;
 
-    if (initialSession) {
-      // We have a server session - trust it and set it immediately
-      // This ensures the UI shows the authenticated state immediately
+    const syncSession = async () => {
       // eslint-disable-next-line no-console
-      console.log("[SupabaseProvider] Setting initial server session:", {
-        hasSession: !!initialSession,
-        userId: initialSession?.user?.id,
-        userEmail: initialSession?.user?.email,
-        expiresAt: initialSession?.expires_at,
+      console.log("[SupabaseProvider] syncSession start", {
+        hasInitialSession: !!initialSession,
+        hasSupabaseClient: !!supabase,
       });
-      setSession(initialSession);
-      setUser(initialSession?.user ?? null);
-      setLoading(false);
-    } else {
-      // No server session provided, try to get it from client
-      const getClientSession = async () => {
+
+      if (initialSession) {
+        // We have a server session - trust it and set it immediately
+        // This ensures the UI shows the authenticated state immediately
+        // eslint-disable-next-line no-console
+        console.log("[SupabaseProvider] Setting initial server session:", {
+          hasSession: !!initialSession,
+          userId: initialSession?.user?.id,
+          userEmail: initialSession?.user?.email,
+          expiresAt: initialSession?.expires_at,
+        });
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        setLoading(false);
+
+        // Persist the server session into the browser so onAuthStateChange sees it
+        if (initialSession.access_token && initialSession.refresh_token) {
+          try {
+            await supabase.auth.setSession({
+              access_token: initialSession.access_token,
+              refresh_token: initialSession.refresh_token,
+            });
+            const {
+              data: { user: verifiedUser },
+            } = await supabase.auth.getUser();
+            setUser(verifiedUser ?? initialSession.user ?? null);
+            // eslint-disable-next-line no-console
+            console.log("[SupabaseProvider] Verified user after setSession", {
+              verifiedUserId: verifiedUser?.id,
+              hasAccessToken: !!initialSession.access_token,
+            });
+          } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error("[SupabaseProvider] Failed to persist initial session:", error);
+          }
+        }
+        return;
+      }
+
+      // No server session provided, verify client user against auth server
+      const {
+        data: { user: verifiedUser },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error) {
+        // eslint-disable-next-line no-console
+        console.error("Error getting client user:", error);
+      }
+
+      if (mounted) {
+        setUser(verifiedUser ?? null);
         const {
           data: { session },
-          error,
         } = await supabase.auth.getSession();
+        setSession(session);
+        setLoading(false);
+        // eslint-disable-next-line no-console
+        console.log("[SupabaseProvider] Hydrated from client getUser/getSession", {
+          verifiedUserId: verifiedUser?.id,
+          hasSession: !!session,
+          hasAccessToken: !!session?.access_token,
+        });
+      }
+    };
 
-        if (error) {
-          // eslint-disable-next-line no-console
-          console.error("Error getting client session:", error);
-        }
-        if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
-        }
-      };
-
-      getClientSession();
-    }
+    syncSession();
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (mounted) {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+      if (!mounted) return;
 
-        // Reload page on auth state changes to sync server/client state
-        if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
-          if (typeof window !== "undefined") {
-            window.location.reload();
-          }
-        }
+      // Ignore the initial empty session if we already hydrated from server
+      if (event === "INITIAL_SESSION" && initialSession && !session) {
+        return;
       }
+
+      const {
+        data: { user: verifiedUser },
+      } = await supabase.auth.getUser();
+
+      const nextSession = session ?? initialSession ?? null;
+      const nextUser = verifiedUser ?? session?.user ?? initialSession?.user ?? null;
+
+      setSession(nextSession);
+      setUser(nextUser);
+      setLoading(false);
+      // eslint-disable-next-line no-console
+      console.log("[SupabaseProvider] onAuthStateChange", {
+        event,
+        sessionUserId: nextSession?.user?.id,
+        verifiedUserId: nextUser?.id,
+        hasAccessToken: !!nextSession?.access_token,
+      });
     });
 
     return () => {
@@ -144,10 +195,13 @@ export default function SupabaseProvider({ children, initialSession = null, conf
     };
   }, [supabase, initialSession]);
 
+  const effectiveSession = session ?? initialSession ?? null;
+  const effectiveUser = user ?? initialSession?.user ?? null;
+
   const value: SupabaseContextType = {
     supabase,
-    session,
-    user,
+    session: effectiveSession,
+    user: effectiveUser,
     loading,
   };
 

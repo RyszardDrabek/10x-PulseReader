@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { Loader2 } from "lucide-react";
+import { useSupabase } from "./SupabaseProvider";
 import type { ProfileDto, UserMood, User } from "../types";
 
 interface SettingsFormProps {
@@ -14,6 +15,9 @@ interface SettingsFormProps {
 }
 
 export default function SettingsForm({ user }: SettingsFormProps) {
+  const { user: contextUser, loading: authLoading, session, supabase } = useSupabase();
+  const effectiveUser = user ?? contextUser ?? null;
+
   const [profile, setProfile] = useState<ProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,19 +31,40 @@ export default function SettingsForm({ user }: SettingsFormProps) {
   const [savingField, setSavingField] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
-    if (!user?.id) return;
-
     try {
       setLoading(true);
       setError(null);
 
+      // Prefer existing session token; fall back to fetching it
+      let accessToken = session?.access_token;
+      if (!accessToken && supabase) {
+        const {
+          data: { session: latestSession },
+        } = await supabase.auth.getSession();
+        accessToken = latestSession?.access_token;
+      }
+
       const response = await fetch("/api/profile", {
         headers: {
           "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
+        credentials: "include",
+      });
+      // eslint-disable-next-line no-console
+      console.log("[SettingsForm] /api/profile response", {
+        status: response.status,
+        ok: response.ok,
+        hasAuthHeader: !!accessToken,
       });
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          // Not authenticated; stop loading and clear profile
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
         if (response.status === 404) {
           // Profile doesn't exist yet, set profile to null
           setProfile(null);
@@ -61,18 +86,14 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [effectiveUser?.id, session?.access_token, supabase]);
 
   // Fetch profile on mount
   useEffect(() => {
-    if (user?.id) {
+    if (!authLoading) {
       fetchProfile();
-    } else if (user === null) {
-      // User is not authenticated, stop loading
-      setLoading(false);
     }
-    // If user is undefined (still loading), keep loading state
-  }, [user, fetchProfile]);
+  }, [effectiveUser, authLoading, fetchProfile]);
 
   // Update local state when profile changes
   useEffect(() => {
@@ -85,7 +106,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
 
   const saveProfileUpdate = useCallback(
     async (updateData: Partial<ProfileDto>, field: string) => {
-      if (!user?.id) {
+      if (!effectiveUser?.id) {
         return;
       }
 
@@ -110,10 +131,20 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         }
 
         const method = profile ? "PATCH" : "POST";
+        // Prefer existing session token; fall back to fetching it
+        let accessToken = session?.access_token;
+        if (!accessToken && supabase) {
+          const {
+            data: { session: latestSession },
+          } = await supabase.auth.getSession();
+          accessToken = latestSession?.access_token;
+        }
+
         const response = await fetch("/api/profile", {
           method,
           headers: {
             "Content-Type": "application/json",
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
           credentials: "include",
           body: JSON.stringify(updateData),
@@ -138,7 +169,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         });
 
         logger.info("Profile updated successfully", {
-          userId: user.id,
+          userId: effectiveUser.id,
           field,
           updateData,
           method,
@@ -160,7 +191,7 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         setSavingField(null);
       }
     },
-    [user?.id, profile]
+    [effectiveUser?.id, profile, session?.access_token, supabase]
   );
 
   const handleMoodChange = (mood: UserMood | null) => {

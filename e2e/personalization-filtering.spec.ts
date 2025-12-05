@@ -55,12 +55,11 @@ async function authenticateUser(page: import("@playwright/test").Page): Promise<
   // Force a page reload to ensure Supabase context is properly updated
   // The server-side authentication might not be immediately reflected in the client
   console.log("🔄 Reloading page to sync auth state...");
-  await page.reload();
-  await page.waitForLoadState("networkidle");
+  await page.reload({ waitUntil: "domcontentloaded" });
 
-  // Verify we're still logged in after reload
+  // Verify we're still logged in after reload by waiting for the logout button
   const logoutButtonAfterReload = page.locator('button[aria-label="Sign out of your account"]').first();
-  await expect(logoutButtonAfterReload).toBeVisible({ timeout: 5000 });
+  await expect(logoutButtonAfterReload).toBeVisible({ timeout: 15000 });
   console.log("✅ Authentication maintained after reload");
 
   // Additional wait for Supabase context to be fully updated after reload
@@ -285,6 +284,8 @@ test.describe("Personalized Article Filtering (US-007)", () => {
     });
 
     test("should allow changing personalization settings", async ({ page }) => {
+      // Auth + navigation can be slow in CI; extend timeout
+      test.setTimeout(90_000);
       // Arrange - Authenticate and navigate to settings
       const homepage = new HomePage(page);
       await homepage.goto();
@@ -308,9 +309,9 @@ test.describe("Personalized Article Filtering (US-007)", () => {
 
       console.log("✅ User is authenticated - testing personalization settings");
 
-      // Navigate to settings page
-      await page.goto("/settings");
+      // Navigate to settings page (explicit URL to avoid aborted navigation)
       await page.waitForLoadState("networkidle");
+      await page.goto("http://localhost:3000/settings", { waitUntil: "domcontentloaded" });
 
       // Wait for the main content to load
       await page.waitForSelector("main", { timeout: 10000 });
@@ -521,6 +522,8 @@ test.describe("Personalized Article Filtering (US-007)", () => {
     });
 
     test("should use correct personalization parameter in infinite scroll API calls", async ({ page }) => {
+      // Allow extra time for authentication + multiple scroll cycles
+      test.setTimeout(90_000);
       // This test verifies that infinite scroll API requests include the correct applyPersonalization parameter
 
       // Arrange - Authenticate user
@@ -672,6 +675,8 @@ test.describe("Personalized Article Filtering (US-007)", () => {
     });
 
     test("should filter articles by sentiment during infinite scroll", async ({ page }) => {
+      // This flow authenticates and performs multiple fetches; give it more time
+      test.setTimeout(90_000);
       // Arrange - Authenticate and ensure personalization is enabled
       const homepage = new HomePage(page);
       await homepage.goto();

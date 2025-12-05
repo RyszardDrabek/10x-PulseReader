@@ -125,7 +125,7 @@ const supabaseConfig = {
 <GlobalLayout title="PulseReader - Your Personalized News Feed">
   <div style="min-height: 100vh;">
     <App client:only="react" initialSession={initialSession} supabaseConfig={supabaseConfig}>
-      <Homepage client:only="react" initialData={initialArticles} />
+      <Homepage initialData={initialArticles} />
     </App>
   </div>
 </GlobalLayout>
