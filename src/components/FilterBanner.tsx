@@ -29,6 +29,8 @@ export default function FilterBanner({
 }: FilterBannerProps) {
   const { user } = useSupabase();
   const isPersonalized = currentFilters?.personalization || false;
+  const articleStatsTotal =
+    totalArticles !== undefined && filteredArticles !== undefined ? totalArticles + filteredArticles : totalArticles;
   const effectiveAuth = isAuthenticated || !!profile;
   const shouldShowLoading = isAuthLoading && !profile;
 
@@ -289,7 +291,7 @@ export default function FilterBanner({
   };
 
   return (
-    <div className="border-b bg-muted/50 px-4 py-3 md:px-6" role="region" aria-label="Article filters">
+    <div className="border-b bg-muted/50 px-4 py-3 md:px-6 text-sm" role="region" aria-label="Article filters">
       <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div className="flex flex-wrap items-center gap-2 md:gap-4" role="group" aria-label="Active filters">
           {effectiveAuth && isPersonalized && (
@@ -373,9 +375,9 @@ export default function FilterBanner({
         </div>
 
         {/* Filter statistics */}
-        {isPersonalized && totalArticles !== undefined && (
+        {isPersonalized && (
           <div className="flex items-center space-x-4 text-xs text-muted-foreground" data-testid="filter-stats">
-            <span>Total articles by mood: {totalArticles}</span>
+            <span>Total articles by mood: {articleStatsTotal}</span>
           </div>
         )}
 
@@ -405,18 +407,18 @@ export default function FilterBanner({
       {/* Quick blocklist item removal - shown when personalization is enabled and items exist */}
       {effectiveAuth && isPersonalized && profile?.blocklist && profile.blocklist.length > 0 && (
         <div
-          className="flex flex-wrap items-center gap-2 md:gap-3 mt-2"
+          className="flex flex-wrap items-center gap-2 md:gap-3 mt-2 text-sm"
           role="group"
           aria-label="Blocked keywords"
           data-testid="blocklist-chips"
         >
-          <span className="text-xs text-muted-foreground">Blocked:</span>
+          <span className="text-sm text-muted-foreground">Blocked:</span>
           {profile.blocklist.map((item, index) => (
             <Button
               key={`${item}-${index}`}
               variant="secondary"
               size="sm"
-              className="h-6 px-2 text-xs"
+              className="h-6 px-2 text-xs font-normal"
               onClick={() => handleRemoveBlocklistItem(index)}
               disabled={updatingBlocklist}
               aria-label={`Remove "${item}" from blocklist`}
@@ -438,6 +440,7 @@ export default function FilterBanner({
               }}
               disabled={updatingBlocklist}
               data-testid="toggle-blocklist-edit"
+              aria-label="Add blocked keyword"
             >
               <Plus className="h-3 w-3" />
             </Button>
@@ -462,6 +465,7 @@ export default function FilterBanner({
                 onClick={handleAddBlocklistItem}
                 disabled={updatingBlocklist || !newBlocklistItem.trim()}
                 data-testid="add-blocklist-inline"
+                aria-label="Save blocked keyword"
               >
                 {updatingBlocklist ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
               </Button>
