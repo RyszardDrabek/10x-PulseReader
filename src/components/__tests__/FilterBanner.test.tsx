@@ -54,8 +54,8 @@ describe("FilterBanner", () => {
     it("renders when personalization is enabled", () => {
       render(<FilterBanner {...defaultProps} />);
 
-      // Should show mood toggles and blocked items
-      expect(screen.getByText("Showing 20 of 25 articles")).toBeInTheDocument();
+      // Should show mood toggles and total by mood
+      expect(screen.getByText("Total articles by mood: 25")).toBeInTheDocument();
     });
 
     it("renders mood selection buttons for authenticated users", () => {
