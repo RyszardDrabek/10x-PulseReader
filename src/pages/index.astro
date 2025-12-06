@@ -1,7 +1,6 @@
 ---
 import GlobalLayout from "../layouts/GlobalLayout.astro";
 import App from "../components/App.tsx";
-import Homepage from "../components/Homepage.tsx";
 import { ArticleService } from "../lib/services/article.service";
 
 // Use environment variables for Supabase client
@@ -126,8 +125,13 @@ const supabaseConfig = {
 
 <GlobalLayout title="PulseReader - Your Personalized News Feed">
   <div style="min-height: 100vh;">
-    <App client:only="react" initialSession={initialSession} supabaseConfig={supabaseConfig}>
-      <Homepage initialData={initialArticles} initialProfile={initialProfile} />
-    </App>
+    <App
+      client:only="react"
+      page="home"
+      initialSession={initialSession}
+      supabaseConfig={supabaseConfig}
+      homeInitialData={initialArticles}
+      homeInitialProfile={initialProfile}
+    />
   </div>
 </GlobalLayout>

@@ -38,46 +38,40 @@ export default function FilterBanner({
   const [newBlocklistItem, setNewBlocklistItem] = useState("");
   const [updatingBlocklist, setUpdatingBlocklist] = useState(false);
   const blocklistInputRef = useRef<HTMLInputElement>(null);
-  const articleRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const articleRefreshTimersRef = useRef<NodeJS.Timeout[]>([]);
+
+  const clearScheduledRefreshes = () => {
+    articleRefreshTimersRef.current.forEach((timer) => clearTimeout(timer));
+    articleRefreshTimersRef.current = [];
+  };
 
   const scheduleArticleRefreshes = () => {
-    if (articleRefreshTimerRef.current) {
-      clearInterval(articleRefreshTimerRef.current);
-    }
+    clearScheduledRefreshes();
 
-    let attempts = 0;
+    const delays = [500, 1500, 2500];
 
-    const sendRefresh = () => {
-      const refreshUrl = `/api/articles?limit=20&offset=0&sortBy=publication_date&sortOrder=desc&t=${Date.now()}-${attempts}`;
-      window.dispatchEvent(new Event("articles:refresh"));
-      fetch(refreshUrl, {
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-        },
-      }).catch(() => {
-        // best-effort refresh; errors are non-blocking
-      });
+    delays.forEach((delay, index) => {
+      const timer = setTimeout(() => {
+        const refreshUrl = `/api/articles?limit=20&offset=0&sortBy=publication_date&sortOrder=desc&applyPersonalization=false&t=${Date.now()}-${index}`;
+        window.dispatchEvent(new Event("articles:refresh"));
+        fetch(refreshUrl, {
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        }).catch(() => {
+          // best-effort refresh; errors are non-blocking
+        });
+      }, delay);
 
-      attempts += 1;
-
-      if (attempts >= 4 && articleRefreshTimerRef.current) {
-        clearInterval(articleRefreshTimerRef.current);
-        articleRefreshTimerRef.current = null;
-      }
-    };
-
-    // Fire immediately and then repeat a few times to guarantee a visible network call
-    sendRefresh();
-    articleRefreshTimerRef.current = setInterval(sendRefresh, 1000);
+      articleRefreshTimersRef.current.push(timer);
+    });
   };
 
   useEffect(
     () => () => {
-      if (articleRefreshTimerRef.current) {
-        clearInterval(articleRefreshTimerRef.current);
-      }
+      clearScheduledRefreshes();
     },
     []
   );
