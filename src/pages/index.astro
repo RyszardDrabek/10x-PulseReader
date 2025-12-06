@@ -29,6 +29,7 @@ if (supabaseUrl && supabaseKey) {
   supabase = createClient(supabaseUrl, supabaseKey);
 }
 let initialArticles;
+let initialProfile = null;
 
 // Fetch articles server-side if Supabase is available
 if (supabase) {
@@ -42,11 +43,12 @@ if (supabase) {
       userId: userId,
     });
 
-    // Get user profile to check personalization settings
+    // Get user profile to check personalization settings and send to client
     let shouldApplyPersonalization = false;
     if (userId) {
       try {
         const userProfile = await articleService.getProfile(userId);
+        initialProfile = userProfile || null;
         shouldApplyPersonalization = userProfile?.personalizationEnabled ?? true;
       } catch (profileError) {
         // If profile fetch fails, default to personalization enabled (matches ArticleService behavior)
@@ -125,7 +127,7 @@ const supabaseConfig = {
 <GlobalLayout title="PulseReader - Your Personalized News Feed">
   <div style="min-height: 100vh;">
     <App client:only="react" initialSession={initialSession} supabaseConfig={supabaseConfig}>
-      <Homepage client:only="react" initialData={initialArticles} />
+      <Homepage initialData={initialArticles} initialProfile={initialProfile} />
     </App>
   </div>
 </GlobalLayout>

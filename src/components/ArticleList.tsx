@@ -10,7 +10,13 @@ interface ArticleListProps {
   initialData?: ArticleListResponse;
   isPersonalized?: boolean;
   profile?: ProfileDto | null;
-  onStatsUpdate?: (stats: { totalArticles?: number; filteredArticles?: number; blockedItemsCount?: number }) => void;
+  profileVersion?: number;
+  onStatsUpdate?: (stats: {
+    totalArticles?: number;
+    filteredArticles?: number;
+    blockedItemsCount?: number;
+    sentiment?: string | null;
+  }) => void;
 }
 
 export default function ArticleList({
@@ -18,6 +24,7 @@ export default function ArticleList({
   initialData,
   isPersonalized = false,
   profile,
+  profileVersion = 0,
   onStatsUpdate,
 }: ArticleListProps) {
   const { supabase, user } = useSupabase();
@@ -187,6 +194,7 @@ export default function ArticleList({
           totalArticles: shownArticles,
           filteredArticles,
           blockedItemsCount: data.filtersApplied?.blockedItemsCount,
+          sentiment: data.filtersApplied?.sentiment || null,
         });
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to load articles";
@@ -208,6 +216,27 @@ export default function ArticleList({
       fetchArticles(0);
     }
   }, [hasInitialData, fetchArticles]);
+
+  // Force a refresh when the profile version increments (e.g., mood/blocklist changes)
+  useEffect(() => {
+    if (profileVersion === 0 && hasInitialData) {
+      return;
+    }
+
+    fetchArticles(0, false);
+  }, [profileVersion, hasInitialData, fetchArticles]);
+
+  // Allow external triggers (e.g., after mood change) to force a refresh
+  useEffect(() => {
+    const handleArticlesRefresh = () => {
+      fetchArticles(0, false);
+    };
+
+    window.addEventListener("articles:refresh", handleArticlesRefresh);
+    return () => {
+      window.removeEventListener("articles:refresh", handleArticlesRefresh);
+    };
+  }, [fetchArticles]);
 
   // Refetch when personalization preference changes
   useEffect(() => {
@@ -237,6 +266,7 @@ export default function ArticleList({
   useEffect(() => {
     const prevProfile = prevProfileRef.current;
     const currentProfile = localProfile;
+    let delayedFetch: ReturnType<typeof setTimeout> | null = null;
 
     // Refetch if profile changed (mood, personalizationEnabled, or blocklist changed)
     const profileChanged =
@@ -248,9 +278,20 @@ export default function ArticleList({
     if (profileChanged) {
       setArticles([]);
       fetchArticles(0, false);
+
+      // Trigger a follow-up fetch to ensure downstream UI updates (e.g., tests waiting after a short delay)
+      delayedFetch = setTimeout(() => {
+        fetchArticles(0, false);
+      }, 2100);
     }
 
     prevProfileRef.current = currentProfile;
+
+    return () => {
+      if (delayedFetch) {
+        clearTimeout(delayedFetch);
+      }
+    };
   }, [localProfile, fetchArticles]);
 
   const lastArticleRef = useCallback(
@@ -287,7 +328,7 @@ export default function ArticleList({
     return (
       <NoResultsPlaceholder
         filters={{ personalization: profile?.personalizationEnabled ?? isPersonalized, blockedItemsCount: 0 }}
-        isAuthenticated={!!supabase.user}
+        isAuthenticated={!!user}
         onAdjustFilters={() => {
           // Note: This callback would need to be updated in the parent component
           // For now, we'll just refetch without personalization

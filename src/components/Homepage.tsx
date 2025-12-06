@@ -14,19 +14,25 @@ import type {
 
 interface HomepageProps {
   initialData?: ArticleListResponse;
+  initialProfile?: ProfileDto | null;
 }
 
-export default function Homepage({ initialData }: HomepageProps) {
+export default function Homepage({ initialData, initialProfile = null }: HomepageProps) {
   const { user } = useSupabase();
-  const isAuthenticated = !!user;
 
-  const [isPersonalized, setIsPersonalized] = useState(false);
-  const [profile, setProfile] = useState<ProfileDto | null>(null);
+  // Track authentication status even when the Supabase client doesn't have a user yet
+  const [isAuthenticated, setIsAuthenticated] = useState(!!user || !!initialProfile);
+  const [authReady, setAuthReady] = useState(!!initialProfile || !user);
+
+  const [isPersonalized, setIsPersonalized] = useState(initialProfile?.personalizationEnabled ?? !!user);
+  const [profile, setProfile] = useState<ProfileDto | null>(initialProfile);
+  const [profileVersion, setProfileVersion] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [articleStats, setArticleStats] = useState<{
     totalArticles?: number;
     filteredArticles?: number;
     blockedItemsCount?: number;
+    sentiment?: string | null;
   }>({});
   const [queryParams] = useState<GetArticlesQueryParams>({
     limit: 20,
@@ -35,8 +41,19 @@ export default function Homepage({ initialData }: HomepageProps) {
     sortOrder: "desc",
   });
 
+  const handleProfileChange = useCallback((updatedProfile: ProfileDto) => {
+    setProfile(updatedProfile);
+    setProfileVersion((version) => version + 1);
+  }, []);
+
   const fetchProfile = useCallback(async () => {
-    if (!user?.id) return;
+    // If Supabase user isn't ready yet, keep SSR profile and mark ready
+    if (!user?.id) {
+      setAuthReady(true);
+      return;
+    }
+
+    setAuthReady(false);
 
     try {
       const response = await fetch("/api/profile", {
@@ -46,21 +63,39 @@ export default function Homepage({ initialData }: HomepageProps) {
         credentials: "include",
       });
 
+      if (response.status === 401) {
+        setIsAuthenticated(false);
+        setProfile(null);
+        setAuthReady(true);
+        return;
+      }
+
       if (response.ok) {
         const profileData: ProfileDto = await response.json();
-        setProfile(profileData);
+        handleProfileChange(profileData);
+        setIsAuthenticated(true);
       }
     } catch (error) {
       logger.error("Failed to fetch profile", error);
+    } finally {
+      setAuthReady(true);
     }
-  }, [user?.id]);
+  }, [user?.id, handleProfileChange]);
 
-  // Fetch profile when user is authenticated
+  // Keep authentication flag in sync with Supabase user changes
   useEffect(() => {
-    if (isAuthenticated && user?.id) {
-      fetchProfile();
+    const authed = !!user || !!profile;
+    setIsAuthenticated(authed);
+    // Guests are immediately ready; authenticated users wait for profile fetch
+    if (!authed) {
+      setAuthReady(true);
     }
-  }, [isAuthenticated, user?.id, fetchProfile]);
+  }, [user, profile]);
+
+  // Fetch profile on mount and whenever Supabase user changes
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile, user?.id]);
 
   // Automatically enable personalization for authenticated users based on their profile preference
   useEffect(() => {
@@ -73,13 +108,17 @@ export default function Homepage({ initialData }: HomepageProps) {
         finalValue: personalizationValue,
       });
       setIsPersonalized(personalizationValue);
-    } else if (!isAuthenticated) {
+      return;
+    }
+
+    if (!isAuthenticated) {
       logger.debug("Disabling personalization for unauthenticated user");
       setIsPersonalized(false);
-    } else if (isAuthenticated && !profile) {
-      // Authenticated but profile not loaded yet - default to true for personalization
-      setIsPersonalized(true);
+      return;
     }
+
+    // Authenticated but profile not loaded yet - default to personalization on
+    setIsPersonalized(true);
   }, [isAuthenticated, profile, user]);
 
   // Show onboarding modal for new users without preferences
@@ -98,15 +137,13 @@ export default function Homepage({ initialData }: HomepageProps) {
   // Refresh profile data when window regains focus or becomes visible (e.g., returning from settings page)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && isAuthenticated && user?.id) {
+      if (document.visibilityState === "visible") {
         fetchProfile();
       }
     };
 
     const handleFocus = () => {
-      if (isAuthenticated && user?.id) {
-        fetchProfile();
-      }
+      fetchProfile();
     };
 
     const handleStorageChange = (e: StorageEvent) => {
@@ -120,7 +157,7 @@ export default function Homepage({ initialData }: HomepageProps) {
 
     const handleProfileUpdate = (e: CustomEvent<ProfileDto>) => {
       // Listen for profile updates from the same tab (e.g., from settings page)
-      setProfile(e.detail);
+      handleProfileChange(e.detail);
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -133,11 +170,11 @@ export default function Homepage({ initialData }: HomepageProps) {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("profileUpdated", handleProfileUpdate as EventListener);
     };
-  }, [isAuthenticated, user?.id, fetchProfile]);
+  }, [isAuthenticated, user?.id, fetchProfile, handleProfileChange]);
 
   const handleOnboardingComplete = useCallback(
     async (preferences: { mood?: UserMood; blocklist?: string[] }) => {
-      if (!user?.id) return;
+      if (!isAuthenticated) return;
 
       try {
         // Update profile with onboarding preferences
@@ -159,14 +196,14 @@ export default function Homepage({ initialData }: HomepageProps) {
         }
 
         const updatedProfile: ProfileDto = await response.json();
-        setProfile(updatedProfile);
+        handleProfileChange(updatedProfile);
         setShowOnboarding(false);
 
         // Enable personalization automatically
         setIsPersonalized(true);
 
         logger.info("Onboarding completed successfully", {
-          userId: user.id,
+          userId: user?.id,
           mood: preferences.mood,
           blocklistCount: preferences.blocklist?.length || 0,
         });
@@ -175,7 +212,7 @@ export default function Homepage({ initialData }: HomepageProps) {
         throw error; // Re-throw to let the modal handle the error
       }
     },
-    [user?.id]
+    [user?.id, isAuthenticated, handleProfileChange]
   );
 
   const getCurrentFilters = (): ArticleFiltersApplied => {
@@ -188,26 +225,29 @@ export default function Homepage({ initialData }: HomepageProps) {
     return {
       personalization: true,
       blockedItemsCount: profile?.blocklist?.length || 0,
+      sentiment: articleStats.sentiment || undefined,
     };
   };
+
+  const baseFilters = getCurrentFilters();
+  const blockedItemsCount = articleStats.blockedItemsCount ?? baseFilters.blockedItemsCount;
 
   return (
     <div className="min-h-screen">
       <FilterBanner
-        currentFilters={{
-          ...getCurrentFilters(),
-          blockedItemsCount: articleStats.blockedItemsCount,
-        }}
+        currentFilters={{ ...baseFilters, blockedItemsCount }}
         profile={profile}
-        onProfileUpdate={setProfile}
+        onProfileUpdate={handleProfileChange}
         totalArticles={articleStats.totalArticles}
         filteredArticles={articleStats.filteredArticles}
         isAuthenticated={isAuthenticated}
+        isAuthLoading={!authReady}
       />
       <ArticleList
         queryParams={queryParams}
         isPersonalized={isPersonalized}
         profile={profile}
+        profileVersion={profileVersion}
         initialData={initialData}
         onStatsUpdate={setArticleStats}
       />

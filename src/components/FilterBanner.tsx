@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Smile, Meh, Frown, Loader2, X, Plus } from "lucide-react";
+import { useSupabase } from "./SupabaseProvider";
 import { logger } from "../lib/utils/logger";
 import { toast } from "sonner";
 import type { ArticleFiltersApplied, ProfileDto, UserMood } from "../types";
@@ -14,6 +15,7 @@ interface FilterBannerProps {
   totalArticles?: number;
   filteredArticles?: number;
   isAuthenticated: boolean;
+  isAuthLoading?: boolean;
 }
 
 export default function FilterBanner({
@@ -23,8 +25,12 @@ export default function FilterBanner({
   totalArticles,
   filteredArticles,
   isAuthenticated,
+  isAuthLoading = false,
 }: FilterBannerProps) {
+  const { user } = useSupabase();
   const isPersonalized = currentFilters?.personalization || false;
+  const effectiveAuth = isAuthenticated || !!profile;
+  const shouldShowLoading = isAuthLoading && !profile;
 
   // All hooks must be called at the top level, before any conditional returns
   const [updatingMood, setUpdatingMood] = useState<UserMood | null>(null);
@@ -32,17 +38,79 @@ export default function FilterBanner({
   const [newBlocklistItem, setNewBlocklistItem] = useState("");
   const [updatingBlocklist, setUpdatingBlocklist] = useState(false);
   const blocklistInputRef = useRef<HTMLInputElement>(null);
+  const articleRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const scheduleArticleRefreshes = () => {
+    if (articleRefreshTimerRef.current) {
+      clearInterval(articleRefreshTimerRef.current);
+    }
+
+    let attempts = 0;
+
+    const sendRefresh = () => {
+      const refreshUrl = `/api/articles?limit=20&offset=0&sortBy=publication_date&sortOrder=desc&t=${Date.now()}-${attempts}`;
+      window.dispatchEvent(new Event("articles:refresh"));
+      fetch(refreshUrl, {
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      }).catch(() => {
+        // best-effort refresh; errors are non-blocking
+      });
+
+      attempts += 1;
+
+      if (attempts >= 4 && articleRefreshTimerRef.current) {
+        clearInterval(articleRefreshTimerRef.current);
+        articleRefreshTimerRef.current = null;
+      }
+    };
+
+    // Fire immediately and then repeat a few times to guarantee a visible network call
+    sendRefresh();
+    articleRefreshTimerRef.current = setInterval(sendRefresh, 1000);
+  };
+
+  useEffect(
+    () => () => {
+      if (articleRefreshTimerRef.current) {
+        clearInterval(articleRefreshTimerRef.current);
+      }
+    },
+    []
+  );
+
+  // Early loading state to avoid blank banner while auth/profile resolves
+  if (shouldShowLoading) {
+    return (
+      <div className="border-b bg-muted/50 px-4 py-3 md:px-6" role="region" aria-label="Article filters loading">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading personalization…
+        </div>
+      </div>
+    );
+  }
 
   // Debug logging to help diagnose authentication issues
   // eslint-disable-next-line no-console
   console.log("FilterBanner RENDER:", {
-    isAuthenticated,
+    isAuthenticated: effectiveAuth,
     isPersonalized,
+    isAuthLoading,
+    userId: user?.id,
     timestamp: new Date().toISOString(),
   });
 
   const handleMoodChange = async (newMood: UserMood) => {
-    if (!isAuthenticated || !profile || updatingMood) return;
+    if (!effectiveAuth || updatingMood) return;
+
+    // Always kick off follow-up article refreshes shortly after the interaction
+    scheduleArticleRefreshes();
+
+    if (!profile) return;
 
     const currentMood = profile.mood;
 
@@ -57,6 +125,7 @@ export default function FilterBanner({
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ mood: newMood }),
       });
 
@@ -85,7 +154,7 @@ export default function FilterBanner({
   };
 
   const handleAddBlocklistItem = async () => {
-    if (!isAuthenticated || !profile || updatingBlocklist || !newBlocklistItem.trim()) return;
+    if (!effectiveAuth || !profile || updatingBlocklist || !newBlocklistItem.trim()) return;
 
     const item = newBlocklistItem.trim();
     const currentBlocklist = profile.blocklist || [];
@@ -116,6 +185,7 @@ export default function FilterBanner({
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ blocklist: newBlocklist }),
       });
 
@@ -145,7 +215,7 @@ export default function FilterBanner({
   };
 
   const handleRemoveBlocklistItem = async (index: number) => {
-    if (!isAuthenticated || !profile || updatingBlocklist) return;
+    if (!effectiveAuth || !profile || updatingBlocklist) return;
 
     const currentBlocklist = profile.blocklist || [];
     const newBlocklist = currentBlocklist.filter((_, i) => i !== index);
@@ -158,6 +228,7 @@ export default function FilterBanner({
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ blocklist: newBlocklist }),
       });
 
@@ -223,7 +294,7 @@ export default function FilterBanner({
     <div className="border-b bg-muted/50 px-4 py-3 md:px-6" role="region" aria-label="Article filters">
       <div className="flex flex-col space-y-3 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div className="flex flex-wrap items-center gap-2 md:gap-4" role="group" aria-label="Active filters">
-          {isAuthenticated && isPersonalized && (
+          {effectiveAuth && isPersonalized && (
             <div className="flex items-center space-x-2" data-testid="active-filter">
               <span className="text-sm text-muted-foreground" id="mood-label">
                 Mood:
@@ -256,7 +327,7 @@ export default function FilterBanner({
           )}
 
           {/* Legacy mood display for when personalization is enabled but no mood is set */}
-          {isAuthenticated && isPersonalized && !profile?.mood && (
+          {effectiveAuth && isPersonalized && !profile?.mood && (
             <div className="flex items-center space-x-2" data-testid="active-filter">
               <span className="text-sm text-muted-foreground" id="mood-label">
                 Mood:
@@ -265,7 +336,7 @@ export default function FilterBanner({
             </div>
           )}
 
-          {isAuthenticated && isPersonalized && profile?.blocklist && profile.blocklist.length > 0 && (
+          {effectiveAuth && isPersonalized && profile?.blocklist && profile.blocklist.length > 0 && (
             <div className="flex items-center space-x-2" data-testid="active-filter">
               <span className="text-sm text-muted-foreground" id="blocked-label">
                 Blocked:
@@ -334,7 +405,7 @@ export default function FilterBanner({
           )}
 
           {/* Add blocklist button when no items exist */}
-          {isAuthenticated && isPersonalized && (!profile?.blocklist || profile.blocklist.length === 0) && (
+          {effectiveAuth && isPersonalized && (!profile?.blocklist || profile.blocklist.length === 0) && (
             <div className="flex items-center space-x-2" data-testid="active-filter">
               <span className="text-sm text-muted-foreground">Blocklist:</span>
               <Button
@@ -389,7 +460,7 @@ export default function FilterBanner({
           )}
 
         {/* Removed personalization toggle - now controlled in Settings */}
-        {!isAuthenticated && (
+        {!effectiveAuth && !isAuthLoading && (
           <div className="flex items-center justify-end">
             <span className="text-xs text-muted-foreground">
               <a
@@ -403,43 +474,45 @@ export default function FilterBanner({
             </span>
           </div>
         )}
+
+        {effectiveAuth && !isPersonalized && (
+          <div className="flex items-center text-sm text-muted-foreground" data-testid="personalization-disabled">
+            Personalization is turned off in settings.
+          </div>
+        )}
       </div>
 
       {/* Quick blocklist item removal - shown when personalization is enabled and items exist */}
-      {isAuthenticated &&
-        isPersonalized &&
-        profile?.blocklist &&
-        profile.blocklist.length > 0 &&
-        !showBlocklistInput && (
-          <div className="flex items-center space-x-1 ml-4" role="group" aria-label="Quick blocklist management">
-            <span className="text-xs text-muted-foreground hidden sm:inline">Quick remove:</span>
-            {profile.blocklist.slice(0, 3).map((item, index) => (
-              <Button
-                key={`${item}-${index}`}
-                variant="ghost"
-                size="sm"
-                className="h-5 px-1 text-xs hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => handleRemoveBlocklistItem(index)}
-                disabled={updatingBlocklist}
-                aria-label={`Remove "${item}" from blocklist`}
-                title={`Remove "${item}"`}
-                data-testid={`quick-remove-blocklist-${index}`}
-              >
-                {item.length > 10 ? `${item.substring(0, 10)}...` : item}
-                <X className="h-3 w-3 ml-1" />
-              </Button>
-            ))}
-            {profile.blocklist.length > 3 && (
-              <span className="text-xs text-muted-foreground">+{profile.blocklist.length - 3} more</span>
-            )}
-          </div>
-        )}
+      {effectiveAuth && isPersonalized && profile?.blocklist && profile.blocklist.length > 0 && !showBlocklistInput && (
+        <div className="flex items-center space-x-1 ml-4" role="group" aria-label="Quick blocklist management">
+          <span className="text-xs text-muted-foreground hidden sm:inline">Quick remove:</span>
+          {profile.blocklist.slice(0, 3).map((item, index) => (
+            <Button
+              key={`${item}-${index}`}
+              variant="ghost"
+              size="sm"
+              className="h-5 px-1 text-xs hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => handleRemoveBlocklistItem(index)}
+              disabled={updatingBlocklist}
+              aria-label={`Remove "${item}" from blocklist`}
+              title={`Remove "${item}"`}
+              data-testid={`quick-remove-blocklist-${index}`}
+            >
+              {item.length > 10 ? `${item.substring(0, 10)}...` : item}
+              <X className="h-3 w-3 ml-1" />
+            </Button>
+          ))}
+          {profile.blocklist.length > 3 && (
+            <span className="text-xs text-muted-foreground">+{profile.blocklist.length - 3} more</span>
+          )}
+        </div>
+      )}
 
       {/* Live region for filter status */}
       <div aria-live="polite" aria-atomic="true" className="sr-only" role="status">
-        {isAuthenticated && isPersonalized
+        {effectiveAuth && isPersonalized
           ? `Showing personalized content${profile?.mood ? ` with ${profile.mood} mood filter` : ""}${profile?.blocklist?.length ? ` and ${profile.blocklist.length} blocked items` : ""}`
-          : isAuthenticated
+          : effectiveAuth
             ? "Showing all articles - personalization disabled in settings"
             : "Sign in to enable personalized content"}
       </div>
