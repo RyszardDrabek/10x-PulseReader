@@ -149,10 +149,8 @@ export default function ArticleList({
 
         const data: ArticleListResponse = await response.json();
 
-        // Calculate filtered articles count (total - shown articles)
-        const shownArticles = data.data?.length || 0;
         const totalArticles = data.pagination.total;
-        const filteredArticles = Math.max(0, totalArticles - shownArticles);
+        const blockedItemsCount = data.filtersApplied?.blockedItemsCount ?? profile?.blocklist?.length ?? 0;
 
         setArticles((prev) => {
           if (append) {
@@ -174,10 +172,17 @@ export default function ArticleList({
         setCurrentOffset(data.pagination.offset + data.pagination.limit);
 
         // Update stats for parent component
+        // eslint-disable-next-line no-console
+        console.log("[ArticleList] Stats update", {
+          totalArticles,
+          filteredArticles: undefined,
+          blockedItemsCount,
+          sentiment: data.filtersApplied?.sentiment,
+        });
         onStatsUpdate?.({
-          totalArticles: shownArticles,
-          filteredArticles,
-          blockedItemsCount: data.filtersApplied?.blockedItemsCount,
+          totalArticles,
+          filteredArticles: undefined,
+          blockedItemsCount,
           sentiment: data.filtersApplied?.sentiment || null,
         });
       } catch (err) {
@@ -191,7 +196,7 @@ export default function ArticleList({
         setLoading(false);
       }
     },
-    [queryParams, isPersonalized, supabase, onStatsUpdate, user?.id]
+    [queryParams, isPersonalized, supabase, onStatsUpdate, user?.id, profile?.blocklist?.length]
   );
 
   // Initial fetch if no valid initialData (empty or missing)

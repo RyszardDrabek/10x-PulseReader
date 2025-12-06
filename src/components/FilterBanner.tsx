@@ -96,6 +96,10 @@ export default function FilterBanner({
     isAuthLoading,
     userId: user?.id,
     timestamp: new Date().toISOString(),
+    blockedFromFilters: currentFilters?.blockedItemsCount,
+    blocklistLen: profile?.blocklist?.length,
+    totalArticles,
+    filteredArticles,
   });
 
   const handleMoodChange = async (newMood: UserMood) => {
@@ -330,74 +334,6 @@ export default function FilterBanner({
             </div>
           )}
 
-          {effectiveAuth && isPersonalized && profile?.blocklist && profile.blocklist.length > 0 && (
-            <div className="flex items-center space-x-2" data-testid="active-filter">
-              <span className="text-sm text-muted-foreground" id="blocked-label">
-                Blocked:
-              </span>
-              <div className="flex items-center space-x-1">
-                <Badge
-                  variant="outline"
-                  aria-labelledby="blocked-label"
-                  aria-description={`${profile.blocklist.length} sources are blocked from your feed`}
-                >
-                  {profile.blocklist.length} items
-                </Badge>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-5 w-5 p-0 hover:bg-muted"
-                  onClick={() => setShowBlocklistInput(!showBlocklistInput)}
-                  disabled={updatingBlocklist}
-                  aria-label="Toggle blocklist editing"
-                  data-testid="toggle-blocklist-edit"
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-
-              {/* Inline blocklist editing */}
-              {showBlocklistInput && (
-                <div className="flex items-center space-x-1 ml-2">
-                  <Input
-                    ref={blocklistInputRef}
-                    type="text"
-                    placeholder="Add keyword..."
-                    value={newBlocklistItem}
-                    onChange={(e) => setNewBlocklistItem(e.target.value)}
-                    onKeyDown={handleBlocklistKeyPress}
-                    disabled={updatingBlocklist}
-                    className="h-6 w-24 text-xs"
-                    maxLength={100}
-                    data-testid="blocklist-inline-input"
-                  />
-                  <Button
-                    size="sm"
-                    className="h-6 px-2"
-                    onClick={handleAddBlocklistItem}
-                    disabled={updatingBlocklist || !newBlocklistItem.trim()}
-                    data-testid="add-blocklist-inline"
-                  >
-                    {updatingBlocklist ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={() => {
-                      setShowBlocklistInput(false);
-                      setNewBlocklistItem("");
-                    }}
-                    disabled={updatingBlocklist}
-                    aria-label="Cancel adding blocklist item"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Add blocklist button when no items exist */}
           {effectiveAuth && isPersonalized && (!profile?.blocklist || profile.blocklist.length === 0) && (
             <div className="flex items-center space-x-2" data-testid="active-filter">
@@ -437,21 +373,11 @@ export default function FilterBanner({
         </div>
 
         {/* Filter statistics */}
-        {isPersonalized &&
-          (totalArticles !== undefined ||
-            filteredArticles !== undefined ||
-            currentFilters?.blockedItemsCount !== undefined) && (
-            <div className="flex items-center space-x-4 text-xs text-muted-foreground" data-testid="filter-stats">
-              {totalArticles !== undefined && filteredArticles !== undefined && (
-                <span>
-                  Showing {totalArticles} of {totalArticles + filteredArticles} articles
-                </span>
-              )}
-              {currentFilters?.blockedItemsCount !== undefined && currentFilters.blockedItemsCount > 0 && (
-                <span>{currentFilters.blockedItemsCount} blocked by keywords</span>
-              )}
-            </div>
-          )}
+        {isPersonalized && totalArticles !== undefined && (
+          <div className="flex items-center space-x-4 text-xs text-muted-foreground" data-testid="filter-stats">
+            <span>Total articles by mood: {totalArticles}</span>
+          </div>
+        )}
 
         {/* Removed personalization toggle - now controlled in Settings */}
         {!effectiveAuth && !isAuthLoading && (
@@ -477,27 +403,82 @@ export default function FilterBanner({
       </div>
 
       {/* Quick blocklist item removal - shown when personalization is enabled and items exist */}
-      {effectiveAuth && isPersonalized && profile?.blocklist && profile.blocklist.length > 0 && !showBlocklistInput && (
-        <div className="flex items-center space-x-1 ml-4" role="group" aria-label="Quick blocklist management">
-          <span className="text-xs text-muted-foreground hidden sm:inline">Quick remove:</span>
-          {profile.blocklist.slice(0, 3).map((item, index) => (
+      {effectiveAuth && isPersonalized && profile?.blocklist && profile.blocklist.length > 0 && (
+        <div
+          className="flex flex-wrap items-center gap-2 md:gap-3 mt-2"
+          role="group"
+          aria-label="Blocked keywords"
+          data-testid="blocklist-chips"
+        >
+          <span className="text-xs text-muted-foreground">Blocked:</span>
+          {profile.blocklist.map((item, index) => (
             <Button
               key={`${item}-${index}`}
-              variant="ghost"
+              variant="secondary"
               size="sm"
-              className="h-5 px-1 text-xs hover:bg-destructive hover:text-destructive-foreground"
+              className="h-6 px-2 text-xs"
               onClick={() => handleRemoveBlocklistItem(index)}
               disabled={updatingBlocklist}
               aria-label={`Remove "${item}" from blocklist`}
               title={`Remove "${item}"`}
-              data-testid={`quick-remove-blocklist-${index}`}
+              data-testid={`blocklist-chip-${index}`}
             >
-              {item.length > 10 ? `${item.substring(0, 10)}...` : item}
+              {item}
               <X className="h-3 w-3 ml-1" />
             </Button>
           ))}
-          {profile.blocklist.length > 3 && (
-            <span className="text-xs text-muted-foreground">+{profile.blocklist.length - 3} more</span>
+          {!showBlocklistInput && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => {
+                setShowBlocklistInput(true);
+                setTimeout(() => blocklistInputRef.current?.focus(), 0);
+              }}
+              disabled={updatingBlocklist}
+              data-testid="toggle-blocklist-edit"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          )}
+          {showBlocklistInput && (
+            <div className="flex items-center gap-1">
+              <Input
+                ref={blocklistInputRef}
+                type="text"
+                placeholder="Add keyword..."
+                value={newBlocklistItem}
+                onChange={(e) => setNewBlocklistItem(e.target.value)}
+                onKeyDown={handleBlocklistKeyPress}
+                disabled={updatingBlocklist}
+                className="h-6 w-28 text-xs"
+                maxLength={100}
+                data-testid="blocklist-inline-input"
+              />
+              <Button
+                size="sm"
+                className="h-6 px-2"
+                onClick={handleAddBlocklistItem}
+                disabled={updatingBlocklist || !newBlocklistItem.trim()}
+                data-testid="add-blocklist-inline"
+              >
+                {updatingBlocklist ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => {
+                  setShowBlocklistInput(false);
+                  setNewBlocklistItem("");
+                }}
+                disabled={updatingBlocklist}
+                aria-label="Cancel adding blocklist item"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
           )}
         </div>
       )}
