@@ -1,5 +1,7 @@
 import type { APIRoute } from "astro";
 import { createSupabaseServerInstance } from "../../../db/supabase.client.ts";
+import { ProfileService } from "../../../lib/services/profile.service.ts";
+import { createServiceRoleClient } from "../../../lib/utils/supabase.server.ts";
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
@@ -45,6 +47,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         status: statusCode,
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    // Auto-create default profile for the new user (best-effort)
+    if (data.user?.id) {
+      try {
+        const serviceSupabase = createServiceRoleClient();
+        const profileService = new ProfileService(serviceSupabase);
+        await profileService.createProfile(data.user.id, {
+          mood: null,
+          blocklist: [],
+          personalizationEnabled: true,
+        });
+      } catch (profileError) {
+        // eslint-disable-next-line no-console
+        console.warn("[API_AUTH_REGISTER] Failed to auto-create profile:", profileError);
+      }
     }
 
     return new Response(

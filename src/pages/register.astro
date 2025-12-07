@@ -1,6 +1,8 @@
 ---
 import GlobalLayout from "../layouts/GlobalLayout.astro";
 import { createSupabaseServerInstance } from "../db/supabase.client.ts";
+import { ProfileService } from "../lib/services/profile.service.ts";
+import { createServiceRoleClient } from "../lib/utils/supabase.server.ts";
 
 export const prerender = false;
 
@@ -21,7 +23,7 @@ if (Astro.request.method === "POST") {
       headers: Astro.request.headers,
     });
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
     });
@@ -42,6 +44,22 @@ if (Astro.request.method === "POST") {
           errorMessage = "Something went wrong. Please try again.";
       }
       return Astro.redirect(`/register?error=${encodeURIComponent(errorMessage)}`);
+    }
+
+    // Best-effort auto-creation of default profile for the new user
+    if (data?.user?.id) {
+      try {
+        const serviceSupabase = createServiceRoleClient();
+        const profileService = new ProfileService(serviceSupabase);
+        await profileService.createProfile(data.user.id, {
+          mood: null,
+          blocklist: [],
+          personalizationEnabled: true,
+        });
+      } catch (profileError) {
+        // eslint-disable-next-line no-console
+        console.warn("[register] Failed to auto-create profile after sign-up:", profileError);
+      }
     }
 
     return Astro.redirect("/");

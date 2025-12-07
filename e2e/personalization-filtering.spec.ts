@@ -9,6 +9,34 @@ const TEST_USER = {
   name: "Anna Kowalska",
 };
 
+async function dismissOnboardingIfVisible(page: import("@playwright/test").Page): Promise<void> {
+  const skipButton = page.getByRole("button", { name: "Skip for now" });
+  const getStartedButton = page.getByRole("button", { name: "Get Started" });
+  const overlay = page.locator('div[role="presentation"]').first();
+
+  const isVisible = (locator: ReturnType<typeof page.locator>) => locator.isVisible().catch(() => false);
+
+  if (await isVisible(skipButton)) {
+    await skipButton.click();
+    await page.waitForTimeout(200);
+    console.log("🧹 Dismissed onboarding via Skip for now");
+    return;
+  }
+
+  if (await isVisible(getStartedButton)) {
+    await getStartedButton.click();
+    await page.waitForTimeout(200);
+    console.log("🧹 Dismissed onboarding via Get Started");
+    return;
+  }
+
+  if (await isVisible(overlay)) {
+    await overlay.click();
+    await page.waitForTimeout(200);
+    console.log("🧹 Dismissed onboarding by clicking backdrop");
+  }
+}
+
 async function authenticateUser(page: import("@playwright/test").Page): Promise<void> {
   console.log("🔐 Starting user authentication process...");
 
@@ -67,6 +95,7 @@ async function authenticateUser(page: import("@playwright/test").Page): Promise<
   await page.waitForTimeout(3000);
   console.log("⏳ Waited for auth state propagation");
 
+  await dismissOnboardingIfVisible(page);
   console.log("✅ User authentication process completed");
 }
 
@@ -262,6 +291,8 @@ test.describe("Personalized Article Filtering (US-007)", () => {
       }
 
       console.log("✅ User is authenticated - testing logout");
+
+      await dismissOnboardingIfVisible(page);
 
       // Act - Click the logout button
       await signOutButton.click();

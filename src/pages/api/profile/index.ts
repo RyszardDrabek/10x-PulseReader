@@ -3,91 +3,26 @@ import { ZodError } from "zod";
 
 import { ProfileService } from "../../../lib/services/profile.service.ts";
 import { logger } from "../../../lib/utils/logger.ts";
+import { createServiceRoleClient } from "../../../lib/utils/supabase.server.ts";
 import { CreateProfileCommandSchema, UpdateProfileCommandSchema } from "../../../lib/validation/profile.schema.ts";
 
 export const prerender = false;
 
 /**
- * Helper function to get Supabase configuration
- */
-function getSupabaseConfig() {
-  const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
-  let supabaseUrl: string;
-  let supabaseKey: string;
-
-  if (isProduction) {
-    // In production (Cloudflare), use environment variables
-    // Cloudflare Pages uses process.env for server-side environment variables
-    supabaseUrl =
-      (typeof process !== "undefined" && process.env?.SUPABASE_URL) ||
-      import.meta.env.SUPABASE_URL ||
-      import.meta.env.PUBLIC_SUPABASE_URL;
-
-    supabaseKey =
-      (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
-      import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    // eslint-disable-next-line no-console
-    console.log("[API_PROFILE] Production environment detected");
-    // eslint-disable-next-line no-console
-    console.log("[API_PROFILE] Environment check:", {
-      hasProcess: typeof process !== "undefined",
-      hasProcessEnv: typeof process !== "undefined" && !!process.env,
-      supabaseUrl: !!supabaseUrl,
-      supabaseKey: !!supabaseKey,
-      supabaseKeyLength: supabaseKey?.length || 0,
-      processEnvKeys:
-        typeof process !== "undefined" && process.env
-          ? Object.keys(process.env).filter((k) => k.includes("SUPABASE"))
-          : [],
-      importMetaEnvKeys: Object.keys(import.meta.env).filter((k) => k.includes("SUPABASE")),
-    });
-  } else {
-    // In local development, use service role key for profile operations
-    supabaseUrl = "http://127.0.0.1:18785";
-    supabaseKey = "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz";
-  }
-
-  return { supabaseUrl, supabaseKey };
-}
-
-/**
  * GET /api/profile
  * Retrieves the authenticated user's profile.
+ * If no profile exists, a default one is automatically created and returned.
  *
  * Authentication: Required
  *
  * @returns 200 OK with ProfileDto on success
  * @returns 401 Unauthorized if not authenticated
- * @returns 404 Not Found if profile doesn't exist
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const GET: APIRoute = async (context) => {
-  // Use environment variables for Supabase client
-  const { supabaseUrl, supabaseKey } = getSupabaseConfig();
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabase = createServiceRoleClient();
 
   const user = context.locals.user;
-
-  // Validate Supabase client is available
-  if (!supabase) {
-    logger.error("Supabase client not initialized", {
-      endpoint: "GET /api/profile",
-    });
-
-    return new Response(
-      JSON.stringify({
-        error: "Server configuration error: Supabase client not available",
-        code: "CONFIGURATION_ERROR",
-        timestamp: new Date().toISOString(),
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
 
   // Check authentication
   if (!user || !user.id) {
@@ -114,22 +49,20 @@ export const GET: APIRoute = async (context) => {
     const profile = await profileService.getProfile(user.id);
 
     if (!profile) {
-      logger.info("Profile not found", {
+      // Auto-create default profile when missing (idempotent on first call)
+      const defaultProfileCommand = CreateProfileCommandSchema.parse({});
+      const createdProfile = await profileService.createProfile(user.id, defaultProfileCommand);
+
+      logger.info("Profile auto-created on first access", {
         endpoint: "GET /api/profile",
         userId: user.id,
+        profileId: createdProfile.id,
       });
 
-      return new Response(
-        JSON.stringify({
-          error: "Profile not found",
-          code: "PROFILE_NOT_FOUND",
-          timestamp: new Date().toISOString(),
-        }),
-        {
-          status: 404,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify(createdProfile), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // Log success
@@ -184,31 +117,9 @@ export const GET: APIRoute = async (context) => {
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const POST: APIRoute = async (context) => {
-  // Use environment variables for Supabase client
-  const { supabaseUrl, supabaseKey } = getSupabaseConfig();
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabase = createServiceRoleClient();
 
   const user = context.locals.user;
-
-  // Validate Supabase client is available
-  if (!supabase) {
-    logger.error("Supabase client not initialized", {
-      endpoint: "POST /api/profile",
-    });
-
-    return new Response(
-      JSON.stringify({
-        error: "Server configuration error: Supabase client not available",
-        code: "CONFIGURATION_ERROR",
-        timestamp: new Date().toISOString(),
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
 
   // Check authentication
   if (!user || !user.id) {
@@ -365,31 +276,9 @@ export const POST: APIRoute = async (context) => {
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const PATCH: APIRoute = async (context) => {
-  // Use environment variables for Supabase client
-  const { supabaseUrl, supabaseKey } = getSupabaseConfig();
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabase = createServiceRoleClient();
 
   const user = context.locals.user;
-
-  // Validate Supabase client is available
-  if (!supabase) {
-    logger.error("Supabase client not initialized", {
-      endpoint: "PATCH /api/profile",
-    });
-
-    return new Response(
-      JSON.stringify({
-        error: "Server configuration error: Supabase client not available",
-        code: "CONFIGURATION_ERROR",
-        timestamp: new Date().toISOString(),
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
 
   // Check authentication
   if (!user || !user.id) {
@@ -544,31 +433,9 @@ export const PATCH: APIRoute = async (context) => {
  * @returns 500 Internal Server Error for unexpected errors
  */
 export const DELETE: APIRoute = async (context) => {
-  // Use environment variables for Supabase client
-  const { supabaseUrl, supabaseKey } = getSupabaseConfig();
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabase = createServiceRoleClient();
 
   const user = context.locals.user;
-
-  // Validate Supabase client is available
-  if (!supabase) {
-    logger.error("Supabase client not initialized", {
-      endpoint: "DELETE /api/profile",
-    });
-
-    return new Response(
-      JSON.stringify({
-        error: "Server configuration error: Supabase client not available",
-        code: "CONFIGURATION_ERROR",
-        timestamp: new Date().toISOString(),
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
 
   // Check authentication
   if (!user || !user.id) {
