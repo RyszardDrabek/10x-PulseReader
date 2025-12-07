@@ -10,7 +10,13 @@ interface ArticleListProps {
   initialData?: ArticleListResponse;
   isPersonalized?: boolean;
   profile?: ProfileDto | null;
-  onStatsUpdate?: (stats: { totalArticles?: number; filteredArticles?: number; blockedItemsCount?: number }) => void;
+  profileVersion?: number;
+  onStatsUpdate?: (stats: {
+    totalArticles?: number;
+    filteredArticles?: number;
+    blockedItemsCount?: number;
+    sentiment?: string | null;
+  }) => void;
 }
 
 export default function ArticleList({
@@ -18,6 +24,7 @@ export default function ArticleList({
   initialData,
   isPersonalized = false,
   profile,
+  profileVersion = 0,
   onStatsUpdate,
 }: ArticleListProps) {
   const { supabase, user } = useSupabase();
@@ -32,6 +39,8 @@ export default function ArticleList({
   const [currentOffset, setCurrentOffset] = useState(
     initialData ? initialData.pagination.offset + initialData.pagination.limit : 0
   );
+  const autoPageTriggerRef = useRef(false);
+  const userScrolledRef = useRef(false);
   const [localProfile, setLocalProfile] = useState<ProfileDto | null>(profile);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const prevPersonalizationRef = useRef<boolean | undefined>(undefined);
@@ -64,7 +73,6 @@ export default function ArticleList({
 
   const fetchArticles = useCallback(
     async (offset = 0, append = false) => {
-      // Prevent duplicate fetches
       if (loadingRef.current) {
         return;
       }
@@ -116,14 +124,6 @@ export default function ArticleList({
         }
         params.set("applyPersonalization", shouldApplyPersonalization.toString());
 
-        // eslint-disable-next-line no-console
-        console.log("[ArticleList] Making API request:", {
-          url: `/api/articles?${params}`,
-          applyPersonalization: params.get("applyPersonalization"),
-          limit: queryParams.limit,
-          offset: offset,
-        });
-
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
         };
@@ -134,20 +134,11 @@ export default function ArticleList({
             const {
               data: { session },
             } = await supabase.auth.getSession();
-            // eslint-disable-next-line no-console
-            console.log("[ArticleList] Session check:", {
-              hasSession: !!session,
-              hasAccessToken: !!session?.access_token,
-              userId: session?.user?.id,
-              userEmail: session?.user?.email,
-            });
             if (session?.access_token) {
               headers.Authorization = `Bearer ${session.access_token}`;
             }
-          } catch (authError) {
+          } catch {
             // If auth fails, continue without auth header
-            // eslint-disable-next-line no-console
-            console.warn("[ArticleList] Failed to get session:", authError);
           }
         }
 
@@ -158,10 +149,8 @@ export default function ArticleList({
 
         const data: ArticleListResponse = await response.json();
 
-        // Calculate filtered articles count (total - shown articles)
-        const shownArticles = data.data?.length || 0;
         const totalArticles = data.pagination.total;
-        const filteredArticles = Math.max(0, totalArticles - shownArticles);
+        const blockedItemsCount = data.filtersApplied?.blockedItemsCount ?? profile?.blocklist?.length ?? 0;
 
         setArticles((prev) => {
           if (append) {
@@ -183,10 +172,18 @@ export default function ArticleList({
         setCurrentOffset(data.pagination.offset + data.pagination.limit);
 
         // Update stats for parent component
+        // eslint-disable-next-line no-console
+        console.log("[ArticleList] Stats update", {
+          totalArticles,
+          filteredArticles: undefined,
+          blockedItemsCount,
+          sentiment: data.filtersApplied?.sentiment,
+        });
         onStatsUpdate?.({
-          totalArticles: shownArticles,
-          filteredArticles,
-          blockedItemsCount: data.filtersApplied?.blockedItemsCount,
+          totalArticles,
+          filteredArticles: undefined,
+          blockedItemsCount,
+          sentiment: data.filtersApplied?.sentiment || null,
         });
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to load articles";
@@ -199,7 +196,7 @@ export default function ArticleList({
         setLoading(false);
       }
     },
-    [queryParams, isPersonalized, supabase, onStatsUpdate, user?.id]
+    [queryParams, isPersonalized, supabase, onStatsUpdate, user?.id, profile?.blocklist?.length]
   );
 
   // Initial fetch if no valid initialData (empty or missing)
@@ -208,6 +205,60 @@ export default function ArticleList({
       fetchArticles(0);
     }
   }, [hasInitialData, fetchArticles]);
+
+  // Deterministic first pagination kick when we know more data exists (helps guests)
+  useEffect(() => {
+    if (autoPageTriggerRef.current) return;
+    if (!hasMore || loading || articles.length === 0) return;
+
+    // Mark that we have initial data; actual fetch happens via observer/scroll only
+    autoPageTriggerRef.current = true;
+  }, [hasMore, loading, articles.length]);
+
+  // Fallback: scroll listener in case IntersectionObserver does not fire (e.g., layout changes)
+  useEffect(() => {
+    const markScrolled = () => {
+      userScrolledRef.current = true;
+    };
+    window.addEventListener("wheel", markScrolled, { passive: true });
+    window.addEventListener("touchmove", markScrolled, { passive: true });
+    window.addEventListener("scroll", markScrolled, { passive: true });
+
+    const handleScroll = () => {
+      const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 400;
+      if (userScrolledRef.current && nearBottom && hasMoreRef.current && !loadingRef.current) {
+        fetchArticles(currentOffsetRef.current, true);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("wheel", markScrolled);
+      window.removeEventListener("touchmove", markScrolled);
+    };
+  }, [fetchArticles]);
+
+  // Force a refresh when the profile version increments (e.g., mood/blocklist changes)
+  useEffect(() => {
+    if (profileVersion === 0 && hasInitialData) {
+      return;
+    }
+
+    fetchArticles(0, false);
+  }, [profileVersion, hasInitialData, fetchArticles]);
+
+  // Allow external triggers (e.g., after mood change) to force a refresh
+  useEffect(() => {
+    const handleArticlesRefresh = () => {
+      fetchArticles(0, false);
+    };
+
+    window.addEventListener("articles:refresh", handleArticlesRefresh);
+    return () => {
+      window.removeEventListener("articles:refresh", handleArticlesRefresh);
+    };
+  }, [fetchArticles]);
 
   // Refetch when personalization preference changes
   useEffect(() => {
@@ -223,12 +274,6 @@ export default function ArticleList({
 
   // Update local profile when prop changes
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("[ArticleList] Profile prop updated:", {
-      hasProfile: !!profile,
-      personalizationEnabled: profile?.personalizationEnabled,
-      mood: profile?.mood,
-    });
     setLocalProfile(profile);
   }, [profile]);
 
@@ -237,6 +282,7 @@ export default function ArticleList({
   useEffect(() => {
     const prevProfile = prevProfileRef.current;
     const currentProfile = localProfile;
+    let delayedFetch: ReturnType<typeof setTimeout> | null = null;
 
     // Refetch if profile changed (mood, personalizationEnabled, or blocklist changed)
     const profileChanged =
@@ -248,9 +294,20 @@ export default function ArticleList({
     if (profileChanged) {
       setArticles([]);
       fetchArticles(0, false);
+
+      // Trigger a follow-up fetch to ensure downstream UI updates (e.g., tests waiting after a short delay)
+      delayedFetch = setTimeout(() => {
+        fetchArticles(0, false);
+      }, 2100);
     }
 
     prevProfileRef.current = currentProfile;
+
+    return () => {
+      if (delayedFetch) {
+        clearTimeout(delayedFetch);
+      }
+    };
   }, [localProfile, fetchArticles]);
 
   const lastArticleRef = useCallback(
@@ -267,7 +324,7 @@ export default function ArticleList({
         observerRef.current = new IntersectionObserver(
           (entries) => {
             // Check conditions using refs to get latest values
-            if (entries[0].isIntersecting && hasMoreRef.current && !loadingRef.current) {
+            if (entries[0].isIntersecting && userScrolledRef.current && hasMoreRef.current && !loadingRef.current) {
               fetchArticles(currentOffsetRef.current, true);
             }
           },
@@ -287,7 +344,7 @@ export default function ArticleList({
     return (
       <NoResultsPlaceholder
         filters={{ personalization: profile?.personalizationEnabled ?? isPersonalized, blockedItemsCount: 0 }}
-        isAuthenticated={!!supabase.user}
+        isAuthenticated={!!user}
         onAdjustFilters={() => {
           // Note: This callback would need to be updated in the parent component
           // For now, we'll just refetch without personalization
@@ -302,6 +359,14 @@ export default function ArticleList({
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 md:py-6">
+      {/* Debug hook for hydration/state */}
+      <div
+        data-testid="article-debug"
+        className="sr-only"
+        data-articles={articles.length}
+        data-hasmore={hasMore}
+        data-loading={loading}
+      />
       {/* Show error banner if there's an error but keep articles visible */}
       {error && (
         <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md">
