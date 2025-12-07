@@ -66,6 +66,16 @@ const user = Astro.locals.user;
                   </a>
                 )
               }
+              <button
+                id="theme-toggle"
+                type="button"
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 py-2"
+                aria-label="Toggle color mode"
+                aria-pressed="false"
+              >
+                <span aria-hidden="true">Theme</span>
+                <span class="sr-only" data-theme-label>Dark mode</span>
+              </button>
             </nav>
           </div>
         </div>
@@ -87,43 +97,77 @@ const user = Astro.locals.user;
     </div>
 
     <script>
-      // Handle logout form submission
       /* eslint-disable prettier/prettier */
-      document.addEventListener("DOMContentLoaded", () => {
-        const logoutForm = document.getElementById("logout-form");
-        if (logoutForm) {
-          logoutForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const btn = logoutForm.querySelector('button[type="submit"]');
-            const orig = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = "Signing out...";
+      const THEME_KEY = "theme";
+      const root = document.documentElement;
+      const prefersDark =
+        typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const storedTheme = localStorage.getItem(THEME_KEY);
+      const initialTheme =
+        storedTheme === "dark" || storedTheme === "light" ? storedTheme : prefersDark ? "dark" : "light";
 
-            try {
-              const response = await fetch("/api/auth/logout", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-              });
+      const updateToggleUi = (theme) => {
+        const toggleBtn = document.getElementById("theme-toggle");
+        if (!toggleBtn) return;
+        toggleBtn.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
+        const label = toggleBtn.querySelector("[data-theme-label]");
+        if (label) {
+          label.textContent = theme === "dark" ? "Light mode" : "Dark mode";
+        }
+      };
 
-              const data = await response.json();
+      const applyTheme = (theme) => {
+        const nextTheme = theme === "dark" ? "dark" : "light";
+        root.classList.toggle("dark", nextTheme === "dark");
+        localStorage.setItem(THEME_KEY, nextTheme);
+        updateToggleUi(nextTheme);
+      };
 
-              if (response.ok && data.success) {
-                window.location.href = "/";
-              } else {
-                alert("Sign out failed: " + (data.error || "Please try again."));
-                btn.disabled = false;
-                btn.textContent = orig;
-              }
-            } catch (error) {
-              // eslint-disable-next-line no-console
-              console.error("Logout error:", error);
-              alert("Sign out failed: Network error. Please try again.");
+      // Apply the theme immediately after script load
+      applyTheme(initialTheme);
+
+      const themeToggle = document.getElementById("theme-toggle");
+      if (themeToggle) {
+        themeToggle.addEventListener("click", () => {
+          const nextTheme = root.classList.contains("dark") ? "light" : "dark";
+          applyTheme(nextTheme);
+        });
+      }
+
+      // Handle logout form submission
+      const logoutForm = document.getElementById("logout-form");
+      if (logoutForm) {
+        logoutForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const btn = logoutForm.querySelector('button[type="submit"]');
+          const orig = btn.textContent;
+          btn.disabled = true;
+          btn.textContent = "Signing out...";
+
+          try {
+            const response = await fetch("/api/auth/logout", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+              window.location.href = "/";
+            } else {
+              alert("Sign out failed: " + (data.error || "Please try again."));
               btn.disabled = false;
               btn.textContent = orig;
             }
-          });
-        }
-      });
+          } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error("Logout error:", error);
+            alert("Sign out failed: Network error. Please try again.");
+            btn.disabled = false;
+            btn.textContent = orig;
+          }
+        });
+      }
     </script>
   </body>
 </html>
