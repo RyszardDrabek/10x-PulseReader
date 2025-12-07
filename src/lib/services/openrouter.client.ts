@@ -10,8 +10,13 @@ export class OpenRouterClient {
   private readonly apiKey: string;
   private readonly model: string;
 
-  constructor(apiKey?: string, model = "x-ai/grok-4.1-fast:free") {
-    this.model = model;
+  constructor(apiKey?: string, model?: string) {
+    // Allow override via env; fall back to a currently-free model
+    this.model =
+      model ||
+      (typeof process !== "undefined" && process.env?.OPENROUTER_MODEL) ||
+      (import.meta.env?.OPENROUTER_MODEL as string) ||
+      "tngtech/deepseek-r1t2-chimera:free";
 
     // Try to resolve API key immediately, but don't fail if not found (Cloudflare runtime)
     this.apiKey = apiKey || this.resolveApiKey();
@@ -181,7 +186,7 @@ export class OpenRouterClient {
           statusText: response.statusText,
           error: errorText,
           errorTextLength: errorText.length,
-          errorTextPreview: errorText.substring(0, 200),
+          errorTextPreview: errorText.substring(0, 500),
         });
 
         // Handle rate limiting

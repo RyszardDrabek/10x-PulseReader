@@ -114,7 +114,7 @@ async function demonstrateAIAnalysis() {
   console.log("========================================\n");
 
   console.log("🤖 AI Analysis Configuration:");
-  console.log("  • Model: x-ai/grok-4.1-fast:free");
+  console.log("  • Model: tngtech/deepseek-r1t2-chimera:free");
   console.log("  • Provider: OpenRouter");
   console.log("  • Analysis: Sentiment + Topic Classification");
   console.log("  • Response Format: Structured JSON\n");

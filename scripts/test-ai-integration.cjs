@@ -85,7 +85,7 @@ async function testOpenRouterConnectivity() {
         "X-Title": "PulseReader AI Test",
       },
       body: {
-        model: "x-ai/grok-4.1-fast:free",
+        model: "tngtech/deepseek-r1t2-chimera:free",
         messages: [
           {
             role: "user",
