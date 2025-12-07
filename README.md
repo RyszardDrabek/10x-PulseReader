@@ -18,6 +18,10 @@ In a world saturated with content, finding valuable and truly relevant informati
 
 By leveraging AI for sentiment and topic analysis, PulseReader aims to combat information fatigue and deliver a reading experience tailored to individual needs and state of mind.
 
+## Product Requirements
+
+- The full PRD (scope, user stories, success metrics) lives at `.ai/prd.md`.
+
 ## Tech Stack
 
 The project is built using a modern, scalable, and efficient technology stack:
@@ -70,6 +74,8 @@ To set up and run the project on your local machine, follow these steps:
     PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
     OPENROUTER_API_KEY="your-openrouter-api-key"
     ```
+
+    For local development, the repo expects the bundled Supabase stack at `http://127.0.0.1:18785` with the anon/service keys from `.dev.vars`; copy those values into your `.env` (or `cp .dev.vars .env`) for a zero-friction start.
 
 5.  **Run the development server:**
     ```sh
