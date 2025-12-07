@@ -94,12 +94,16 @@ export const POST: APIRoute = async (context) => {
       }
     }
 
-    // Check for OpenRouter API key in headers (fallback for env vars)
+    // Check for OpenRouter API key in headers (fallback for env vars).
+    // IMPORTANT: Do NOT read from Authorization header (it's used for Supabase service role).
     const openRouterApiKeyFromHeader =
       context.request.headers.get("X-OpenRouter-API-Key") ||
       context.request.headers.get("x-openrouter-api-key") ||
-      context.request.headers.get("Authorization")?.replace("Bearer ", "") ||
       context.request.headers.get("x-api-key");
+    const openRouterApiKey =
+      openRouterApiKeyFromHeader ||
+      (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ||
+      import.meta.env.OPENROUTER_API_KEY;
 
     // Initialize services
     const rssSourceService = new RssSourceService(supabase);
@@ -183,12 +187,17 @@ export const POST: APIRoute = async (context) => {
         endpoint: "POST /api/cron/fetch-rss",
         apiKeySource: openRouterApiKeyFromHeader ? "header" : "environment",
         hasApiKeyFromHeader: !!openRouterApiKeyFromHeader,
-        apiKeyFromHeaderPrefix: openRouterApiKeyFromHeader
-          ? openRouterApiKeyFromHeader.substring(0, 12) + "..."
-          : "none",
+        hasApiKeyResolved: !!openRouterApiKey,
+        apiKeyPrefix: openRouterApiKey ? openRouterApiKey.substring(0, 12) + "..." : "none",
       });
 
-      articleAnalysisService = new ArticleAnalysisService(supabase, undefined, openRouterApiKeyFromHeader || undefined);
+      if (!openRouterApiKey) {
+        logger.warn("OpenRouter API key not provided; AI analysis will be skipped for this run", {
+          endpoint: "POST /api/cron/fetch-rss",
+        });
+      } else {
+        articleAnalysisService = new ArticleAnalysisService(supabase, undefined, openRouterApiKey);
+      }
       logger.info("AI analysis service initialized successfully", {
         endpoint: "POST /api/cron/fetch-rss",
         hasArticleAnalysisService: !!articleAnalysisService,
