@@ -124,15 +124,16 @@ export class ArticleService {
    * @param params - Query parameters for filtering, sorting, and pagination
    * @param userId - Optional authenticated user ID for personalization
    * @returns ArticleListResponse with articles, pagination, and filters applied metadata
-   * @throws Error with specific codes:
-   *   - PROFILE_NOT_FOUND: User profile not found when personalization requested
    */
   async getArticles(params: GetArticlesQueryParams, userId?: string): Promise<ArticleListResponse> {
+    // Normalize personalization flag to a concrete boolean to avoid errors down the line
+    let applyPersonalization = params.applyPersonalization ?? false;
+
     // Ensure personalization is disabled for non-authenticated users
-    if (!userId && params.applyPersonalization) {
+    if (!userId && applyPersonalization) {
       // eslint-disable-next-line no-console
       console.warn("[ArticleService] Personalization requested for non-authenticated user, disabling");
-      params.applyPersonalization = false;
+      applyPersonalization = false;
     }
 
     // Calculate fetch limit (over-fetch for blocklist filtering if needed)
@@ -146,21 +147,25 @@ export class ArticleService {
       const userWantsPersonalization = userProfile.personalizationEnabled ?? true;
       if (params.applyPersonalization === undefined) {
         // If not explicitly set, use user's preference
-        params.applyPersonalization = userWantsPersonalization;
-      } else if (params.applyPersonalization === true && !userWantsPersonalization) {
+        applyPersonalization = userWantsPersonalization;
+      } else if (applyPersonalization === true && !userWantsPersonalization) {
         // If frontend sent true but user has it disabled, respect user's setting
-        params.applyPersonalization = false;
-      } else if (params.applyPersonalization === false && userWantsPersonalization) {
+        applyPersonalization = false;
+      } else if (applyPersonalization === false && userWantsPersonalization) {
         // If frontend sent false but user has it enabled, respect user's setting
-        params.applyPersonalization = true;
+        applyPersonalization = true;
       }
+    } else if (userId && !userProfile) {
+      // If the user has no profile yet, avoid throwing and fall back to non-personalized results
+      if (applyPersonalization) {
+        // eslint-disable-next-line no-console
+        console.warn("[ArticleService] Personalization disabled because profile is missing for user:", userId);
+      }
+      applyPersonalization = false;
     }
 
-    if (params.applyPersonalization && userId && !userProfile) {
-      // eslint-disable-next-line no-console
-      console.error("[ArticleService] Personalization requested but no profile found for user:", userId);
-      throw new Error("PROFILE_NOT_FOUND");
-    }
+    // Persist the normalized personalization flag back to params for downstream logic
+    params.applyPersonalization = applyPersonalization;
 
     const shouldOverFetch = params.applyPersonalization && userProfile?.blocklist && userProfile.blocklist.length > 0;
     const limit = params.limit ?? 20;

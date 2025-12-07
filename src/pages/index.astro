@@ -48,12 +48,12 @@ if (supabase) {
       try {
         const userProfile = await articleService.getProfile(userId);
         initialProfile = userProfile || null;
-        shouldApplyPersonalization = userProfile?.personalizationEnabled ?? true;
+        shouldApplyPersonalization = userProfile?.personalizationEnabled ?? false;
       } catch (profileError) {
         // If profile fetch fails, default to personalization enabled (matches ArticleService behavior)
         // eslint-disable-next-line no-console
         console.warn("[index.astro] Failed to fetch user profile:", profileError);
-        shouldApplyPersonalization = true;
+        shouldApplyPersonalization = false;
       }
     }
 

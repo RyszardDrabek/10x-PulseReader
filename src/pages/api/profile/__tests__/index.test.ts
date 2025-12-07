@@ -14,6 +14,8 @@ import type { ProfileEntity } from "../../../../types.ts";
 import { GET, POST, PATCH, DELETE } from "../index.ts";
 import { ProfileService } from "../../../../lib/services/profile.service.ts";
 
+const mockServiceRoleClient = {} as SupabaseClient<Database>;
+
 // Mock ProfileService
 vi.mock("../../../../lib/services/profile.service.ts");
 vi.mock("../../../../lib/utils/logger.ts", () => ({
@@ -52,6 +54,10 @@ vi.mock("@supabase/supabase-js", () => ({
       })),
     })),
   })),
+}));
+
+vi.mock("../../../../lib/utils/supabase.server.ts", () => ({
+  createServiceRoleClient: vi.fn(() => mockServiceRoleClient),
 }));
 
 /**
@@ -108,6 +114,7 @@ function createMockProfile(overrides: Partial<ProfileEntity> = {}): ProfileEntit
     userId: "user-123",
     mood: "neutral",
     blocklist: [],
+    personalizationEnabled: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -119,14 +126,17 @@ function createMockProfile(overrides: Partial<ProfileEntity> = {}): ProfileEntit
  */
 describe("GET /api/profile", () => {
   let mockGetProfile: MockedFunction<ProfileService["getProfile"]>;
+  let mockCreateProfile: MockedFunction<ProfileService["createProfile"]>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetProfile = vi.fn();
+    mockCreateProfile = vi.fn();
     vi.mocked(ProfileService).mockImplementation(
       () =>
         ({
           getProfile: mockGetProfile,
+          createProfile: mockCreateProfile,
         }) as unknown as ProfileService
     );
   });
@@ -163,21 +173,31 @@ describe("GET /api/profile", () => {
     expect(body.timestamp).toBeDefined();
   });
 
-  test("should return 404 when profile doesn't exist", async () => {
+  test("should auto-create and return profile when missing", async () => {
     const user = createMockUser();
+    const createdProfile = createMockProfile({ id: "new-profile", mood: null, blocklist: [] });
 
     mockGetProfile.mockResolvedValue(null);
+    mockCreateProfile.mockResolvedValue(createdProfile);
 
     const context = createMockContext("http://localhost:3000/api/profile", "GET", null, user);
     const response = await GET(context);
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/json");
+    expect(mockCreateProfile).toHaveBeenCalledTimes(1);
+    expect(mockCreateProfile).toHaveBeenCalledWith(
+      user.id,
+      expect.objectContaining({
+        blocklist: [],
+        personalizationEnabled: true,
+      })
+    );
 
     const body = await response.json();
-    expect(body.error).toBe("Profile not found");
-    expect(body.code).toBe("PROFILE_NOT_FOUND");
-    expect(body.timestamp).toBeDefined();
+    expect(body.id).toBe(createdProfile.id);
+    expect(body.mood).toBeNull();
+    expect(body.blocklist).toEqual([]);
   });
 
   test("should always initialize Supabase client", async () => {

@@ -24,7 +24,7 @@ export default function Homepage({ initialData, initialProfile = null }: Homepag
   const [isAuthenticated, setIsAuthenticated] = useState(!!user || !!initialProfile);
   const [authReady, setAuthReady] = useState(!!initialProfile || !user);
 
-  const [isPersonalized, setIsPersonalized] = useState(initialProfile?.personalizationEnabled ?? !!user);
+  const [isPersonalized, setIsPersonalized] = useState(initialProfile?.personalizationEnabled ?? false);
   const [profile, setProfile] = useState<ProfileDto | null>(initialProfile);
   const [profileVersion, setProfileVersion] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -117,8 +117,8 @@ export default function Homepage({ initialData, initialProfile = null }: Homepag
       return;
     }
 
-    // Authenticated but profile not loaded yet - default to personalization on
-    setIsPersonalized(true);
+    // Authenticated but profile not loaded yet - keep personalization off until profile arrives
+    setIsPersonalized(false);
   }, [isAuthenticated, profile, user]);
 
   // Show onboarding modal for new users without preferences

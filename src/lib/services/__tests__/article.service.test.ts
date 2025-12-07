@@ -1131,7 +1131,7 @@ describe("ArticleService.getArticles", () => {
     expect(result.pagination.hasMore).toBe(false);
   });
 
-  test("should throw PROFILE_NOT_FOUND for personalization without profile", async () => {
+  test("should disable personalization gracefully when profile is missing", async () => {
     const { client, mocks } = createMockSupabaseClient();
     const service = new ArticleService(client);
 
@@ -1148,7 +1148,10 @@ describe("ArticleService.getArticles", () => {
       offset: 0,
     };
 
-    await expect(service.getArticles(params, userId)).rejects.toThrow("PROFILE_NOT_FOUND");
+    const result = await service.getArticles(params, userId);
+
+    expect(result.filtersApplied.personalization).toBe(false);
+    expect(result.data).toEqual([]);
   });
 
   test("should handle database errors", async () => {
