@@ -1,7 +1,6 @@
 ---
 import GlobalLayout from "../layouts/GlobalLayout.astro";
 import App from "../components/App.tsx";
-import SettingsForm from "../components/SettingsForm";
 import type { Session } from "@supabase/supabase-js";
 
 // Get session from server-side Supabase client
@@ -31,17 +30,12 @@ const supabaseConfig = {
 
 <GlobalLayout title="Settings - PulseReader">
   <div class="min-h-screen bg-background">
-    <App client:only="react" initialSession={initialSession} supabaseConfig={supabaseConfig}>
-      <main class="container mx-auto px-4 py-8 max-w-2xl">
-        <div class="space-y-8">
-          <div class="space-y-2">
-            <h1 class="text-3xl font-bold">Settings</h1>
-            <p class="text-muted-foreground">Customize your news feed preferences to get the most relevant content.</p>
-          </div>
-
-          <SettingsForm client:only="react" user={user} />
-        </div>
-      </main>
-    </App>
+    <App
+      client:only="react"
+      page="settings"
+      initialSession={initialSession}
+      supabaseConfig={supabaseConfig}
+      settingsUser={user}
+    />
   </div>
 </GlobalLayout>

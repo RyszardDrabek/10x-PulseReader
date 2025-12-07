@@ -86,8 +86,6 @@ export default function OnboardingModal({ isOpen, onClose, onComplete }: Onboard
   };
 
   const handleComplete = async () => {
-    if (!user?.id) return;
-
     setIsSubmitting(true);
     try {
       const preferences = {
@@ -101,7 +99,7 @@ export default function OnboardingModal({ isOpen, onClose, onComplete }: Onboard
       setCurrentStep("complete");
 
       logger.info("User onboarding completed", {
-        userId: user.id,
+        userId: user?.id,
         mood: selectedMood,
         blocklistCount: selectedBlocklist.length,
       });

@@ -1,7 +1,6 @@
 ---
 import GlobalLayout from "../layouts/GlobalLayout.astro";
 import App from "../components/App.tsx";
-import Homepage from "../components/Homepage.tsx";
 import { ArticleService } from "../lib/services/article.service";
 
 // Use environment variables for Supabase client
@@ -29,6 +28,7 @@ if (supabaseUrl && supabaseKey) {
   supabase = createClient(supabaseUrl, supabaseKey);
 }
 let initialArticles;
+let initialProfile = null;
 
 // Fetch articles server-side if Supabase is available
 if (supabase) {
@@ -42,17 +42,18 @@ if (supabase) {
       userId: userId,
     });
 
-    // Get user profile to check personalization settings
+    // Get user profile to check personalization settings and send to client
     let shouldApplyPersonalization = false;
     if (userId) {
       try {
         const userProfile = await articleService.getProfile(userId);
-        shouldApplyPersonalization = userProfile?.personalizationEnabled ?? true;
+        initialProfile = userProfile || null;
+        shouldApplyPersonalization = userProfile?.personalizationEnabled ?? false;
       } catch (profileError) {
         // If profile fetch fails, default to personalization enabled (matches ArticleService behavior)
         // eslint-disable-next-line no-console
         console.warn("[index.astro] Failed to fetch user profile:", profileError);
-        shouldApplyPersonalization = true;
+        shouldApplyPersonalization = false;
       }
     }
 
@@ -124,8 +125,13 @@ const supabaseConfig = {
 
 <GlobalLayout title="PulseReader - Your Personalized News Feed">
   <div style="min-height: 100vh;">
-    <App client:only="react" initialSession={initialSession} supabaseConfig={supabaseConfig}>
-      <Homepage client:only="react" initialData={initialArticles} />
-    </App>
+    <App
+      client:only="react"
+      page="home"
+      initialSession={initialSession}
+      supabaseConfig={supabaseConfig}
+      homeInitialData={initialArticles}
+      homeInitialProfile={initialProfile}
+    />
   </div>
 </GlobalLayout>

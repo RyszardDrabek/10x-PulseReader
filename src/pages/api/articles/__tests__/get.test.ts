@@ -1391,7 +1391,7 @@ describe("GET /api/articles - Business Logic Errors", () => {
   });
 
   /**
-   * Test: Should return 500 when user has no profile but personalization requested
+   * Test: Should fall back to non-personalized results when profile is missing
    *
    * Setup:
    * - Authenticated user without profile record
@@ -1401,16 +1401,17 @@ describe("GET /api/articles - Business Logic Errors", () => {
    *   WITH valid Authorization header
    *
    * Expected:
-   * - Status: 500
-   * - Body: {
-   *     error: "User profile not found. Please complete your profile setup.",
-   *     code: "PROFILE_NOT_FOUND",
-   *     timestamp: "..."
-   *   }
+   * - Status: 200
+   * - Body: filtersApplied.personalization is false
    */
-  test("should return 500 when user has no profile", async () => {
+  test("should return 200 with personalization disabled when profile is missing", async () => {
     const user = createMockUser({ id: "user-123" });
-    const mockGetArticles = vi.fn().mockRejectedValue(new Error("PROFILE_NOT_FOUND"));
+    const mockResult: ArticleListResponse = {
+      data: [],
+      pagination: { limit: 20, offset: 0, total: 0, hasMore: false },
+      filtersApplied: { personalization: false },
+    };
+    const mockGetArticles = vi.fn().mockResolvedValue(mockResult);
     vi.mocked(ArticleService).mockImplementation(
       () =>
         ({
@@ -1421,13 +1422,22 @@ describe("GET /api/articles - Business Logic Errors", () => {
     const context = createMockContext("http://localhost:3000/api/articles/get?applyPersonalization=true", user);
     const response = await GET(context);
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/json");
 
     const body = await response.json();
-    expect(body.error).toBe("User profile not found. Please complete your profile setup.");
-    expect(body.code).toBe("PROFILE_NOT_FOUND");
-    expect(body.timestamp).toBeDefined();
+    expect(body.filtersApplied.personalization).toBe(false);
+    expect(body.data).toEqual([]);
+    expect(mockGetArticles).toHaveBeenCalledWith(
+      expect.objectContaining({
+        applyPersonalization: true,
+        limit: 20,
+        offset: 0,
+        sortBy: "publication_date",
+        sortOrder: "desc",
+      }),
+      user.id
+    );
   });
 });
 
